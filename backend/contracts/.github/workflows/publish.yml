@@ -1,0 +1,43 @@
+name: Publish
+
+on: 
+    push:
+        branches:
+            - main 
+
+jobs:
+    publish:
+        name: Publish Job
+        runs-on: ubuntu-latest
+        steps: 
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                node-version: 22
+                registry-url: 'https://registry.npmjs.org'
+
+            - name: Install protoc
+              run: sudo apt-get update && sudo apt-get install -y
+                  protobuf-compiler
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                version: 11
+            - name: Install deps
+              run: pnpm install --frozen-lockfile
+
+            - name: Generate TS Protobuf
+              run: pnpm run generate
+
+            - name: Publish package
+              run: npm publish 
+
+              env: 
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+
+

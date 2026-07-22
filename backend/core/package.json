@@ -1,0 +1,32 @@
+{
+  "name": "@tomatocinema/core",
+  "version": "1.0.6",
+  "description": "các thành phần cốt lõi và các thiết lập dùng chung",
+  "keywords": [],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": {
+    "name": "tomato",
+    "email": "at2356116@gmail.com"
+  },
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.0.9",
+      "onFail": "download"
+    }
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "@tomatocinema/core": "link:",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2"
+  },
+  "exports": {
+    "./prettier": "./src/prettier.config.mjs"
+  }
+}

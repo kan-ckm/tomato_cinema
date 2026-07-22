@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// khai báo địa chỉ auth.v1
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+    rpc SendOtp(SendOtpRequest) returns (SendOtpResponse);
+}
+
+
+
+// Định nghĩa cấu trúc dữ liệu (DTO) cho Request và Response khi các Microservices giao tiếp với nhau
+message SendOtpRequest {
+    string identifier = 1;
+    string type = 2;
+}
+
+message SendOtpResponse {
+    bool ok = 1;
+}
