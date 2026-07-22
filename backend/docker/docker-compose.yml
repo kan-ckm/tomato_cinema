@@ -2,7 +2,7 @@
 services:
 
   postgres:
-    container_name: postgres
+    container_name: postgres_tomato_cinema
     image: postgres
     restart: always
     environment:
