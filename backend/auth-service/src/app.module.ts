@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { PrismaModule } from './infrastucture/prisma/prisma.module'
 import { AuthModule } from './module/auth/auth.module'
 
 @Module({
@@ -7,7 +8,8 @@ import { AuthModule } from './module/auth/auth.module'
 		ConfigModule.forRoot({
 			isGlobal: true
 		}),
-		AuthModule
+		AuthModule,
+		PrismaModule
 	]
 })
 export class AppModule {}

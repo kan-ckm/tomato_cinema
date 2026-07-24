@@ -12,8 +12,6 @@ export class AuthController {
 
 	@GrpcMethod('AuthService', 'SendOtp')
 	public async sendOtp(data: SendOtpRequest): Promise<SendOtpResponse> {
-		console.log('OTP đc gửi đến request', data)
-
-		return { ok: true }
+		return await this.sendOtp(data)
 	}
 }
