@@ -17,9 +17,18 @@ export class AuthService {
 			} else {
 				account = await this.authRepository.findByEmail(identifier)
 			}
-			if
+			// nếu người dùng chx có thì hệ thống sẽ tự tạo cho họ một tài khoản mới
+			if (!account) {
+				account = await this.authRepository.create({
+					phone: type === 'phone' ? identifier : undefined,
+					email: type === 'email' ? identifier : undefined
+				})
+			}
+			return { ok: true }
 		} catch (error) {
-			throw new Error("Lỗi auth gửi otp", error);
+			console.error('=== CHI TIẾT LỖI DATABASE ===', error)
+
+			throw new Error(`Lỗi auth gửi otp: ${error.message}`)
 		}
 	}
 }

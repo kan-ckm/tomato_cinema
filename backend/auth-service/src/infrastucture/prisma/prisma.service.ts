@@ -4,8 +4,10 @@ import {
 	OnModuleDestroy,
 	OnModuleInit
 } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from 'generated/client'
+import { AppModule } from '@/app.module'
 
 @Injectable()
 export class PrismaService
@@ -13,14 +15,14 @@ export class PrismaService
 	implements OnModuleInit, OnModuleDestroy
 {
 	private readonly logger = new Logger(PrismaService.name)
-	public constructor() {
-		const dbUrl = process.env.POSTGRES_URL
-
-		if (!dbUrl) {
-			throw new Error('POSTGRES_URL environment variable is not defined!')
-		}
-
-		const adapter = new PrismaPg(dbUrl)
+	public constructor(private readonly configService: ConfigService) {
+		const adapter = new PrismaPg({
+			user: configService.getOrThrow<string>('POSTGRES_USER'),
+			password: configService.getOrThrow<string>('POSTGRES_PASSOWRD'),
+			host: configService.getOrThrow<string>('POSTGRES_HOST'),
+			port: configService.getOrThrow<number>('POSTGRE_PORT'),
+			database: configService.getOrThrow<string>('POSTGRES_DATABASE')
+		})
 
 		super({ adapter })
 	}
