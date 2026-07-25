@@ -24,7 +24,7 @@ export class RedisService
 		})
 	}
 	public async onModuleInit() {
-		const start = Date.now()
+		const startTime = Date.now()
 
 		this.logger.log('Đang khởi tạo kết nối đến redis')
 
@@ -32,7 +32,7 @@ export class RedisService
 			this.logger.log('đang kết nối đến redis')
 		})
 		this.on('ready', () => {
-			const ms = Date.now() - start
+			const ms = Date.now() - startTime
 			this.logger.log(`Redis kết nối tốn (time=${ms}ms)`)
 		})
 		this.on('error', err => {

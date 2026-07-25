@@ -26,11 +26,11 @@ export class PrismaService
 		super({ adapter })
 	}
 	public async onModuleInit() {
-		const start = Date.now()
+		const startTime = Date.now()
 		this.logger.log('connecting to database...')
 		try {
 			await this.$connect
-			const ms = Date.now() - start
+			const ms = Date.now() - startTime
 			this.logger.log(`database connection established (time=${ms}ms)`)
 		} catch (error) {
 			this.logger.log('Failed to connect to database:', error)
