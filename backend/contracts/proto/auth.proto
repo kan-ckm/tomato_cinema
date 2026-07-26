@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 
 service AuthService {
     rpc SendOtp(SendOtpRequest) returns (SendOtpResponse);
+    rpc VerifyOtp(VerifyOtpRequest) returns (VerifyOtpResponse);
 }
 
 
@@ -19,4 +20,15 @@ message SendOtpRequest {
 
 message SendOtpResponse {
     bool ok = 1;
+}
+
+message VerifyOtpRequest {
+    string identifier = 1;
+    string type = 2;
+    string code = 3;
+}
+
+message VerifyOtpResponse {
+  string access_token = 1;
+  string refresh_token = 2;
 }

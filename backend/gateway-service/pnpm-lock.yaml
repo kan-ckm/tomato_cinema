@@ -30,8 +30,8 @@ importers:
         specifier: ^11.4.5
         version: 11.4.5(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)
       '@tomatocinema/contracts':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.3
+        version: 1.0.3
       '@tomatocinema/core':
         specifier: ^1.0.6
         version: 1.0.6(prettier@3.9.4)
@@ -886,8 +886,8 @@ packages:
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
 
-  '@tomatocinema/contracts@1.0.0':
-    resolution: {integrity: sha512-JsBc/MHtBLUG+gTyZQD+HsNaEulkxvljwS3s/J8C2/epBefkc3QuFHvQ+PTOJtkJOOV4cCGpoY0UseaSvIJ7cQ==}
+  '@tomatocinema/contracts@1.0.3':
+    resolution: {integrity: sha512-e/nMGaqg4mX6dcniMd4cA98oVm3UBE9fuDNhGAl2yVuexvQCLtSlhobTvj/uhjGxBdsxH5M9RZx2RBcTf54Kwg==}
 
   '@tomatocinema/core@1.0.6':
     resolution: {integrity: sha512-qhvNF8anqFSS98PC4+SJkgG8E+AmCLU82N0KsAz3++McgC7G5VtESp7I3XqkwMyXmyJWVWTmMEr8CCDzc7Zwlg==}
@@ -4147,7 +4147,7 @@ snapshots:
 
   '@tokenizer/token@0.3.0': {}
 
-  '@tomatocinema/contracts@1.0.0':
+  '@tomatocinema/contracts@1.0.3':
     dependencies:
       ts-proto: 2.12.0
 
