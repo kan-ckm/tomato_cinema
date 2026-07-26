@@ -23,8 +23,8 @@ export class OtpService {
 	}
 	// xác thực mã otp
 	public async verify(
-		identifier: String,
-		code: String,
+		identifier: string,
+		code: string,
 		type: 'phone' | 'email'
 	) {
 		//tìm kiếm otp người dùng trong redis xem có ko
