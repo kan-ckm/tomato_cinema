@@ -1,0 +1,23 @@
+{
+  "name": "@tomatocinema/common",
+  "version": "1.0.0",
+  "description": "Core shared componets for tomatocinema microservice ecosystem",
+  "main": "dist/index",
+  "type": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+  "build": "tsc -p tsconfig.build.json",
+  "format": "prettier --write \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@tomatocinema/core": "^1.0.6",
+    "@types/node": "^26.1.1",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2"
+  }
+}
