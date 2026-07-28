@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './core/app.module'
 import { getCorsconfig, getValidationPipeConfig } from './core/config'
+import { GrcpExceotionFilter } from './shared/filters'
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
@@ -12,6 +13,8 @@ async function bootstrap() {
 	const logger = new Logger()
 	// cấu hình tự động hóa kiểm tra định dạng bảo vệ dữ liệu và dọn dẹp
 	app.useGlobalPipes(new ValidationPipe(getValidationPipeConfig()))
+
+	app.useGlobalFilters(new GrcpExceotionFilter())
 
 	app.enableCors(getCorsconfig(config))
 	// cấu hình UI cho docs API

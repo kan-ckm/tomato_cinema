@@ -57,7 +57,10 @@ export class AuthService {
 			account = await this.authRepository.findByEmail(identifier)
 		}
 		if (!account) {
-			throw new RpcException('Account not found')
+			throw new RpcException({
+				code: 5,
+				details: 'không tìm thấy tài khoản'
+			})
 		}
 		// kiểm tra xem đã được xác minh hay chưa nếu chưa nếu chưa thì cho xác mình thành true nếu rồi thì skip đi tiếp
 		if (type === 'phone' && !account.isPhoneVerified) {

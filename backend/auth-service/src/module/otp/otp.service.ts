@@ -34,13 +34,19 @@ export class OtpService {
 			`otp:${type}:${identifier}`
 		)
 		if (!storedHash) {
-			throw new RpcException('Mã không hợp lệ hoặc đã hết hạn')
+			throw new RpcException({
+				code: 5,
+				details: 'Mã không hợp lệ hoặc đã hết hạn'
+			})
 		}
 		// tiếp theo mã hóa otp để so sánh với otp trong redis
 		const incomingHash = createHash('sha256').update(code).digest('hex')
 
 		if (storedHash !== incomingHash) {
-			throw new RpcException('Mã không hợp lệ hoặc đã hết hạn')
+			throw new RpcException({
+				code: 5,
+				details: 'mã không hợp lệ hoặc đã hết hạn'
+			})
 
 			await this.redisService.del(`otp:${type}:${identifier}`)
 		}

@@ -8,8 +8,7 @@ export class AuthController {
 	public constructor(private readonly client: AuthClientGrpc) {}
 	@ApiOperation({
 		summary: 'gửi mã',
-		description:
-			'Gửi mã xác minh đến số đt hoặc email người dùng'
+		description: 'Gửi mã xác minh đến số đt hoặc email người dùng'
 	})
 	@Post('otp/send')
 	@HttpCode(HttpStatus.OK)
