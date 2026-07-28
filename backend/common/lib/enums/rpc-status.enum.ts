@@ -1,4 +1,4 @@
-export enum RgpcStatus {
+export enum RpcStatus {
 	OK = 0,
 	CANCELLED = 1,
 	UNKNOWN = 2,

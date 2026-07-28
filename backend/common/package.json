@@ -1,6 +1,6 @@
 {
   "name": "@tomatocinema/common",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Core shared componets for tomatocinema microservice ecosystem",
   "main": "dist/index",
   "type": "dist/index.d.ts",
