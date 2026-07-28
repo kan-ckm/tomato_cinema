@@ -27,6 +27,7 @@
     "@nestjs/microservices": "^11.1.28",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.5",
+    "@tomatocinema/common": "^1.0.1",
     "@tomatocinema/contracts": "^1.0.3",
     "@tomatocinema/core": "^1.0.6",
     "class-transformer": "^0.5.1",

@@ -3,6 +3,7 @@ import { RpcException } from '@nestjs/microservices'
 import { createHash } from 'crypto'
 import { generateCode } from 'patcode'
 import { RedisService } from '@/infrastucture/redis/redis.service'
+import { RpcStatus } from '@tomatocinema/common'
 
 @Injectable()
 export class OtpService {
@@ -35,7 +36,7 @@ export class OtpService {
 		)
 		if (!storedHash) {
 			throw new RpcException({
-				code: 5,
+				code: RpcStatus.NOT_FOUND,
 				details: 'Mã không hợp lệ hoặc đã hết hạn'
 			})
 		}
@@ -44,7 +45,7 @@ export class OtpService {
 
 		if (storedHash !== incomingHash) {
 			throw new RpcException({
-				code: 5,
+				code:RpcStatus.NOT_FOUND,
 				details: 'mã không hợp lệ hoặc đã hết hạn'
 			})
 
