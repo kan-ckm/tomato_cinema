@@ -54,11 +54,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/common
       '@tomatocinema/contracts':
-        specifier: ^1.0.3
-        version: 1.0.3
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@tomatocinema/core':
-        specifier: 1.0.6
-        version: 1.0.6(prettier@3.9.6)
+        specifier: workspace:*
+        version: link:../../packages/core
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -215,14 +215,14 @@ importers:
         specifier: ^11.4.5
         version: 11.4.6(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.28)(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)
       '@tomatocinema/common':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../../packages/common
       '@tomatocinema/contracts':
-        specifier: ^1.0.3
-        version: 1.0.3
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@tomatocinema/core':
-        specifier: ^1.0.6
-        version: 1.0.6(prettier@3.9.6)
+        specifier: workspace:*
+        version: link:../../packages/core
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -1575,12 +1575,6 @@ packages:
 
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
-
-  '@tomatocinema/common@1.0.1':
-    resolution: {integrity: sha512-fSxG1PbrJuu+6IZjiS27z1rKySesQ91K7x2Z8ZNgg4JcDbi0dybthf8oM9eKNTTvpjLRhZzZu5nh207vKlVYPw==}
-
-  '@tomatocinema/contracts@1.0.3':
-    resolution: {integrity: sha512-e/nMGaqg4mX6dcniMd4cA98oVm3UBE9fuDNhGAl2yVuexvQCLtSlhobTvj/uhjGxBdsxH5M9RZx2RBcTf54Kwg==}
 
   '@tomatocinema/core@1.0.6':
     resolution: {integrity: sha512-qhvNF8anqFSS98PC4+SJkgG8E+AmCLU82N0KsAz3++McgC7G5VtESp7I3XqkwMyXmyJWVWTmMEr8CCDzc7Zwlg==}
@@ -6283,12 +6277,6 @@ snapshots:
       - supports-color
 
   '@tokenizer/token@0.3.0': {}
-
-  '@tomatocinema/common@1.0.1': {}
-
-  '@tomatocinema/contracts@1.0.3':
-    dependencies:
-      ts-proto: 2.12.0
 
   '@tomatocinema/core@1.0.6(prettier@3.9.6)':
     dependencies:

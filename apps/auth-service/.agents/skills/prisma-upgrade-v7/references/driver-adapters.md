@@ -14,18 +14,18 @@ MongoDB should not follow this path. There is no published MongoDB `@prisma/adap
 
 ## Available Adapters
 
-| Database | Adapter Package | Underlying Driver |
-|----------|-----------------|-------------------|
-| PostgreSQL | `@prisma/adapter-pg` | `pg` |
-| MySQL / MariaDB | `@prisma/adapter-mariadb` | `mariadb` |
-| SQLite | `@prisma/adapter-better-sqlite3` | `better-sqlite3` |
-| Prisma Postgres (Node.js) | `@prisma/adapter-pg` | `pg` |
-| Prisma Postgres (edge/serverless) | `@prisma/adapter-ppg` | `@prisma/ppg` |
-| SQL Server | `@prisma/adapter-mssql` | `mssql` |
-| Neon | `@prisma/adapter-neon` | `@neondatabase/serverless` |
-| PlanetScale | `@prisma/adapter-planetscale` | `@planetscale/database` |
-| Turso/libSQL | `@prisma/adapter-libsql` | `@libsql/client` |
-| D1 (Cloudflare) | `@prisma/adapter-d1` | Cloudflare D1 |
+| Database                          | Adapter Package                  | Underlying Driver          |
+| --------------------------------- | -------------------------------- | -------------------------- |
+| PostgreSQL                        | `@prisma/adapter-pg`             | `pg`                       |
+| MySQL / MariaDB                   | `@prisma/adapter-mariadb`        | `mariadb`                  |
+| SQLite                            | `@prisma/adapter-better-sqlite3` | `better-sqlite3`           |
+| Prisma Postgres (Node.js)         | `@prisma/adapter-pg`             | `pg`                       |
+| Prisma Postgres (edge/serverless) | `@prisma/adapter-ppg`            | `@prisma/ppg`              |
+| SQL Server                        | `@prisma/adapter-mssql`          | `mssql`                    |
+| Neon                              | `@prisma/adapter-neon`           | `@neondatabase/serverless` |
+| PlanetScale                       | `@prisma/adapter-planetscale`    | `@planetscale/database`    |
+| Turso/libSQL                      | `@prisma/adapter-libsql`         | `@libsql/client`           |
+| D1 (Cloudflare)                   | `@prisma/adapter-d1`             | Cloudflare D1              |
 
 ## Installation
 
@@ -64,11 +64,11 @@ npm install @prisma/adapter-mssql mssql
 ### PostgreSQL
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL
+	connectionString: process.env.DATABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -77,16 +77,16 @@ const prisma = new PrismaClient({ adapter })
 ### MySQL
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaMariaDb } from '@prisma/adapter-mariadb'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaMariaDb({
-  host: 'localhost',
-  port: 3306,
-  connectionLimit: 5,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
+	host: 'localhost',
+	port: 3306,
+	connectionLimit: 5,
+	user: process.env.MYSQL_USER,
+	password: process.env.MYSQL_PASSWORD,
+	database: process.env.MYSQL_DATABASE
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -95,11 +95,11 @@ const prisma = new PrismaClient({ adapter })
 ### SQLite
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || 'file:./dev.db'
+	url: process.env.DATABASE_URL || 'file:./dev.db'
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -108,11 +108,11 @@ const prisma = new PrismaClient({ adapter })
 ### Neon (Serverless PostgreSQL)
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL
+	connectionString: process.env.DATABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -121,11 +121,11 @@ const prisma = new PrismaClient({ adapter })
 ### Prisma Postgres
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+	connectionString: process.env.DATABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -134,32 +134,32 @@ const prisma = new PrismaClient({ adapter })
 ### Prisma Postgres serverless driver
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaPostgresAdapter } from '@prisma/adapter-ppg'
+import { PrismaClient } from '../generated/client'
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPostgresAdapter({
-    connectionString: process.env.PRISMA_DIRECT_TCP_URL,
-  }),
+	adapter: new PrismaPostgresAdapter({
+		connectionString: process.env.PRISMA_DIRECT_TCP_URL
+	})
 })
 ```
 
 ### SQL Server
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaMssql } from '@prisma/adapter-mssql'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaMssql({
-  server: 'localhost',
-  port: 1433,
-  database: 'mydb',
-  user: process.env.SQLSERVER_USER,
-  password: process.env.SQLSERVER_PASSWORD,
-  options: {
-    encrypt: true,
-    trustServerCertificate: true,
-  },
+	server: 'localhost',
+	port: 1433,
+	database: 'mydb',
+	user: process.env.SQLSERVER_USER,
+	password: process.env.SQLSERVER_PASSWORD,
+	options: {
+		encrypt: true,
+		trustServerCertificate: true
+	}
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -175,11 +175,11 @@ Driver adapters use the underlying driver's pool settings, which differ from v6 
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  // Pool configuration
-  max: 10,                    // Maximum connections
-  idleTimeoutMillis: 30000,   // Close idle connections after 30s
-  connectionTimeoutMillis: 5000, // Connection timeout (v6 default was 5s)
+	connectionString: process.env.DATABASE_URL,
+	// Pool configuration
+	max: 10, // Maximum connections
+	idleTimeoutMillis: 30000, // Close idle connections after 30s
+	connectionTimeoutMillis: 5000 // Connection timeout (v6 default was 5s)
 })
 ```
 
@@ -187,8 +187,8 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 5000,  // v6 used 5 second timeout
+	connectionString: process.env.DATABASE_URL,
+	connectionTimeoutMillis: 5000 // v6 used 5 second timeout
 })
 ```
 
@@ -198,10 +198,10 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false  // Accept self-signed certs
-  }
+	connectionString: process.env.DATABASE_URL,
+	ssl: {
+		rejectUnauthorized: false // Accept self-signed certs
+	}
 })
 ```
 
@@ -209,11 +209,11 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    ca: fs.readFileSync('/path/to/ca-cert.pem'),
-    rejectUnauthorized: true
-  }
+	connectionString: process.env.DATABASE_URL,
+	ssl: {
+		ca: fs.readFileSync('/path/to/ca-cert.pem'),
+		rejectUnauthorized: true
+	}
 })
 ```
 
@@ -225,20 +225,20 @@ const adapter = new PrismaPg({
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient({
-  datasources: {
-    db: { url: process.env.DATABASE_URL }
-  }
+	datasources: {
+		db: { url: process.env.DATABASE_URL }
+	}
 })
 ```
 
 ### After (v7)
 
 ```typescript
-import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/client'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL
+	connectionString: process.env.DATABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -248,20 +248,20 @@ const prisma = new PrismaClient({ adapter })
 
 ```typescript
 // lib/prisma.ts
-import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/client'
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+	prisma: PrismaClient | undefined
 }
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!
+	connectionString: process.env.DATABASE_URL!
 })
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter })
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+	globalForPrisma.prisma = prisma
 }
 ```

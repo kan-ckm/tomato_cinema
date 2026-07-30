@@ -3,8 +3,8 @@ name: prisma-upgrade-v7
 description: Complete migration guide from Prisma ORM v6 to v7 covering all breaking changes. Use when upgrading Prisma versions, encountering v7 errors, or migrating existing projects. Triggers on "upgrade to prisma 7", "prisma 7 migration", "prisma-client generator", "driver adapter required".
 license: MIT
 metadata:
-  author: prisma
-  version: "7.6.0"
+    author: prisma
+    version: '7.6.0'
 ---
 
 # Upgrade to Prisma ORM 7
@@ -14,6 +14,7 @@ Complete guide for migrating from Prisma ORM v6 to v7. This upgrade introduces s
 ## When to Apply
 
 Reference this skill when:
+
 - Upgrading from Prisma v6 to v7
 - Updating to the `prisma-client` generator
 - Setting up driver adapters
@@ -22,14 +23,14 @@ Reference this skill when:
 
 ## Rule Categories by Priority
 
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | Schema Migration | CRITICAL | `schema-changes` |
-| 2 | Database Connectivity | CRITICAL | `driver-adapters` |
-| 3 | Module System | CRITICAL | `esm-support` |
-| 4 | Config and Env | HIGH | `prisma-config`, `env-variables` |
-| 5 | Removed Features | HIGH | `removed-features` |
-| 6 | Accelerate | HIGH | `accelerate-users` |
+| Priority | Category              | Impact   | Prefix                           |
+| -------- | --------------------- | -------- | -------------------------------- |
+| 1        | Schema Migration      | CRITICAL | `schema-changes`                 |
+| 2        | Database Connectivity | CRITICAL | `driver-adapters`                |
+| 3        | Module System         | CRITICAL | `esm-support`                    |
+| 4        | Config and Env        | HIGH     | `prisma-config`, `env-variables` |
+| 5        | Removed Features      | HIGH     | `removed-features`               |
+| 6        | Accelerate            | HIGH     | `accelerate-users`               |
 
 ## Quick Reference
 
@@ -86,18 +87,18 @@ npx prisma generate
 
 ## Breaking Changes Summary
 
-| Change | v6 | v7 |
-|--------|----|----|
-| Module format | Implicit / mixed | ESM-first, `moduleFormat = "cjs"` supported |
-| Generator provider | `prisma-client-js` | `prisma-client` is the default, while `prisma-client-js` still exists for legacy setups |
-| Output path | Auto (node_modules) | Required explicit |
-| Driver adapters | Optional | Required for SQL providers |
-| Config file | `.env` + schema | `prisma.config.ts` |
-| Env loading | Automatic | Manual (dotenv) |
-| Generated entrypoints | Single package export | `client`, `browser`, `models`, `enums` entrypoints |
-| Type-safe query fragments | `Prisma.validator()` | TypeScript `satisfies` |
-| Middleware | `$use()` | Client Extensions |
-| Metrics | Preview feature | Removed |
+| Change                    | v6                    | v7                                                                                      |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| Module format             | Implicit / mixed      | ESM-first, `moduleFormat = "cjs"` supported                                             |
+| Generator provider        | `prisma-client-js`    | `prisma-client` is the default, while `prisma-client-js` still exists for legacy setups |
+| Output path               | Auto (node_modules)   | Required explicit                                                                       |
+| Driver adapters           | Optional              | Required for SQL providers                                                              |
+| Config file               | `.env` + schema       | `prisma.config.ts`                                                                      |
+| Env loading               | Automatic             | Manual (dotenv)                                                                         |
+| Generated entrypoints     | Single package export | `client`, `browser`, `models`, `enums` entrypoints                                      |
+| Type-safe query fragments | `Prisma.validator()`  | TypeScript `satisfies`                                                                  |
+| Middleware                | `$use()`              | Client Extensions                                                                       |
+| Metrics                   | Preview feature       | Removed                                                                                 |
 
 ## Rule Files
 
@@ -119,7 +120,7 @@ references/accelerate-users.md   - Special handling for Accelerate
 
 ```json
 {
-  "type": "module"
+	"type": "module"
 }
 ```
 
@@ -129,13 +130,13 @@ If you need to stay on CommonJS, keep your app as CJS and set `moduleFormat = "c
 
 ```json
 {
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "target": "ES2023",
-    "strict": true,
-    "esModuleInterop": true
-  }
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"target": "ES2023",
+		"strict": true,
+		"esModuleInterop": true
+	}
 }
 ```
 
@@ -163,13 +164,13 @@ import 'dotenv/config'
 import { defineConfig, env } from 'prisma/config'
 
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
-  migrations: {
-    path: 'prisma/migrations',
-  },
-  datasource: {
-    url: env('DATABASE_URL'),
-  },
+	schema: 'prisma/schema.prisma',
+	migrations: {
+		path: 'prisma/migrations'
+	},
+	datasource: {
+		url: env('DATABASE_URL')
+	}
 })
 ```
 
@@ -221,9 +222,9 @@ const prisma = new PrismaClient({ adapter })
 import { Prisma } from '../generated/prisma/client'
 
 const userSelect = {
-  id: true,
-  email: true,
-  name: true,
+	id: true,
+	email: true,
+	name: true
 } satisfies Prisma.UserSelect
 ```
 
@@ -237,14 +238,17 @@ npx prisma migrate dev  # if needed
 ## Troubleshooting
 
 ### "Cannot find module" errors
+
 - Check that the generator `output` path matches your import path
 - Ensure `prisma generate` ran successfully
 
 ### SSL certificate errors
+
 - Add `ssl: { rejectUnauthorized: false }` to the adapter config if you need to preserve old behavior
 - Or configure your certificates properly with `NODE_EXTRA_CA_CERTS` / OpenSSL CA settings
 
 ### Connection timeout issues
+
 - Driver adapters use the underlying driver's defaults, which differ from v6
 - Configure pool settings explicitly on the adapter if needed
 
