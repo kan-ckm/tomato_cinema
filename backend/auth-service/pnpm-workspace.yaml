@@ -1,5 +1,0 @@
-allowBuilds:
-  '@prisma/engines': false
-  prisma: false
-  protobufjs: true
-  unrs-resolver: true
