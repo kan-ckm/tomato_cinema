@@ -34,6 +34,6 @@ export function validateEnv<T extends object>(
 		throw new Error(errorMsg)
 	}
 
-	//TRẢ VỀ CẤU HÌNH (Rất quan trọng)
+	//TRẢ VỀ CẤU HÌNH
 	return validateConfig
 }
