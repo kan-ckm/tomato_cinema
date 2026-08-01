@@ -29,6 +29,8 @@ jobs:
                 version: 11
             - name: Install deps
               run: pnpm install --frozen-lockfile
+            - name: Build
+              run: pnpm run build
 
             - name: Generate TS Protobuf
               run: pnpm run generate
