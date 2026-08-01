@@ -2,7 +2,10 @@
   "name": "@tomatocinema/contracts",
   "version": "1.0.3",
   "description": "dịch vụ biên dịch protobuf sang dạng mã typescript",
+  "main": "./dist/index.js",
+  "type": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "generate": "protoc -I ./proto ./proto/*.proto --ts_proto_out=./gen --ts_proto_opt=nestJs=true,package=omit"
   },
   "files": [
@@ -16,5 +19,9 @@
     "@nestjs/microservices": "^11.1.28",
     "rxjs": "^7.8.1",
     "ts-proto": "^2.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2"
   }
 }
