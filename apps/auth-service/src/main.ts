@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { MicroserviceOptions, Transport } from '@nestjs/microservices'
+import { PROTO_PATHS } from '@tomatocinema/contracts'
 import { AllConfig } from 'config/interfaces'
 import { AppModule } from './app.module'
 
@@ -15,7 +16,7 @@ async function bootstrap() {
 		transport: Transport.GRPC,
 		options: {
 			package: 'auth.v1',
-			protoPath: 'node_modules/@tomatocinema/contracts/proto/auth.proto',
+			protoPath: PROTO_PATHS.AUTH,
 			url: url,
 			loader: {
 				keepCase: false,

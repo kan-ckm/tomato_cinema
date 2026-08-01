@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
+import { PROTO_PATHS } from '@tomatocinema/contracts'
 import { AuthController } from './auth.controller'
 import { AuthClientGrpc } from './auth.grpc'
 
@@ -14,8 +15,7 @@ import { AuthClientGrpc } from './auth.grpc'
 					transport: Transport.GRPC,
 					options: {
 						package: 'auth.v1',
-						protoPath:
-							'node_modules/@tomatocinema/contracts/proto/auth.proto',
+						protoPath: PROTO_PATHS.AUTH,
 						url: configService.getOrThrow<string>('AUTH_GRPC_URL')
 					}
 				})

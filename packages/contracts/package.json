@@ -10,7 +10,8 @@
   },
   "files": [
     "proto",
-    "gen"
+    "gen",
+    "dist"
   ],
   "publishConfig": {
     "access": "public"

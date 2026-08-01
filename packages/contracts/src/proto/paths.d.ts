@@ -1,3 +1,3 @@
 export declare const PROTO_PATHS: {
-    readonly AUTH: string;
+  readonly AUTH: string;
 };
