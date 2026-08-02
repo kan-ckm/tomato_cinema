@@ -3,9 +3,9 @@
 // - timingSafeEqual: Dùng để so sánh 2 chuỗi an toàn, chống lại kỹ thuật đoán mật khẩu qua thời gian.
 import { Inject, Injectable } from '@nestjs/common'
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { base64UrlDecode, base64UrlEncode, constantTimeEqual } from './utils'
 import { PASSPORT_OPTIONS } from './constants'
 import { PassportOptions } from './interfaces'
+import { base64UrlDecode, base64UrlEncode, constantTimeEqual } from './utils'
 
 @Injectable()
 export class PassportService {
@@ -20,7 +20,9 @@ export class PassportService {
 	// Chọn '|' vì nó hiếm khi xuất hiện trong ID người dùng.
 	private static readonly INTERNAL_SEP = '|'
 
-	public constructor(@Inject(PASSPORT_OPTIONS)private readonly options:PassportOptions) {
+	public constructor(
+		@Inject(PASSPORT_OPTIONS) private readonly options: PassportOptions
+	) {
 		this.SECRET_KEY = options.secretKey
 	}
 

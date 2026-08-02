@@ -1,6 +1,7 @@
 import { Provider } from '@nestjs/common'
 import { PASSPORT_OPTIONS } from './constants'
 import { PassportOptions } from './interfaces'
+import { PassportAsyncOptions } from '../dist'
 
 export function createPassportOptionsProvider(
 	options: PassportOptions
@@ -12,7 +13,7 @@ export function createPassportOptionsProvider(
 }
 
 export function createPassportAsyncOptionProvider(
-	options: PassportOptions
+	options: PassportAsyncOptions
 ): Provider {
 	return {
 		provide: PASSPORT_OPTIONS,
