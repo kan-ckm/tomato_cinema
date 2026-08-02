@@ -8,6 +8,7 @@ import {
 import { Response } from 'express'
 import { grpcToHttpStatus } from '../utils'
 
+// hàm giúp cho việc tự gom lỗi r tự gửi lại cho frontend mã lỗi của http hay vì mã Grpc
 @Catch()
 export class GrcpExceotionFilter implements ExceptionFilter {
 	public catch(exception: any, host: ArgumentsHost) {
