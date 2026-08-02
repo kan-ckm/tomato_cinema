@@ -1,0 +1,31 @@
+{
+  "name": "@tomatocinema/passport",
+  "version": "1.0.0",
+  "description": "Lightweight tomatocinema authentication libary",
+  "main": "./dist/index.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+"build": "tsc -p tsconfig.build.json",
+"format": "prettier --write \"lib/**/*.ts\""
+  },
+  "keywords": [],
+  "type": "module",
+  "devDependencies": {
+    "@tomatocinema/core": "workspace:*",
+    "@types/node": "^26.1.2",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "reflect-metadata": "^0.2.2",
+    "txjs": "^0.1.1"
+  }
+}
