@@ -1,2 +1,4 @@
 export * from './grpc-env'
 export * from './database-env'
+export * from './passport-env'
+export * from './redis-env'

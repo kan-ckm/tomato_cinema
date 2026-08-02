@@ -1,21 +1,34 @@
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { RpcException } from '@nestjs/microservices'
 import {
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
-import { PassportService } from '@tomatocinema/passport'
+import { PassportService, TokenPayload } from '@tomatocinema/passport'
+import { AllConfig } from 'config/interfaces'
 import { Account } from 'generated/client'
 import { OtpService } from '../otp/otp.service'
 import { AuthRepository } from './auth.repository'
 
 @Injectable()
 export class AuthService {
+	private readonly ACCESS_TOKEN_TTL: number
+	private readonly REFRESH_TOKEN_TTL: number
+
 	public constructor(
+		private readonly configService: ConfigService<AllConfig>,
 		private readonly authRepository: AuthRepository,
 		private readonly otpService: OtpService,
 		private readonly passportService: PassportService
-	) {}
+	) {
+		this.ACCESS_TOKEN_TTL = this.configService.get('passport.accessTtl', {
+			infer: true
+		})
+		this.REFRESH_TOKEN_TTL = this.configService.get('passport.refreshTtl', {
+			infer: true
+		})
+	}
 
 	public async sendOtp(data: SendOtpRequest) {
 		const { identifier, type } = data
@@ -76,10 +89,21 @@ export class AuthService {
 			})
 		}
 
-		console.log('verify',  this.passportService.verify('N2VlMWVkM2EtNjVkZS00NmQzLTgwOTgtMmYyMGZjMjA0MTVk.MTc4NTY2NDE1NA.MTc4NTY2NTA1NA.dbbb42989967bc04c6295c717ad38bf21947b69d83f37d10d97466e04e3d6f77'))
-		return {
-			accessToken: this.passportService.generate(account.id, 900),
-			refreshToken: '123456'
-		}
+		return this.getnerateTokens(account.id)
+	}
+	// gọi hàm tạo accessToken và refreshToken
+	private getnerateTokens(userId: string) {
+		const payload: TokenPayload = { sub: userId }
+
+		const accessToken = this.passportService.generate(
+			String(payload.sub),
+			this.ACCESS_TOKEN_TTL
+		)
+		const refreshToken = this.passportService.generate(
+			String(payload.sub),
+			this.REFRESH_TOKEN_TTL
+		)
+
+		return { accessToken, refreshToken }
 	}
 }

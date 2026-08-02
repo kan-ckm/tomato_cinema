@@ -1,4 +1,5 @@
-export * from './all-config-intertface'
-export * from './database-interface'
 export * from './grpc-interface'
 export * from './redis-interface'
+export * from './passport-interface'
+export * from './all-config-intertface'
+export * from './database-interface'

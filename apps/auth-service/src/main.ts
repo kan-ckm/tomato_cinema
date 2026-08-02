@@ -7,7 +7,7 @@ async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
 	const config = app.get(ConfigService)
 	//gọi hàm chay GrpcServer
-	createGrpcServer(app,config)
+	createGrpcServer(app, config)
 	await app.startAllMicroservices()
 	await app.init()
 }
