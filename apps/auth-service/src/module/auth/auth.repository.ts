@@ -3,6 +3,7 @@ import { Account } from 'generated/client'
 import { AccountCreateInput, AccountUpdateInput } from 'generated/models'
 import { PrismaService } from '@/infrastucture/prisma/prisma.service'
 
+// tách các logic query ra để tối ưu và tái xử dụng
 @Injectable()
 export class AuthRepository {
 	public constructor(private readonly prismaService: PrismaService) {}
