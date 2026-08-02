@@ -3,7 +3,8 @@ import {
 	Catch,
 	ExceptionFilter,
 	HttpException,
-	HttpStatus
+	HttpStatus,
+	Logger
 } from '@nestjs/common'
 import { Response } from 'express'
 import { grpcToHttpStatus } from '../utils'
@@ -11,6 +12,7 @@ import { grpcToHttpStatus } from '../utils'
 // hàm giúp cho việc tự gom lỗi r tự gửi lại cho frontend mã lỗi của http hay vì mã Grpc
 @Catch()
 export class GrpcExceptionFilter implements ExceptionFilter {
+	private readonly logger = new Logger(GrpcExceptionFilter.name)
 	public catch(exception: any, host: ArgumentsHost) {
 		const context = host.switchToHttp()
 		const response = context.getResponse<Response>()
@@ -29,6 +31,7 @@ export class GrpcExceptionFilter implements ExceptionFilter {
 				message: exception.message
 			})
 		}
+		this.logger.error('Lỗi hệ thống (500):', exception)
 		return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
 			statusCode: 500,
 			message: 'Lỗi Server'
