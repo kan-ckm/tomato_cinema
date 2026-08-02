@@ -4,6 +4,7 @@ import {
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
+import { PassportService } from '@tomatocinema/passport'
 import { Account } from 'generated/client'
 import { OtpService } from '../otp/otp.service'
 import { AuthRepository } from './auth.repository'
@@ -12,7 +13,8 @@ import { AuthRepository } from './auth.repository'
 export class AuthService {
 	public constructor(
 		private readonly authRepository: AuthRepository,
-		private readonly otpService: OtpService
+		private readonly otpService: OtpService,
+		private readonly passportService: PassportService
 	) {}
 
 	public async sendOtp(data: SendOtpRequest) {
@@ -73,6 +75,11 @@ export class AuthService {
 				isEmailVerified: true
 			})
 		}
-		return { accessToken: '123456', refreshToken: '123456' }
+
+		console.log('verify',  this.passportService.verify('N2VlMWVkM2EtNjVkZS00NmQzLTgwOTgtMmYyMGZjMjA0MTVk.MTc4NTY2NDE1NA.MTc4NTY2NTA1NA.dbbb42989967bc04c6295c717ad38bf21947b69d83f37d10d97466e04e3d6f77'))
+		return {
+			accessToken: this.passportService.generate(account.id, 900),
+			refreshToken: '123456'
+		}
 	}
 }
