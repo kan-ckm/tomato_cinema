@@ -425,6 +425,34 @@ importers:
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.1(jiti@2.7.0))(typescript@5.9.2)
 
+  packages/passport:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^11.0.1
+        version: 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^11.0.1
+        version: 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.28)(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      txjs:
+        specifier: ^0.1.1
+        version: 0.1.1
+    devDependencies:
+      '@tomatocinema/core':
+        specifier: workspace:*
+        version: link:../core
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   packages/typescript-config: {}
 
   packages/ui:
@@ -4795,6 +4823,9 @@ packages:
   turbo@2.10.7:
     resolution: {integrity: sha512-GHx6WExIFSKNJ5qMlzDpXBXlu9ApxaMjqxAVrCNcW94xf/+uqgIz41SAuRUMbXva2ExNAaY/h8V0q90SWSzmRw==}
     hasBin: true
+
+  txjs@0.1.1:
+    resolution: {integrity: sha512-rZNaL5/xixAdNh6nUGHWrfDxCkCtqAWECcbKuIgSiEyRYAc0yW5zIpiE5Sum9yQrR4E9jKkAykcQ+3CuwX8LvA==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -9885,6 +9916,8 @@ snapshots:
       '@turbo/linux-arm64': 2.10.7
       '@turbo/windows-64': 2.10.7
       '@turbo/windows-arm64': 2.10.7
+
+  txjs@0.1.1: {}
 
   type-check@0.4.0:
     dependencies:
