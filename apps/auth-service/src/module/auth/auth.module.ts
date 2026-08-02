@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportModule } from '@tomatocinema/passport'
-import { AllConfig } from 'config/interfaces'
 import { getPassportConfig } from 'config/loaders/pasport.config-loader'
 import { RedisService } from '@/infrastucture/redis/redis.service'
 import { OtpService } from '../otp/otp.service'
