@@ -5,7 +5,7 @@ import type {
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
-
+// file gọi authservice thông qua giao thức grpc
 @Injectable()
 export class AuthClientGrpc implements OnModuleInit {
 	private authService?: AuthServiceClient
