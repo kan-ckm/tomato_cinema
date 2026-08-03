@@ -2,11 +2,13 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import type { ClientGrpc } from '@nestjs/microservices'
 import type {
 	AuthServiceClient,
+	RefreshRequest,
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
 
-// file gọi authservice thông qua giao thức grpc
+// Controller đóng vai trò API Gateway:
+// Tiếp nhận HTTP Request từ Client (người dùng), giao tiếp qua gRPC sang Auth-Service để xử lý logic, và trả
 @Injectable()
 export class AuthClientGrpc implements OnModuleInit {
 	private authService?: AuthServiceClient
@@ -24,5 +26,8 @@ export class AuthClientGrpc implements OnModuleInit {
 
 	public verifyOtp(request: VerifyOtpRequest) {
 		return this.authService?.verifyOtp(request)
+	}
+	public refresh(request: RefreshRequest) {
+		return this.authService?.refresh(request)
 	}
 }
