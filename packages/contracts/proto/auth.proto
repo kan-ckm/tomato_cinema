@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 service AuthService {
     rpc SendOtp(SendOtpRequest) returns (SendOtpResponse);
     rpc VerifyOtp(VerifyOtpRequest) returns (VerifyOtpResponse);
-    rpc Refresh (RefreshRequest) returns (RefreshRequest);
+    rpc Refresh (RefreshRequest) returns (RefreshResponse);
 }
 
 

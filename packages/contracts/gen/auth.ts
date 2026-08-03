@@ -47,7 +47,7 @@ export interface AuthServiceClient {
 
   verifyOtp(request: VerifyOtpRequest): Observable<VerifyOtpResponse>;
 
-  refresh(request: RefreshRequest): Observable<RefreshRequest>;
+  refresh(request: RefreshRequest): Observable<RefreshResponse>;
 }
 
 export interface AuthServiceController {
@@ -55,7 +55,7 @@ export interface AuthServiceController {
 
   verifyOtp(request: VerifyOtpRequest): Promise<VerifyOtpResponse> | Observable<VerifyOtpResponse> | VerifyOtpResponse;
 
-  refresh(request: RefreshRequest): Promise<RefreshRequest> | Observable<RefreshRequest> | RefreshRequest;
+  refresh(request: RefreshRequest): Promise<RefreshResponse> | Observable<RefreshResponse> | RefreshResponse;
 }
 
 export function AuthServiceControllerMethods() {
