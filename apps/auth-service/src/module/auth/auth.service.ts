@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { RpcException } from '@nestjs/microservices'
+import { RpcStatus } from '@tomatocinema/common'
 import {
+	RefreshRequest,
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
@@ -91,7 +93,23 @@ export class AuthService {
 
 		return this.getnerateTokens(account.id)
 	}
-	// gọi hàm tạo accessToken và refreshToken
+	//api cấp lại access token
+	public async refresh(data: RefreshRequest) {
+		const { refreshToken } = data
+		// kiểm tra tính hợp lệ
+		const result = this.passportService.verify(refreshToken)
+
+		if (!result.valid) {
+			throw new RpcException({
+				code: RpcStatus.UNAUTHENTICATED,
+				details: result.reason
+			})
+		}
+		//cấp lại token
+		return this.getnerateTokens(result.userId)
+	}
+
+	// hàm tạo accessToken và refreshToken
 	private getnerateTokens(userId: string) {
 		const payload: TokenPayload = { sub: userId }
 

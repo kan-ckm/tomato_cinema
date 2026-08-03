@@ -4,16 +4,18 @@ import {
 	HttpCode,
 	HttpStatus,
 	Post,
+	Req,
 	Res
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiOperation } from '@nestjs/swagger'
-import type { Response } from 'express'
+import type { Request, Response } from 'express'
 import { lastValueFrom } from 'rxjs'
 import { AuthClientGrpc } from './auth.grpc'
 import { SendOtpRequest, VerifyOtpRequest } from './dto'
 
 @Controller('auth')
+// dùng trong việc nhận dữ liệu từ grpc và trả về cho client
 export class AuthController {
 	public constructor(
 		private readonly configService: ConfigService,
@@ -45,6 +47,33 @@ export class AuthController {
 		)
 
 		res.cookie('refreshToken', refreshToken, {
+			httpOnly: true,
+			secure:
+				this.configService.getOrThrow<string>('NODE_ENV') !==
+				'development',
+			domain: this.configService.getOrThrow<string>('COOKIE_DOMAIN'),
+			sameSite: 'lax',
+			maxAge: 30 * 24 * 60 * 60 * 1000
+		})
+		return { accessToken }
+	}
+
+	@ApiOperation({
+		summary: 'Tạo mới lại access token',
+		description: 'Làm mới lại access token bằng refresh token'
+	})
+	@Post('refresh')
+	@HttpCode(HttpStatus.OK)
+	public async refresh(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response
+	) {
+		const refreshToken = await req.cookies?.refreshToken
+
+		const { accessToken, refreshToken: newRefreshToken } =
+			await lastValueFrom(this.client.refresh({ refreshToken })!)
+
+		res.cookie('refreshToken', newRefreshToken, {
 			httpOnly: true,
 			secure:
 				this.configService.getOrThrow<string>('NODE_ENV') !==
