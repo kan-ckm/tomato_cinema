@@ -2,19 +2,23 @@ import { Logger, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import cookieParser from 'cookie-parser'
 import { AppModule } from './core/app.module'
 import { getCorsconfig, getValidationPipeConfig } from './core/config'
-import { GrcpExceotionFilter } from './shared/filters'
+import { GrpcExceptionFilter } from './shared/filters'
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
 
 	const config = app.get(ConfigService)
 	const logger = new Logger()
+	// khai trình đọc cookie toàn cục cho gateaway
+	app.use(cookieParser(config.getOrThrow<string>('COOKIE_SECRET')))
+
 	// cấu hình tự động hóa kiểm tra định dạng bảo vệ dữ liệu và dọn dẹp
 	app.useGlobalPipes(new ValidationPipe(getValidationPipeConfig()))
 
-	app.useGlobalFilters(new GrcpExceotionFilter())
+	app.useGlobalFilters(new GrpcExceptionFilter())
 
 	app.enableCors(getCorsconfig(config))
 	// cấu hình UI cho docs API
