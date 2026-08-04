@@ -1,19 +1,22 @@
 import {
 	Body,
 	Controller,
+	Get,
 	HttpCode,
 	HttpStatus,
 	Post,
 	Req,
 	Res,
-	UnauthorizedException
+	UnauthorizedException,
+	UseGuards
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { ApiOperation } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import type { Request, Response } from 'express'
 import { lastValueFrom } from 'rxjs'
 import { AuthClientGrpc } from './auth.grpc'
 import { SendOtpRequest, VerifyOtpRequest } from './dto'
+import { AuthGuard } from '../../shared/guards'
 
 @Controller('auth')
 // dùng trong việc nhận dữ liệu từ grpc và trả về cho client
@@ -109,5 +112,12 @@ export class AuthController {
 			expires: new Date(0)
 		})
 		return { ok: true }
+	}
+
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
+	@Get('account')
+	public async getAccount() {
+		return { message: 'ok' }
 	}
 }
