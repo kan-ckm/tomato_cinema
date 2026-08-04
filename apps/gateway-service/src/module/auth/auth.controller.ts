@@ -84,4 +84,18 @@ export class AuthController {
 		})
 		return { accessToken }
 	}
+	@Post('logout')
+	@HttpCode(HttpStatus.OK)
+	public async logout(@Res({ passthrough: true }) res: Response) {
+		res.cookie('refreshtoken', '', {
+			httpOnly: true,
+			secure:
+				this.configService.getOrThrow<string>('NODE_ENV') !==
+				'development',
+			domain: this.configService.getOrThrow<string>('COOKIE_DOMAIN'),
+			sameSite: 'lax',
+			expires: new Date(0)
+		})
+		return { ok: true }
+	}
 }
