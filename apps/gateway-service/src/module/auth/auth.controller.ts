@@ -92,7 +92,7 @@ export class AuthController {
 		return { accessToken }
 	}
 
-		@ApiOperation({
+	@ApiOperation({
 		summary: 'logout',
 		description: 'xóa refresh token trong cookie và rồi logout người dùng'
 	})

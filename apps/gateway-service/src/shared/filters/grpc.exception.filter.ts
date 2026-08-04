@@ -37,7 +37,7 @@ export class GrpcExceptionFilter implements ExceptionFilter {
 
 			return response.status(status).json({
 				statusCode: status, // Fix: Thống nhất dùng statusCode
-//  Lấy message chi tiết từ response nếu có (dành cho ValidationPipe)
+				//  Lấy message chi tiết từ response nếu có (dành cho ValidationPipe)
 				message:
 					typeof exceptionResponse === 'object' &&
 					exceptionResponse.message
