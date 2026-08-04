@@ -5,7 +5,8 @@ import {
 	HttpStatus,
 	Post,
 	Req,
-	Res
+	Res,
+	UnauthorizedException
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiOperation } from '@nestjs/swagger'
@@ -36,7 +37,7 @@ export class AuthController {
 		description:
 			'Xác minh mã từ user xem coi là điện hoại hay email và trả về access token cho user'
 	})
-	@Post('otp/Verify')
+	@Post('otp/verify')
 	@HttpCode(HttpStatus.OK)
 	public async verifyOtp(
 		@Body() dto: VerifyOtpRequest,
@@ -70,6 +71,12 @@ export class AuthController {
 	) {
 		const refreshToken = await req.cookies?.refreshToken
 
+		if (!refreshToken) {
+			throw new UnauthorizedException(
+				'Không tìm thấy Refresh Token. Vui lòng đăng nhập lại.'
+			)
+		}
+
 		const { accessToken, refreshToken: newRefreshToken } =
 			await lastValueFrom(this.client.refresh({ refreshToken })!)
 
@@ -84,10 +91,15 @@ export class AuthController {
 		})
 		return { accessToken }
 	}
+
+		@ApiOperation({
+		summary: 'logout',
+		description: 'xóa refresh token trong cookie và rồi logout người dùng'
+	})
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
 	public async logout(@Res({ passthrough: true }) res: Response) {
-		res.cookie('refreshtoken', '', {
+		res.cookie('refreshToken', '', {
 			httpOnly: true,
 			secure:
 				this.configService.getOrThrow<string>('NODE_ENV') !==
