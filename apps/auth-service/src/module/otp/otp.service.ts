@@ -48,9 +48,8 @@ export class OtpService {
 				code: RpcStatus.NOT_FOUND,
 				details: 'mã không hợp lệ hoặc đã hết hạn'
 			})
-
-			await this.redisService.del(`otp:${type}:${identifier}`)
 		}
+		await this.redisService.del(`otp:${type}:${identifier}`)
 	}
 
 	// logic tạo ra mã otp
