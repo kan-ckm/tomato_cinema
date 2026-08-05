@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common'
 import { PassportService } from '@tomatocinema/passport'
 import type { Request } from 'express'
-import { Observable } from 'rxjs'
 
 @Injectable()
 export class AuthGuard implements CanActivate {
