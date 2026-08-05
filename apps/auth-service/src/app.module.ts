@@ -4,6 +4,7 @@ import { databaseEnv, grpcEnv, passportEnv } from 'config'
 import { redisEnv } from 'config/env/redis-env'
 import { PrismaModule } from './infrastucture/prisma/prisma.module'
 import { RedisModule } from './infrastucture/redis/redis.module'
+import { AccountModule } from './module/account/account.module'
 import { AuthModule } from './module/auth/auth.module'
 import { OtpModule } from './module/otp/otp.module'
 
@@ -17,7 +18,8 @@ import { OtpModule } from './module/otp/otp.module'
 		AuthModule,
 		PrismaModule,
 		RedisModule,
-		OtpModule
+		OtpModule,
+		AccountModule
 	]
 })
 export class AppModule {}
