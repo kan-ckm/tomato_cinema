@@ -17,6 +17,18 @@ model Account {
   isPhoneVerified Boolean @default(false) @map("is_phone_verifed")
   isEmailVerified Boolean @default(false) @map("is_email_verifed")
 
+role Role @default(USER)
+
   createAt DateTime @default(now()) @map("created_at")
   updateAt DateTime @updatedAt @map("updated_at")
+}
+
+
+
+enum Role {
+  USER
+  ADMIN
+
+
+@@map("roles")
 }
