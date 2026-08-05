@@ -14,9 +14,10 @@ import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import type { Request, Response } from 'express'
 import { lastValueFrom } from 'rxjs'
+import { Protected } from '../../shared/decorators'
+import { AuthGuard } from '../../shared/guards'
 import { AuthClientGrpc } from './auth.grpc'
 import { SendOtpRequest, VerifyOtpRequest } from './dto'
-import { AuthGuard } from '../../shared/guards'
 
 @Controller('auth')
 // dùng trong việc nhận dữ liệu từ grpc và trả về cho client
@@ -114,10 +115,10 @@ export class AuthController {
 		return { ok: true }
 	}
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+	@ApiBearerAuth()
+	@Protected()
 	@Get('account')
-	public async getAccount() {
-		return { message: 'ok' }
+	public async getAccount(@Req() req: any) {
+		return { id: req.user.id }
 	}
 }
