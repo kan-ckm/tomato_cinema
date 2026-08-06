@@ -7,7 +7,7 @@ import {
 	Post,
 	Req,
 	Res,
-	UnauthorizedException,
+	UnauthorizedException
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'

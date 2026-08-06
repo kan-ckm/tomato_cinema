@@ -92,11 +92,11 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.9.0
+ * Prisma Client JS version: 7.9.1
  * Query Engine version: e922089b7d7502aff4249d5da3420f6fa55fc6ad
  */
 export const prismaVersion: PrismaVersion = {
-	client: '7.9.0',
+	client: '7.9.1',
 	engine: 'e922089b7d7502aff4249d5da3420f6fa55fc6ad'
 }
 
@@ -576,6 +576,7 @@ export const AccountScalarFieldEnum = {
 	email: 'email',
 	isPhoneVerified: 'isPhoneVerified',
 	isEmailVerified: 'isEmailVerified',
+	role: 'role',
 	createAt: 'createAt',
 	updateAt: 'updateAt'
 } as const
@@ -630,6 +631,22 @@ export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<
 	$PrismaModel,
 	'Boolean'
+>
+
+/**
+ * Reference to a field of type 'Role'
+ */
+export type EnumRoleFieldRefInput<$PrismaModel> = FieldRefInputType<
+	$PrismaModel,
+	'Role'
+>
+
+/**
+ * Reference to a field of type 'Role[]'
+ */
+export type ListEnumRoleFieldRefInput<$PrismaModel> = FieldRefInputType<
+	$PrismaModel,
+	'Role[]'
 >
 
 /**

@@ -30,6 +30,7 @@ export type AccountMinAggregateOutputType = {
 	email: string | null
 	isPhoneVerified: boolean | null
 	isEmailVerified: boolean | null
+	role: $Enums.Role | null
 	createAt: Date | null
 	updateAt: Date | null
 }
@@ -40,6 +41,7 @@ export type AccountMaxAggregateOutputType = {
 	email: string | null
 	isPhoneVerified: boolean | null
 	isEmailVerified: boolean | null
+	role: $Enums.Role | null
 	createAt: Date | null
 	updateAt: Date | null
 }
@@ -50,6 +52,7 @@ export type AccountCountAggregateOutputType = {
 	email: number
 	isPhoneVerified: number
 	isEmailVerified: number
+	role: number
 	createAt: number
 	updateAt: number
 	_all: number
@@ -61,6 +64,7 @@ export type AccountMinAggregateInputType = {
 	email?: true
 	isPhoneVerified?: true
 	isEmailVerified?: true
+	role?: true
 	createAt?: true
 	updateAt?: true
 }
@@ -71,6 +75,7 @@ export type AccountMaxAggregateInputType = {
 	email?: true
 	isPhoneVerified?: true
 	isEmailVerified?: true
+	role?: true
 	createAt?: true
 	updateAt?: true
 }
@@ -81,6 +86,7 @@ export type AccountCountAggregateInputType = {
 	email?: true
 	isPhoneVerified?: true
 	isEmailVerified?: true
+	role?: true
 	createAt?: true
 	updateAt?: true
 	_all?: true
@@ -171,6 +177,7 @@ export type AccountGroupByOutputType = {
 	email: string | null
 	isPhoneVerified: boolean
 	isEmailVerified: boolean
+	role: $Enums.Role
 	createAt: Date
 	updateAt: Date
 	_count: AccountCountAggregateOutputType | null
@@ -204,6 +211,7 @@ export type AccountWhereInput = {
 	email?: Prisma.StringNullableFilter<'Account'> | string | null
 	isPhoneVerified?: Prisma.BoolFilter<'Account'> | boolean
 	isEmailVerified?: Prisma.BoolFilter<'Account'> | boolean
+	role?: Prisma.EnumRoleFilter<'Account'> | $Enums.Role
 	createAt?: Prisma.DateTimeFilter<'Account'> | Date | string
 	updateAt?: Prisma.DateTimeFilter<'Account'> | Date | string
 }
@@ -214,6 +222,7 @@ export type AccountOrderByWithRelationInput = {
 	email?: Prisma.SortOrderInput | Prisma.SortOrder
 	isPhoneVerified?: Prisma.SortOrder
 	isEmailVerified?: Prisma.SortOrder
+	role?: Prisma.SortOrder
 	createAt?: Prisma.SortOrder
 	updateAt?: Prisma.SortOrder
 }
@@ -228,6 +237,7 @@ export type AccountWhereUniqueInput = Prisma.AtLeast<
 		NOT?: Prisma.AccountWhereInput | Prisma.AccountWhereInput[]
 		isPhoneVerified?: Prisma.BoolFilter<'Account'> | boolean
 		isEmailVerified?: Prisma.BoolFilter<'Account'> | boolean
+		role?: Prisma.EnumRoleFilter<'Account'> | $Enums.Role
 		createAt?: Prisma.DateTimeFilter<'Account'> | Date | string
 		updateAt?: Prisma.DateTimeFilter<'Account'> | Date | string
 	},
@@ -240,6 +250,7 @@ export type AccountOrderByWithAggregationInput = {
 	email?: Prisma.SortOrderInput | Prisma.SortOrder
 	isPhoneVerified?: Prisma.SortOrder
 	isEmailVerified?: Prisma.SortOrder
+	role?: Prisma.SortOrder
 	createAt?: Prisma.SortOrder
 	updateAt?: Prisma.SortOrder
 	_count?: Prisma.AccountCountOrderByAggregateInput
@@ -260,6 +271,7 @@ export type AccountScalarWhereWithAggregatesInput = {
 	email?: Prisma.StringNullableWithAggregatesFilter<'Account'> | string | null
 	isPhoneVerified?: Prisma.BoolWithAggregatesFilter<'Account'> | boolean
 	isEmailVerified?: Prisma.BoolWithAggregatesFilter<'Account'> | boolean
+	role?: Prisma.EnumRoleWithAggregatesFilter<'Account'> | $Enums.Role
 	createAt?: Prisma.DateTimeWithAggregatesFilter<'Account'> | Date | string
 	updateAt?: Prisma.DateTimeWithAggregatesFilter<'Account'> | Date | string
 }
@@ -270,6 +282,7 @@ export type AccountCreateInput = {
 	email?: string | null
 	isPhoneVerified?: boolean
 	isEmailVerified?: boolean
+	role?: $Enums.Role
 	createAt?: Date | string
 	updateAt?: Date | string
 }
@@ -280,6 +293,7 @@ export type AccountUncheckedCreateInput = {
 	email?: string | null
 	isPhoneVerified?: boolean
 	isEmailVerified?: boolean
+	role?: $Enums.Role
 	createAt?: Date | string
 	updateAt?: Date | string
 }
@@ -290,6 +304,7 @@ export type AccountUpdateInput = {
 	email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 	isPhoneVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
 	isEmailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+	role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
 	createAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 	updateAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -300,6 +315,7 @@ export type AccountUncheckedUpdateInput = {
 	email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 	isPhoneVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
 	isEmailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+	role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
 	createAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 	updateAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -310,6 +326,7 @@ export type AccountCreateManyInput = {
 	email?: string | null
 	isPhoneVerified?: boolean
 	isEmailVerified?: boolean
+	role?: $Enums.Role
 	createAt?: Date | string
 	updateAt?: Date | string
 }
@@ -320,6 +337,7 @@ export type AccountUpdateManyMutationInput = {
 	email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 	isPhoneVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
 	isEmailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+	role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
 	createAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 	updateAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -330,6 +348,7 @@ export type AccountUncheckedUpdateManyInput = {
 	email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 	isPhoneVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
 	isEmailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+	role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
 	createAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 	updateAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -340,6 +359,7 @@ export type AccountCountOrderByAggregateInput = {
 	email?: Prisma.SortOrder
 	isPhoneVerified?: Prisma.SortOrder
 	isEmailVerified?: Prisma.SortOrder
+	role?: Prisma.SortOrder
 	createAt?: Prisma.SortOrder
 	updateAt?: Prisma.SortOrder
 }
@@ -350,6 +370,7 @@ export type AccountMaxOrderByAggregateInput = {
 	email?: Prisma.SortOrder
 	isPhoneVerified?: Prisma.SortOrder
 	isEmailVerified?: Prisma.SortOrder
+	role?: Prisma.SortOrder
 	createAt?: Prisma.SortOrder
 	updateAt?: Prisma.SortOrder
 }
@@ -360,6 +381,7 @@ export type AccountMinOrderByAggregateInput = {
 	email?: Prisma.SortOrder
 	isPhoneVerified?: Prisma.SortOrder
 	isEmailVerified?: Prisma.SortOrder
+	role?: Prisma.SortOrder
 	createAt?: Prisma.SortOrder
 	updateAt?: Prisma.SortOrder
 }
@@ -376,6 +398,10 @@ export type BoolFieldUpdateOperationsInput = {
 	set?: boolean
 }
 
+export type EnumRoleFieldUpdateOperationsInput = {
+	set?: $Enums.Role
+}
+
 export type DateTimeFieldUpdateOperationsInput = {
 	set?: Date | string
 }
@@ -390,6 +416,7 @@ export type AccountSelect<
 		email?: boolean
 		isPhoneVerified?: boolean
 		isEmailVerified?: boolean
+		role?: boolean
 		createAt?: boolean
 		updateAt?: boolean
 	},
@@ -406,6 +433,7 @@ export type AccountSelectCreateManyAndReturn<
 		email?: boolean
 		isPhoneVerified?: boolean
 		isEmailVerified?: boolean
+		role?: boolean
 		createAt?: boolean
 		updateAt?: boolean
 	},
@@ -422,6 +450,7 @@ export type AccountSelectUpdateManyAndReturn<
 		email?: boolean
 		isPhoneVerified?: boolean
 		isEmailVerified?: boolean
+		role?: boolean
 		createAt?: boolean
 		updateAt?: boolean
 	},
@@ -434,6 +463,7 @@ export type AccountSelectScalar = {
 	email?: boolean
 	isPhoneVerified?: boolean
 	isEmailVerified?: boolean
+	role?: boolean
 	createAt?: boolean
 	updateAt?: boolean
 }
@@ -447,6 +477,7 @@ export type AccountOmit<
 	| 'email'
 	| 'isPhoneVerified'
 	| 'isEmailVerified'
+	| 'role'
 	| 'createAt'
 	| 'updateAt',
 	ExtArgs['result']['account']
@@ -465,6 +496,7 @@ export type $AccountPayload<
 			email: string | null
 			isPhoneVerified: boolean
 			isEmailVerified: boolean
+			role: $Enums.Role
 			createAt: Date
 			updateAt: Date
 		},
@@ -1067,6 +1099,7 @@ export interface AccountFieldRefs {
 	readonly email: Prisma.FieldRef<'Account', 'String'>
 	readonly isPhoneVerified: Prisma.FieldRef<'Account', 'Boolean'>
 	readonly isEmailVerified: Prisma.FieldRef<'Account', 'Boolean'>
+	readonly role: Prisma.FieldRef<'Account', 'Role'>
 	readonly createAt: Prisma.FieldRef<'Account', 'DateTime'>
 	readonly updateAt: Prisma.FieldRef<'Account', 'DateTime'>
 }
