@@ -38,37 +38,20 @@ export interface AccountServiceClient {
 export interface AccountServiceController {
   getAccount(
     request: GetAccountRequest,
-  ):
-    | Promise<GetAccountResponse>
-    | Observable<GetAccountResponse>
-    | GetAccountResponse;
+  ): Promise<GetAccountResponse> | Observable<GetAccountResponse> | GetAccountResponse;
 }
 
 export function AccountServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = ["getAccount"];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(
-        constructor.prototype,
-        method,
-      );
-      GrpcMethod("AccountService", method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcMethod("AccountService", method)(constructor.prototype[method], method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(
-        constructor.prototype,
-        method,
-      );
-      GrpcStreamMethod("AccountService", method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcStreamMethod("AccountService", method)(constructor.prototype[method], method, descriptor);
     }
   };
 }
