@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 import { PROTO_PATHS } from '@tomatocinema/contracts'
-import { AccountController } from './account.controller'
 import { AccountClientGrpc } from './account.grpc'
 
 @Module({
@@ -16,15 +15,13 @@ import { AccountClientGrpc } from './account.grpc'
 					options: {
 						package: 'account.v1',
 						protoPath: PROTO_PATHS.ACCOUNT,
-						url: configService.getOrThrow<string>(
-							'AUTH_GRPC_URL'
-						)
+						url: configService.getOrThrow<string>('AUTH_GRPC_URL')
 					}
 				})
 			}
 		])
 	],
 	providers: [AccountClientGrpc],
-    exports: [AccountClientGrpc]
+	exports: [AccountClientGrpc]
 })
 export class AccountModule {}

@@ -20,6 +20,6 @@ export class AccountClientGrpc implements OnModuleInit {
 	}
 
 	public getAccount(request: GetAccountRequest) {
-		return this.accountService?.sendOtp(request)
+		return this.accountService?.getAccount(request)
 	}
 }

@@ -1,6 +1,11 @@
 import { applyDecorators, UseGuards } from '@nestjs/common'
-import { AuthGuard } from '../guards'
+import { RoleUser } from '@tomatocinema/contracts/gen/account'
+import { AuthGuard, RolesGuard } from '../guards'
+import { Roles } from './roles.decorators'
 
-// Decorator bảo vệ api
+// Decorator Composition bảo vệ api và gộp check Auth và check role user
 
-export const Protected = () => applyDecorators(UseGuards(AuthGuard))
+export const Protected = (...roles: RoleUser[]) => {
+	if (roles.length === 0) return applyDecorators(UseGuards(AuthGuard))
+	return applyDecorators(Roles(...roles), UseGuards(AuthGuard, RolesGuard))
+}

@@ -10,7 +10,7 @@ import type { Request } from 'express'
 @Injectable()
 export class AuthGuard implements CanActivate {
 	public constructor(private readonly passportService: PassportService) {}
-
+	// sài : boolean vì đây là xử lý đồng bộ
 	public canActivate(context: ExecutionContext): boolean {
 		// Lấy ra request
 		const request = context.switchToHttp().getRequest()
