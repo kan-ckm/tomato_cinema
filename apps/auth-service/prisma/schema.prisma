@@ -51,7 +51,9 @@ model PendingContactChange {
   createAt DateTime @default(now()) @map("created_at")
   updateAt DateTime @updatedAt @map("updated_at")
   
-  // Ràng buộc Unique kép: Tại 1 thời điểm, 1 người chỉ được có 1 yêu cầu duy nhất cho 1 loại (tránh rác DB do bấm gửi OTP liên tục)
+  /* Ràng buộc Unique kép: Tại 1 thời điểm, 1 người chỉ được có 1 yêu cầu duy nhất cho 1 loại (tránh rác DB do bấm gửi OTP liên tục)  
+  và từ nó prisma sinh ra accountId_type
+  */
   @@unique([accountId, type])
   
   // Đổi tên bảng khi lưu xuống Postgres thành dạng snake_case
