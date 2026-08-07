@@ -10,6 +10,7 @@ import {
 import { PassportService, TokenPayload } from '@tomatocinema/passport'
 import { AllConfig } from 'config/interfaces'
 import { Account } from 'generated/client'
+import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { AuthRepository } from './auth.repository'
 
@@ -21,6 +22,7 @@ export class AuthService {
 	public constructor(
 		private readonly configService: ConfigService<AllConfig>,
 		private readonly authRepository: AuthRepository,
+		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService,
 		private readonly passportService: PassportService
 	) {
@@ -37,9 +39,9 @@ export class AuthService {
 		let account: Account | null
 
 		if (type === 'phone') {
-			account = await this.authRepository.findByPhone(identifier)
+			account = await this.userRepository.findByPhone(identifier)
 		} else {
-			account = await this.authRepository.findByEmail(identifier)
+			account = await this.userRepository.findByEmail(identifier)
 		}
 		// nếu người dùng chx có thì hệ thống sẽ tự tạo cho họ một tài khoản mới
 		if (!account) {
@@ -69,9 +71,9 @@ export class AuthService {
 		// check xem acount có trong db hay ko
 
 		if (type === 'phone') {
-			account = await this.authRepository.findByPhone(identifier)
+			account = await this.userRepository.findByPhone(identifier)
 		} else {
-			account = await this.authRepository.findByEmail(identifier)
+			account = await this.userRepository.findByEmail(identifier)
 		}
 		if (!account) {
 			throw new RpcException({

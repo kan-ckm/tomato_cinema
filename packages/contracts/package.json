@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "generate": "protoc -I ./proto ./proto/*.proto --ts_proto_out=./src/gen --ts_proto_opt=nestJs=true,package=omit"
+    "generate": "protoc -I ./proto ./proto/*.proto --ts_proto_out=./gen --ts_proto_opt=nestJs=true,package=omit"
   },
   "files": ["proto", "gen", "dist"],
   "publishConfig": { "access": "public" },

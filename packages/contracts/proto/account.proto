@@ -3,7 +3,16 @@ syntax = "proto3";
 package account.v1;
 
 service AccountService {
+    //get Account
     rpc GetAccount (GetAccountRequest) returns (GetAccountResponse);
+
+    // đổi email
+    rpc InitEmailChange (InitEmailChangeRequest) returns (InitEmailChangeResponse);
+    rpc ConfirmEmailChange (ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse);
+    
+    // đổi số điện thoại
+    rpc InitPhoneChange (InitPhoneChangeRequest) returns (InitPhoneChangeResponse);
+    rpc ConfirmPhoneChange (ConfirmPhoneChangeRequest) returns (ConfirmPhoneChangeResponse);
 }
 
 message GetAccountRequest {
@@ -11,12 +20,49 @@ message GetAccountRequest {
 }
 
 message  GetAccountResponse {
-    string id= 1;
+    string id = 1;
     string phone = 2;
     string email = 3;
     bool is_phone_verified= 4;
     bool is_email_verified= 5;
     RoleUser role = 6;
+}
+
+message InitEmailChangeRequest {
+    string email = 1;
+    string user_id = 2;
+}
+
+message InitEmailChangeResponse{
+    bool ok = 1; 
+}
+
+message ConfirmEmailChangeRequest {
+    string email = 1;
+    string code = 2;
+    string user_id = 3;
+}
+
+message ConfirmEmailChangeResponse {
+    bool ok = 1;
+}
+message InitPhoneChangeRequest {
+    string phone = 1;
+    string user_id = 2;
+}
+
+message InitPhoneChangeResponse{
+    bool ok = 1; 
+}
+
+message ConfirmPhoneChangeRequest {
+    string phone = 1;
+    string code = 2;
+    string user_id = 3;
+}
+
+message ConfirmPhoneChangeResponse {
+    bool ok = 1;
 }
 
 enum RoleUser {

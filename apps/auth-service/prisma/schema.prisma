@@ -1,34 +1,69 @@
+// Khai báo công cụ sinh code tự động (Prisma Client) để dùng trong backend
 generator client {
   provider = "prisma-client"
   output   = "../generated"
   moduleFormat = "cjs"
 }
 
+// Cấu hình kết nối tới cơ sở dữ liệu PostgreSQL
 datasource db {
   provider = "postgresql"
+  // Lưu ý: Nhớ thêm url = env("DATABASE_URL") ở đây nhé!
 }
 
+// ==========================================
+// BẢNG ACCOUNT: Lưu trữ thông tin Tài khoản người dùng
+// ==========================================
 model Account {
+  id String @id @default(uuid()) // Khóa chính, tự động sinh mã UUID (VD: 123e4567-e89b-12d3-a456-426614174000)
+
+  phone String? @unique // Số điện thoại (Tùy chọn, nhưng nếu có thì không được trùng)
+  email String? @unique // Email (Tùy chọn, không được trùng)
+
+  isPhoneVerified Boolean @default(false) @map("is_phone_verifed") // Đánh dấu SDT đã xác minh OTP chưa
+  isEmailVerified Boolean @default(false) @map("is_email_verifed") // Đánh dấu Email đã xác minh OTP chưa
+
+  role Role @default(USER) // Quyền hạn mặc định khi mới đăng ký luôn là USER
+
+  // Mối quan hệ 1-N: Một tài khoản có thể có nhiều yêu cầu thay đổi thông tin (ví dụ: nhiều lần gửi OTP)
+  pendingContactChanges PendingContactChange[]
+
+  createAt DateTime @default(now()) @map("created_at") // Thời gian tạo tài khoản
+  updateAt DateTime @updatedAt @map("updated_at")      // Thời gian cập nhật tài khoản gần nhất
+}
+
+// ==========================================
+// BẢNG PENDING CONTACT CHANGE: Lưu các yêu cầu đổi thông tin/Gửi OTP chờ xác nhận
+// ==========================================
+model PendingContactChange {
   id String @id @default(uuid())
 
-  phone String? @unique
-  email String? @unique
+  type  String    // Loại yêu cầu (Ví dụ: 'email', 'phone')
+  value String    // Giá trị mới đang chờ xác minh (Ví dụ: 'new_email@gmail.com')
+  codeHash String @map("code_hash") // Mã OTP đã được băm (hash) để bảo mật
+  expiresAt DateTime @map("expires_at") // Thời điểm mã OTP này hết hạn
 
-  isPhoneVerified Boolean @default(false) @map("is_phone_verifed")
-  isEmailVerified Boolean @default(false) @map("is_email_verifed")
-
-role Role @default(USER)
+  // Quan hệ Khóa ngoại (Foreign Key) nối với bảng Account
+  // onDelete: Cascade nghĩa là nếu XÓA Account, mọi mã OTP của người đó cũng bị xóa sạch theo.
+  account Account? @relation(fields: [accountId],references: [id], onDelete: Cascade)
+  accountId String? @map("accountId")
 
   createAt DateTime @default(now()) @map("created_at")
   updateAt DateTime @updatedAt @map("updated_at")
+  
+  // Ràng buộc Unique kép: Tại 1 thời điểm, 1 người chỉ được có 1 yêu cầu duy nhất cho 1 loại (tránh rác DB do bấm gửi OTP liên tục)
+  @@unique([accountId, type])
+  
+  // Đổi tên bảng khi lưu xuống Postgres thành dạng snake_case
+  @@map("pending_contact_changes")
 }
 
-
-
+// ==========================================
+// ENUM ROLE: Danh sách các quyền hạn trong hệ thống
+// ==========================================
 enum Role {
   USER
   ADMIN
 
-
-@@map("roles")
+  @@map("roles")
 }

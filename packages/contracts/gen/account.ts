@@ -29,24 +29,124 @@ export interface GetAccountResponse {
   role: RoleUser;
 }
 
+export interface InitEmailChangeRequest {
+  email: string;
+  userId: string;
+}
+
+export interface InitEmailChangeResponse {
+  ok: boolean;
+}
+
+export interface ConfirmEmailChangeRequest {
+  email: string;
+  code: string;
+  userId: string;
+}
+
+export interface ConfirmEmailChangeResponse {
+  ok: boolean;
+}
+
+export interface InitPhoneChangeRequest {
+  phone: string;
+  userId: string;
+}
+
+export interface InitPhoneChangeResponse {
+  ok: boolean;
+}
+
+export interface ConfirmPhoneChangeRequest {
+  phone: string;
+  code: string;
+  userId: string;
+}
+
+export interface ConfirmPhoneChangeResponse {
+  ok: boolean;
+}
+
 export const ACCOUNT_V1_PACKAGE_NAME = "account.v1";
 
 export interface AccountServiceClient {
+  /** get Account */
+
   getAccount(request: GetAccountRequest): Observable<GetAccountResponse>;
+
+  /** đổi email */
+
+  initEmailChange(
+    request: InitEmailChangeRequest,
+  ): Observable<InitEmailChangeResponse>;
+
+  confirmEmailChange(
+    request: ConfirmEmailChangeRequest,
+  ): Observable<ConfirmEmailChangeResponse>;
+
+  /** đổi số điện thoại */
+
+  initPhoneChange(
+    request: InitPhoneChangeRequest,
+  ): Observable<InitPhoneChangeResponse>;
+
+  confirmPhoneChange(
+    request: ConfirmPhoneChangeRequest,
+  ): Observable<ConfirmPhoneChangeResponse>;
 }
 
 export interface AccountServiceController {
+  /** get Account */
+
   getAccount(
     request: GetAccountRequest,
   ):
     | Promise<GetAccountResponse>
     | Observable<GetAccountResponse>
     | GetAccountResponse;
+
+  /** đổi email */
+
+  initEmailChange(
+    request: InitEmailChangeRequest,
+  ):
+    | Promise<InitEmailChangeResponse>
+    | Observable<InitEmailChangeResponse>
+    | InitEmailChangeResponse;
+
+  confirmEmailChange(
+    request: ConfirmEmailChangeRequest,
+  ):
+    | Promise<ConfirmEmailChangeResponse>
+    | Observable<ConfirmEmailChangeResponse>
+    | ConfirmEmailChangeResponse;
+
+  /** đổi số điện thoại */
+
+  initPhoneChange(
+    request: InitPhoneChangeRequest,
+  ):
+    | Promise<InitPhoneChangeResponse>
+    | Observable<InitPhoneChangeResponse>
+    | InitPhoneChangeResponse;
+
+  confirmPhoneChange(
+    request: ConfirmPhoneChangeRequest,
+  ):
+    | Promise<ConfirmPhoneChangeResponse>
+    | Observable<ConfirmPhoneChangeResponse>
+    | ConfirmPhoneChangeResponse;
 }
 
 export function AccountServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["getAccount"];
+    const grpcMethods: string[] = [
+      "getAccount",
+      "initEmailChange",
+      "confirmEmailChange",
+      "initPhoneChange",
+      "confirmPhoneChange",
+    ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(
         constructor.prototype,

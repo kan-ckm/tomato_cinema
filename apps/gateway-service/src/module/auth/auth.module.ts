@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 import { PROTO_PATHS } from '@tomatocinema/contracts'
+import { AccountModule } from '../account/account.module'
 import { AuthController } from './auth.controller'
 import { AuthClientGrpc } from './auth.grpc'
-import { AccountModule } from '../account/account.module'
 
 @Module({
 	imports: [
