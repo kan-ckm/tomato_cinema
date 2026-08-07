@@ -4,6 +4,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices'
 import { PROTO_PATHS } from '@tomatocinema/contracts'
 import { AuthController } from './auth.controller'
 import { AuthClientGrpc } from './auth.grpc'
+import { AccountModule } from '../account/account.module'
 
 @Module({
 	imports: [
@@ -20,7 +21,8 @@ import { AuthClientGrpc } from './auth.grpc'
 					}
 				})
 			}
-		])
+		]),
+		AccountModule
 	],
 	controllers: [AuthController],
 	providers: [AuthClientGrpc]
