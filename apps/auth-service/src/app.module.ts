@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { databaseEnv, grpcEnv, passportEnv } from 'config'
+import { databaseEnv, grpcEnv, passportEnv, telegramEnv } from 'config'
 import { redisEnv } from 'config/env/redis-env'
 import { PrismaModule } from './infrastucture/prisma/prisma.module'
 import { RedisModule } from './infrastucture/redis/redis.module'
@@ -13,7 +13,7 @@ import { OtpModule } from './module/otp/otp.module'
 		// nạp env và nạp env tôi tùy chỉnhchỉnh
 		ConfigModule.forRoot({
 			isGlobal: true,
-			load: [grpcEnv, databaseEnv, redisEnv, passportEnv]
+			load: [grpcEnv, databaseEnv, redisEnv, passportEnv, telegramEnv]
 		}),
 		AuthModule,
 		PrismaModule,
