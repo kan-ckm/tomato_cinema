@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { Account, PendingContactChange } from 'generated/client'
-import { PendingContactChangeUpdateInput } from 'generated/models'
 import { PrismaService } from '@/infrastucture/prisma/prisma.service'
 
 @Injectable()
-export class AccountRepositoty {
+export class AccountRepository {
 	public constructor(private readonly prismaService: PrismaService) {}
 	// loggic tìm tài khoản theo ID
 	public async findByIdUser(id: string): Promise<Account | null> {
