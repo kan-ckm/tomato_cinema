@@ -19,7 +19,7 @@ import { AuthClientGrpc } from './auth.grpc'
 import { SendOtpRequest, VerifyOtpRequest } from './dto'
 
 @Controller('auth')
-// dùng trong việc nhận dữ liệu từ grpc và trả về cho client
+// dùng trong việc nhận dữ liệu từ grpc và trả về cho client và cũng như nhận từ client và trả về cho gRPC nội bộ
 export class AuthController {
 	public constructor(
 		private readonly configService: ConfigService,
