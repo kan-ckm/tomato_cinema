@@ -7,6 +7,7 @@
 /* eslint-disable */
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
+import { Empty } from "./google/protobuf/empty";
 
 export const protobufPackage = "auth.v1";
 
@@ -40,17 +41,54 @@ export interface RefreshResponse {
   refreshToken: string;
 }
 
+export interface TelegramInitResponse {
+  /** Link URL để Frontend mở cửa sổ chuyển hướng sang Telegram */
+  url: string;
+}
+
+export interface TelegramVerifyRequest {
+  /** Từ khóa map: Cho phép nhận một Object dạng Key-Value (ví dụ: { "id": "123", "hash": "abc..." }) */
+  query: { [key: string]: string };
+}
+
+export interface TelegramVerifyRequest_QueryEntry {
+  key: string;
+  value: string;
+}
+
+export interface TelegramVerifyResponse {
+  /** Trả về URL (Ví dụ: Chuyển hướng sang trang cập nhật thông tin nếu là user mới) */
+  url?: string | undefined;
+  /** Đăng nhập thành công -> Trả thẳng Token */
+  accessToken?: string | undefined;
+  refreshToken?: string | undefined;
+}
+
 export const AUTH_V1_PACKAGE_NAME = "auth.v1";
 
 export interface AuthServiceClient {
+  /** Nhóm tính năng Xác thực không mật khẩu (OTP) */
+
   sendOtp(request: SendOtpRequest): Observable<SendOtpResponse>;
 
   verifyOtp(request: VerifyOtpRequest): Observable<VerifyOtpResponse>;
 
   refresh(request: RefreshRequest): Observable<RefreshResponse>;
+
+  /** Nhóm tính năng Đăng nhập qua Telegram */
+
+  telegramInit(request: Empty): Observable<TelegramInitResponse>;
+
+  /** Xác minh dữ liệu Telegram trả về */
+
+  telegramVerify(
+    request: TelegramVerifyRequest,
+  ): Observable<TelegramVerifyResponse>;
 }
 
 export interface AuthServiceController {
+  /** Nhóm tính năng Xác thực không mật khẩu (OTP) */
+
   sendOtp(
     request: SendOtpRequest,
   ): Promise<SendOtpResponse> | Observable<SendOtpResponse> | SendOtpResponse;
@@ -65,11 +103,35 @@ export interface AuthServiceController {
   refresh(
     request: RefreshRequest,
   ): Promise<RefreshResponse> | Observable<RefreshResponse> | RefreshResponse;
+
+  /** Nhóm tính năng Đăng nhập qua Telegram */
+
+  telegramInit(
+    request: Empty,
+  ):
+    | Promise<TelegramInitResponse>
+    | Observable<TelegramInitResponse>
+    | TelegramInitResponse;
+
+  /** Xác minh dữ liệu Telegram trả về */
+
+  telegramVerify(
+    request: TelegramVerifyRequest,
+  ):
+    | Promise<TelegramVerifyResponse>
+    | Observable<TelegramVerifyResponse>
+    | TelegramVerifyResponse;
 }
 
 export function AuthServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["sendOtp", "verifyOtp", "refresh"];
+    const grpcMethods: string[] = [
+      "sendOtp",
+      "verifyOtp",
+      "refresh",
+      "telegramInit",
+      "telegramVerify",
+    ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(
         constructor.prototype,

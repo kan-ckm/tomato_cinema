@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { AccountClientGrpc } from './account.grpc'
-import { ConfirmEmailChangeRequest, ConfirmPhoneChangeRequest, InitEmailChangeRequest, InitPhoneChangeRequest } from './dto'
+import {
+	ConfirmEmailChangeRequest,
+	ConfirmPhoneChangeRequest,
+	InitEmailChangeRequest,
+	InitPhoneChangeRequest
+} from './dto'
 
 @Controller('account')
 export class AccountControler {
@@ -50,7 +55,7 @@ export class AccountControler {
 		})
 	}
 
-// API: Yêu cầu bắt đầu đổi Số điện thoại
+	// API: Yêu cầu bắt đầu đổi Số điện thoại
 	@ApiOperation({
 		summary: 'Thay đổi phone',
 		description: 'Gửi mã xác nhận đến số điện thoại mới'

@@ -4,11 +4,15 @@ syntax = "proto3";
 package auth.v1;
 
 import "google/protobuf/timestamp.proto";
-
+import "google/protobuf/empty.proto"; 
 service AuthService {
+    // Nhóm tính năng Xác thực không mật khẩu (OTP)
     rpc SendOtp(SendOtpRequest) returns (SendOtpResponse);
     rpc VerifyOtp(VerifyOtpRequest) returns (VerifyOtpResponse);
     rpc Refresh (RefreshRequest) returns (RefreshResponse);
+    // Nhóm tính năng Đăng nhập qua Telegram
+    rpc TelegramInit(google.protobuf.Empty) returns (TelegramInitResponse); // Lấy link khởi tạo đăng nhập Telegram
+    rpc TelegramVerify(TelegramVerifyRequest) returns (TelegramVerifyResponse);// Xác minh dữ liệu Telegram trả về
 }
 
 
@@ -42,4 +46,24 @@ message RefreshRequest {
 message RefreshResponse {
     string access_token = 1;
     string refresh_token = 2;
+}
+
+message TelegramInitResponse {
+    // Link URL để Frontend mở cửa sổ chuyển hướng sang Telegram
+    string url = 1;
+}
+
+message TelegramVerifyRequest {
+    // Từ khóa map: Cho phép nhận một Object dạng Key-Value (ví dụ: { "id": "123", "hash": "abc..." })
+    map<string, string> query = 1;
+}
+
+message TelegramVerifyResponse {
+    // Từ khóa oneof: Bắt buộc chỉ được phép tồn tại 1 trong các trường bên dưới
+    // (Bảo vệ logic: Hoặc là trả về URL để đi tiếp, Hoặc là trả về Token, không bao giờ trả về cả hai)
+    oneof result {
+        string url = 1;           // Trả về URL (Ví dụ: Chuyển hướng sang trang cập nhật thông tin nếu là user mới)
+        string access_token = 2;  // Đăng nhập thành công -> Trả thẳng Token
+        string refresh_token = 3;
+    }
 }
