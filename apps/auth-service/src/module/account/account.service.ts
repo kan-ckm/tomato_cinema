@@ -11,19 +11,19 @@ import {
 } from '@tomatocinema/contracts/gen/account'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
-import { AccountRepositoty } from './account.repository'
+import { AccountRepository } from './account.repository'
 
 @Injectable()
 export class AccountService {
 	public constructor(
-		private readonly accountRepositoty: AccountRepositoty,
+		private readonly accountRepository: AccountRepository,
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService
 	) {}
 	// Lấy thông tin chi tiết của tài khoản dựa vào ID
 	public async getAccount(data: GetAccountRequest) {
 		const { id } = data
-		const account = await this.accountRepositoty.findByIdUser(id)
+		const account = await this.accountRepository.findByIdUser(id)
 		if (!account) {
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
@@ -57,7 +57,7 @@ export class AccountService {
 		console.log('code thay đổi email', code)
 
 		// Lưu thông tin yêu cầu thay đổi (Pending Change) vào database để chờ xác nhận, có hạn 5 phút
-		await this.accountRepositoty.upsertPendingChange({
+		await this.accountRepository.upsertPendingChange({
 			accountId: userId,
 			type: 'email',
 			value: email,
@@ -72,14 +72,14 @@ export class AccountService {
 		const { email, code, userId } = data
 
 		//Tìm yêu cầu đổi email đang chờ của user này
-		const pending = await this.accountRepositoty.findPendingChange(
+		const pending = await this.accountRepository.findPendingChange(
 			userId,
 			'email'
 		)
 
 		if (!pending)
 			throw new RpcException({
-				code: RpcStatus,
+				code: RpcStatus.NOT_FOUND,
 				details: 'Không có yêu cầu nào đang chờ xử lý'
 			})
 
@@ -102,7 +102,7 @@ export class AccountService {
 			email,
 			isEmailVerified: true
 		})
-		await this.accountRepositoty.deletePendingChange(userId, 'email')
+		await this.accountRepository.deletePendingChange(userId, 'email')
 		return { ok: true }
 	}
 
@@ -121,7 +121,7 @@ export class AccountService {
 
 		console.log('code thay đổi phone', code)
 
-		await this.accountRepositoty.upsertPendingChange({
+		await this.accountRepository.upsertPendingChange({
 			accountId: userId,
 			type: 'phone',
 			value: phone,
@@ -134,7 +134,7 @@ export class AccountService {
 	public async confirmPhoneChange(data: ConfirmPhoneChangeRequest) {
 		const { phone, code, userId } = data
 
-		const pending = await this.accountRepositoty.findPendingChange(
+		const pending = await this.accountRepository.findPendingChange(
 			userId,
 			'phone'
 		)
@@ -163,7 +163,7 @@ export class AccountService {
 			phone,
 			isEmailVerified: true
 		})
-		await this.accountRepositoty.deletePendingChange(userId, 'phone')
+		await this.accountRepository.deletePendingChange(userId, 'phone')
 		return { ok: true }
 	}
 }
