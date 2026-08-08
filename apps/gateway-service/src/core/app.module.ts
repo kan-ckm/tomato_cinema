@@ -17,7 +17,7 @@ import { getPassportConfig } from './config'
 			useFactory: getPassportConfig,
 			inject: [ConfigService]
 		}),
-		AuthModule
+		AccountModule
 	],
 	controllers: [AppController],
 	providers: [AppService]

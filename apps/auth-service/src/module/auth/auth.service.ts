@@ -83,12 +83,12 @@ export class AuthService {
 		}
 		// kiểm tra xem đã được xác minh hay chưa nếu chưa nếu chưa thì cho xác mình thành true nếu rồi thì skip đi tiếp
 		if (type === 'phone' && !account.isPhoneVerified) {
-			await this.authRepository.update(account.id, {
+			await this.userRepository.update(account.id, {
 				isPhoneVerified: true
 			})
 		}
 		if (type === 'email' && !account.isEmailVerified) {
-			await this.authRepository.update(account.id, {
+			await this.userRepository.update(account.id, {
 				isEmailVerified: true
 			})
 		}

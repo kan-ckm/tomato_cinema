@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Account } from 'generated/client'
+import { AccountUpdateInput } from 'generated/models'
 import { PrismaService } from '@/infrastucture/prisma/prisma.service'
 
 @Injectable()
@@ -20,6 +21,20 @@ export class UserRepository {
 			where: {
 				email
 			}
+		})
+	}
+
+	//logic update tài khoản
+
+	public async update(
+		id: string,
+		data: AccountUpdateInput
+	): Promise<Account> {
+		return await this.prismaService.account.update({
+			where: {
+				id
+			},
+			data
 		})
 	}
 }

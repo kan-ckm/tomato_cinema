@@ -20,7 +20,7 @@ export class OtpService {
 			'EX',
 			300
 		)
-		return code
+		return { code, hash }
 	}
 	// xác thực mã otp
 	public async verify(

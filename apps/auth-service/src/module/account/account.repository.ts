@@ -59,7 +59,7 @@ export class AccountRepositoty {
 
 	/**
 	 * Xóa yêu cầu thay đổi thông tin
-	 * (Thường được gọi để "dọn rác" sau khi người dùng đã nhập đúng OTP và đổi thành công)
+	 * (được gọi để "dọn rác" sau khi người dùng đã nhập đúng OTP và đổi thành công)
 	 */
 	public deletePendingChange(
 		accountId: string,
