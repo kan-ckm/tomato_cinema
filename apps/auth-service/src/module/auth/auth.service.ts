@@ -93,7 +93,7 @@ export class AuthService {
 			})
 		}
 
-		return this.getnerateTokens(account.id)
+		return this.generateTokens(account.id)
 	}
 	//api cấp lại access token
 	public async refresh(data: RefreshRequest) {
@@ -108,11 +108,11 @@ export class AuthService {
 			})
 		}
 		//cấp lại token
-		return this.getnerateTokens(result.userId)
+		return this.generateTokens(result.userId)
 	}
 
 	// hàm tạo accessToken và refreshToken
-	private getnerateTokens(userId: string) {
+	private generateTokens(userId: string) {
 		const payload: TokenPayload = { sub: userId }
 
 		const accessToken = this.passportService.generate(
