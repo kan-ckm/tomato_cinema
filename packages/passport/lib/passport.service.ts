@@ -101,7 +101,8 @@ export class PassportService {
 			return { valid: false, reason: 'lỗi thời gian' }
 
 		// Nếu thời gian hiện tại đã vượt quá mốc hạn sử dụng -> Từ chối
-		if (this.now() > expNumber) return { valid: false, reason: 'Token hết hạn' }
+		if (this.now() > expNumber)
+			return { valid: false, reason: 'Token hết hạn' }
 
 		// Vượt qua mọi trạm kiểm duyệt -> Token hợp lệ 100%, giải mã và trả về ID của người dùng.
 		return { valid: true, userId: base64UrlDecode(userPart) }
