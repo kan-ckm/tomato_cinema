@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { RpcException } from '@nestjs/microservices'
 import { RpcStatus } from '@tomatocinema/common'
 import {
@@ -7,32 +6,22 @@ import {
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
-import { PassportService, TokenPayload } from '@tomatocinema/passport'
-import { AllConfig } from 'config/interfaces'
+import { PassportService } from '@tomatocinema/passport'
 import { Account } from 'generated/client'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
+import { TokenService } from '../token/token.service'
 import { AuthRepository } from './auth.repository'
 
 @Injectable()
 export class AuthService {
-	private readonly ACCESS_TOKEN_TTL: number
-	private readonly REFRESH_TOKEN_TTL: number
-
 	public constructor(
-		private readonly configService: ConfigService<AllConfig>,
 		private readonly authRepository: AuthRepository,
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService,
-		private readonly passportService: PassportService
-	) {
-		this.ACCESS_TOKEN_TTL = this.configService.get('passport.accessTtl', {
-			infer: true
-		})
-		this.REFRESH_TOKEN_TTL = this.configService.get('passport.refreshTtl', {
-			infer: true
-		})
-	}
+		private readonly passportService: PassportService,
+		private readonly tokenService: TokenService
+	) {}
 
 	public async sendOtp(data: SendOtpRequest) {
 		const { identifier, type } = data
@@ -93,7 +82,7 @@ export class AuthService {
 			})
 		}
 
-		return this.generateTokens(account.id)
+		return this.tokenService.generateTokens(account.id)
 	}
 	//api cấp lại access token
 	public async refresh(data: RefreshRequest) {
@@ -108,22 +97,6 @@ export class AuthService {
 			})
 		}
 		//cấp lại token
-		return this.generateTokens(result.userId)
-	}
-
-	// hàm tạo accessToken và refreshToken
-	private generateTokens(userId: string) {
-		const payload: TokenPayload = { sub: userId }
-
-		const accessToken = this.passportService.generate(
-			String(payload.sub),
-			this.ACCESS_TOKEN_TTL
-		)
-		const refreshToken = this.passportService.generate(
-			String(payload.sub),
-			this.REFRESH_TOKEN_TTL
-		)
-
-		return { accessToken, refreshToken }
+		return this.tokenService.generateTokens(result.userId)
 	}
 }

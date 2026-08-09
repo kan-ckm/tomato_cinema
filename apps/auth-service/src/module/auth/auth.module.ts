@@ -5,6 +5,7 @@ import { getPassportConfig } from 'config/loaders/pasport.config-loader'
 import { RedisService } from '@/infrastucture/redis/redis.service'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
+import { TokenService } from '../token/token.service'
 import { AuthController } from './auth.controller'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
@@ -23,7 +24,8 @@ import { AuthService } from './auth.service'
 		AuthRepository,
 		OtpService,
 		RedisService,
-		UserRepository
+		UserRepository,
+		TokenService
 	]
 })
 export class AuthModule {}
