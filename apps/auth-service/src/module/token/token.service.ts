@@ -35,4 +35,7 @@ export class TokenService {
 
 		return { accessToken, refreshToken }
 	}
+    public verify(token:string) {
+        return this.passportService.verify(token)
+    }
 }

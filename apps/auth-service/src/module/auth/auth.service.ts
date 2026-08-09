@@ -19,7 +19,6 @@ export class AuthService {
 		private readonly authRepository: AuthRepository,
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService,
-		private readonly passportService: PassportService,
 		private readonly tokenService: TokenService
 	) {}
 
@@ -88,7 +87,7 @@ export class AuthService {
 	public async refresh(data: RefreshRequest) {
 		const { refreshToken } = data
 		// kiểm tra tính hợp lệ
-		const result = this.passportService.verify(refreshToken)
+		const result = this.tokenService.verify(refreshToken)
 
 		if (!result.valid) {
 			throw new RpcException({
