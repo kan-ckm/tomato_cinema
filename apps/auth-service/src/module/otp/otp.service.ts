@@ -5,6 +5,7 @@ import { createHash } from 'crypto'
 import { generateCode } from 'patcode'
 import { RedisService } from '@/infrastucture/redis/redis.service'
 
+// file này dùng nội bộ cho auth service
 @Injectable()
 export class OtpService {
 	public constructor(private readonly redisService: RedisService) {}
