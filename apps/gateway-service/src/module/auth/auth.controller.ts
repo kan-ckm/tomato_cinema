@@ -16,7 +16,7 @@ import type { Request, Response } from 'express'
 import { lastValueFrom } from 'rxjs'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { AuthClientGrpc } from './auth.grpc'
-import { SendOtpRequest, VerifyOtpRequest } from './dto'
+import { SendOtpRequest, TelegramVerifyRequest, VerifyOtpRequest } from './dto'
 
 @Controller('auth')
 // dùng trong việc nhận dữ liệu từ grpc và trả về cho client và cũng như nhận từ client và trả về cho gRPC nội bộ
@@ -119,5 +119,45 @@ export class AuthController {
 	@Get('account')
 	public async getAccount(@CurrentUser() userId: string) {
 		return { id: userId }
+	}
+
+	@Get('telegram')
+	@HttpCode(HttpStatus.OK)
+	public async telegramInit() {
+		return this.client.telegramInit()
+	}
+
+	@Post('telegram/verify')
+	@HttpCode(HttpStatus.OK)
+	public async telegramVerify(
+		@Body() dto: TelegramVerifyRequest,
+		@Res({ passthrough: true }) res: Response
+	) {
+		const query = JSON.parse(atob(dto.tgAuthResult))
+
+		const result = await lastValueFrom(
+			this.client.telegramVerify({ query })!
+		)
+
+		if ('url' in result && result.url) return result
+
+		if (result.accessToken && result.refreshToken) {
+			const { accessToken, refreshToken } = result
+
+			res.cookie('refreshToken', refreshToken, {
+				httpOnly: true,
+				secure:
+					this.configService.getOrThrow<string>('NODE_ENV') !==
+					'development',
+				domain: this.configService.getOrThrow<string>('COOKIE_DOMAIN'),
+				sameSite: 'lax',
+				maxAge: 30 * 24 * 60 * 60 * 1000
+			})
+			return { accessToken }
+		}
+
+		throw new UnauthorizedException(
+			'Phản hồi đăng nhập telegram không hợp lệ'
+		)
 	}
 }

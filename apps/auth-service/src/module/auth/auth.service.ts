@@ -6,7 +6,6 @@ import {
 	SendOtpRequest,
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
-import { PassportService } from '@tomatocinema/passport'
 import { Account } from 'generated/client'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
@@ -81,7 +80,7 @@ export class AuthService {
 			})
 		}
 
-		return this.tokenService.generateTokens(account.id)
+		return this.tokenService.generate(account.id)
 	}
 	//api cấp lại access token
 	public async refresh(data: RefreshRequest) {
@@ -96,6 +95,6 @@ export class AuthService {
 			})
 		}
 		//cấp lại token
-		return this.tokenService.generateTokens(result.userId)
+		return this.tokenService.generate(result.userId)
 	}
 }

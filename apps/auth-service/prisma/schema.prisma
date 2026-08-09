@@ -25,6 +25,8 @@ model Account {
 
   role Role @default(USER) // Quyền hạn mặc định khi mới đăng ký luôn là USER
 
+telegramId String? @unique @map("telegram_id")
+
   // Mối quan hệ 1-N: Một tài khoản có thể có nhiều yêu cầu thay đổi thông tin (ví dụ: nhiều lần gửi OTP)
   pendingContactChanges PendingContactChange[]
 

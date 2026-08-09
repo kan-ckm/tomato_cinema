@@ -654,6 +654,7 @@ export const AccountScalarFieldEnum = {
 	isPhoneVerified: 'isPhoneVerified',
 	isEmailVerified: 'isEmailVerified',
 	role: 'role',
+	telegramId: 'telegramId',
 	createAt: 'createAt',
 	updateAt: 'updateAt'
 } as const

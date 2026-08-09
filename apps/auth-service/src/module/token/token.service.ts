@@ -21,7 +21,7 @@ export class TokenService {
 	}
 
 	// hàm tạo accessToken và refreshToken
-	public generateTokens(userId: string) {
+	public generate(userId: string) {
 		const payload: TokenPayload = { sub: userId }
 
 		const accessToken = this.passportService.generate(
@@ -35,7 +35,7 @@ export class TokenService {
 
 		return { accessToken, refreshToken }
 	}
-    public verify(token:string) {
-        return this.passportService.verify(token)
-    }
+	public verify(token: string) {
+		return this.passportService.verify(token)
+	}
 }

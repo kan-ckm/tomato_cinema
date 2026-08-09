@@ -7,10 +7,12 @@ import { RedisModule } from './infrastucture/redis/redis.module'
 import { AccountModule } from './module/account/account.module'
 import { AuthModule } from './module/auth/auth.module'
 import { OtpModule } from './module/otp/otp.module'
+import { TelegramModule } from './module/telegram/telegram.module'
+import { TokenModule } from './module/token/token.module'
 
 @Module({
 	imports: [
-		// nạp env và nạp env tôi tùy chỉnhchỉnh
+		// load env and load custom env
 		ConfigModule.forRoot({
 			isGlobal: true,
 			load: [grpcEnv, databaseEnv, redisEnv, passportEnv, telegramEnv]
@@ -19,7 +21,9 @@ import { OtpModule } from './module/otp/otp.module'
 		PrismaModule,
 		RedisModule,
 		OtpModule,
-		AccountModule
+		AccountModule,
+		TelegramModule,
+		TokenModule
 	]
 })
 export class AppModule {}
