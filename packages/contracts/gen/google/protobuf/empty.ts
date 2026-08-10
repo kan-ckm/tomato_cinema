@@ -17,6 +17,7 @@ export const protobufPackage = "google.protobuf";
  *       rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);
  *     }
  */
-export interface Empty {}
+export interface Empty {
+}
 
 export const GOOGLE_PROTOBUF_PACKAGE_NAME = "google.protobuf";
