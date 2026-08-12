@@ -4,6 +4,7 @@ import type {
 	AuthServiceClient,
 	RefreshRequest,
 	SendOtpRequest,
+	TelegramConsumeRequest,
 	TelegramInitResponse,
 	TelegramVerifyRequest,
 	VerifyOtpRequest
@@ -50,5 +51,9 @@ export class AuthClientGrpc implements OnModuleInit {
 
 	public telegramVerify(request: TelegramVerifyRequest) {
 		return this.authService?.telegramVerify(request)
+	}
+
+	public telegramConsume(request: TelegramConsumeRequest) {
+		return this.authService?.telegramConsume(request)
 	}
 }

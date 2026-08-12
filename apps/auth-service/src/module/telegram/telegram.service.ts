@@ -2,10 +2,15 @@ import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { RpcException } from '@nestjs/microservices'
 import { RpcStatus } from '@tomatocinema/common'
-import { TelegramVerifyRequest } from '@tomatocinema/contracts/gen/auth'
+import {
+	TelegramCompleteRequest,
+	TelegramConsumeRequest,
+	TelegramVerifyRequest
+} from '@tomatocinema/contracts/gen/auth'
 import { AllConfig } from 'config/interfaces'
 import { createHash, createHmac, randomBytes } from 'crypto'
 import { RedisService } from '@/infrastucture/redis/redis.service'
+import { UserRepository } from '@/shared/repository'
 import { TokenService } from '../token/token.service'
 import { TelegramRepository } from './telegram.repository'
 
@@ -20,7 +25,8 @@ export class TelegramService {
 		private readonly redisService: RedisService,
 		private readonly configService: ConfigService<AllConfig>,
 		private readonly telegramRepository: TelegramRepository,
-		private readonly tokenService: TokenService
+		private readonly tokenService: TokenService,
+		private readonly userRespoSitory: UserRepository
 	) {
 		this.BOT_ID = this.configService.get('telegram.botId', { infer: true })
 		this.BOT_TOKEN = this.configService.get('telegram.botToken', {
@@ -76,6 +82,61 @@ export class TelegramService {
 		return { url: `https://t.me/${this.BOT_USERNAME}?start=${sessionId}` }
 	}
 
+	// hàm hoàn tất đăng nhập được gọi bởi con Bot (bot-service) khi user bấm nút "Chia sẻ số điện thoại"
+	public async complete(data: TelegramCompleteRequest) {
+		const { sessionId, phone } = data
+		const raw = await this.redisService.get(`telegram_session:${sessionId}`)
+
+		if (!raw)
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Phiên truy cập không tồn tại'
+			})
+
+		const { telegramId } = JSON.parse(raw)
+
+		let user = await this.userRespoSitory.findByPhone(phone)
+
+		if (!user) user = await this.userRespoSitory.create({ phone })
+
+		await this.userRespoSitory.update(user.id, {
+			telegramId,
+			isPhoneVerified: true
+		})
+
+		const tokens = this.tokenService.generate(user.id)
+
+		await this.redisService.set(
+			`telegram_tokens:${sessionId}`,
+			JSON.stringify(tokens),
+			'EX',
+			120
+		)
+
+		await this.redisService.del(`telegram_session:${sessionId}`)
+
+		return { sessionId }
+	}
+
+	// Lấy Token thật trả về cho Frontend khi Frontend báo "Tao đã đưa SĐT cho Bot rồi"
+	public async consumeSession(data: TelegramConsumeRequest) {
+		const { sessionId } = data
+
+		const raw = await this.redisService.get(`telegram_tokens:${sessionId}`)
+
+		if (!raw)
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Phiên không tồn tại'
+			})
+
+		const tokens = JSON.parse(raw)
+
+		await this.redisService.del(`telegram_tokens:${sessionId}`)
+
+		return tokens
+	}
+
 	// Hàm thuật toán mã hóa độc quyền của Telegram để kiểm tra tính toàn vẹn của dữ liệu
 	private checkTelegramAuth(query: Record<string, string>) {
 		const hash = query.hash
@@ -91,7 +152,7 @@ export class TelegramService {
 
 		const secretKey = createHash('sha256')
 			.update(`${this.BOT_ID}:${this.BOT_TOKEN}`)
-			.digest('hex')
+			.digest()
 
 		const hmac = createHmac('sha256', secretKey)
 			.update(dataCheckString)

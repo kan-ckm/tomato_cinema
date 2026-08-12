@@ -16,15 +16,24 @@ import type { Request, Response } from 'express'
 import { lastValueFrom } from 'rxjs'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { AuthClientGrpc } from './auth.grpc'
-import { SendOtpRequest, TelegramVerifyRequest, VerifyOtpRequest } from './dto'
+import {
+	SendOtpRequest,
+	TelegramFinalizeRequest,
+	TelegramVerifyRequest,
+	VerifyOtpRequest
+} from './dto'
 
 @Controller('auth')
-// dùng trong việc nhận dữ liệu từ grpc và trả về cho client và cũng như nhận từ client và trả về cho gRPC nội bộ
+// API Gateway: Dùng trong việc nhận dữ liệu HTTP từ Client,
+// đẩy sang cho gRPC nội bộ xử lý, và quản lý token (Cookie) trả về.
 export class AuthController {
 	public constructor(
 		private readonly configService: ConfigService,
-		private readonly client: AuthClientGrpc
+		private readonly client: AuthClientGrpc // Cầu nối gRPC gọi sang Auth Service
 	) {}
+
+	// LUỒNG ĐĂNG NHẬP OTP (PASSWORDLESS)
+
 	@ApiOperation({
 		summary: 'gửi mã',
 		description: 'Gửi mã xác minh đến số đt hoặc email người dùng'
@@ -32,6 +41,7 @@ export class AuthController {
 	@Post('otp/send')
 	@HttpCode(HttpStatus.OK)
 	public async sendOtp(@Body() dto: SendOtpRequest) {
+		// Giao việc gửi OTP cho Auth Service xử lý
 		return this.client.sendOtp(dto)
 	}
 
@@ -44,23 +54,29 @@ export class AuthController {
 	@HttpCode(HttpStatus.OK)
 	public async verifyOtp(
 		@Body() dto: VerifyOtpRequest,
-		@Res({ passthrough: true }) res: Response
+		@Res({ passthrough: true }) res: Response // passthrough: true để NestJS tự lo việc return
 	) {
+		// Lấy cặp token từ Auth Service (gRPC) trả về
 		const { accessToken, refreshToken } = await lastValueFrom(
 			this.client.verifyOtp(dto)!
 		)
 
+		// Nhét Refresh Token vào Cookie bảo mật (Giấu không cho JS ở Frontend đọc được)
 		res.cookie('refreshToken', refreshToken, {
-			httpOnly: true,
+			httpOnly: true, // Chống hacker đánh cắp (XSS)
 			secure:
 				this.configService.getOrThrow<string>('NODE_ENV') !==
-				'development',
+				'development', // Chỉ bật HTTPS khi đẩy lên server thật
 			domain: this.configService.getOrThrow<string>('COOKIE_DOMAIN'),
 			sameSite: 'lax',
-			maxAge: 30 * 24 * 60 * 60 * 1000
+			maxAge: 30 * 24 * 60 * 60 * 1000 // Hạn sống 30 ngày
 		})
+
+		// Chỉ nhả Access Token ra Body cho Frontend lưu vào RAM dùng tạm
 		return { accessToken }
 	}
+
+	// LUỒNG QUẢN LÝ PHIÊN (TOKEN)
 
 	@ApiOperation({
 		summary: 'Tạo mới lại access token',
@@ -72,17 +88,21 @@ export class AuthController {
 		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response
 	) {
+		// Móc Refresh Token từ Cookie mà Frontend tự động gửi lên
 		const refreshToken = await req.cookies?.refreshToken
 
+		// Chặn cửa ngay nếu không có Token
 		if (!refreshToken) {
 			throw new UnauthorizedException(
 				'Không tìm thấy Refresh Token. Vui lòng đăng nhập lại.'
 			)
 		}
 
+		// Xin Auth Service cấp cặp token mới
 		const { accessToken, refreshToken: newRefreshToken } =
 			await lastValueFrom(this.client.refresh({ refreshToken })!)
 
+		// Cập nhật lại Cookie bằng Refresh Token mới (Refresh Token Rotation)
 		res.cookie('refreshToken', newRefreshToken, {
 			httpOnly: true,
 			secure:
@@ -102,6 +122,7 @@ export class AuthController {
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
 	public async logout(@Res({ passthrough: true }) res: Response) {
+		// Ghi đè Cookie bằng chuỗi rỗng và ép hạn sử dụng về 0 để trình duyệt tự xóa
 		res.cookie('refreshToken', '', {
 			httpOnly: true,
 			secure:
@@ -114,16 +135,22 @@ export class AuthController {
 		return { ok: true }
 	}
 
-	@ApiBearerAuth()
-	@Protected(RoleUser.ADMIN)
+	//LUỒNG BẢO VỆ & LẤY THÔNG TIN
+
+	@ApiBearerAuth() // Hiển thị ổ khóa trên Swagger
+	@Protected(RoleUser.ADMIN) // Bắt buộc phải là ADMIN mới được gọi API này
 	@Get('account')
 	public async getAccount(@CurrentUser() userId: string) {
+		// @CurrentUser tự động moi ID từ Access Token ra
 		return { id: userId }
 	}
+
+	// LUỒNG ĐĂNG NHẬP TELEGRAM (OAUTH/SSO)
 
 	@Get('telegram')
 	@HttpCode(HttpStatus.OK)
 	public async telegramInit() {
+		// Lấy link Bot Telegram từ Auth Service trả về cho Frontend
 		return this.client.telegramInit()
 	}
 
@@ -133,14 +160,18 @@ export class AuthController {
 		@Body() dto: TelegramVerifyRequest,
 		@Res({ passthrough: true }) res: Response
 	) {
+		// Giải mã cục dữ liệu base64 mà Telegram trả về
 		const query = JSON.parse(atob(dto.tgAuthResult))
 
+		// Gửi qua Auth Service để đối chiếu chữ ký
 		const result = await lastValueFrom(
 			this.client.telegramVerify({ query })!
 		)
 
+		// Nếu User là người mới/chưa có sđt -> Trả về URL để ép ra Telegram Bot cung cấp SĐT
 		if ('url' in result && result.url) return result
 
+		// Nếu User cũ (đã có Token) -> Thiết lập Cookie y hệt luồng OTP
 		if (result.accessToken && result.refreshToken) {
 			const { accessToken, refreshToken } = result
 
@@ -159,5 +190,30 @@ export class AuthController {
 		throw new UnauthorizedException(
 			'Phản hồi đăng nhập telegram không hợp lệ'
 		)
+	}
+
+	@Post('telegram/finalize')
+	public async finalizeTelegramLogin(
+		@Body() dto: TelegramFinalizeRequest,
+		@Res({ passthrough: true }) res: Response
+	) {
+		const { sessionId } = dto
+
+		//User đã lên Bot cấp SĐT xong, mang sessionId đi lấy Token thật
+		const { accessToken, refreshToken } = await lastValueFrom(
+			this.client.telegramConsume({ sessionId })!
+		)
+
+		// Set Cookie bảo mật và cho phép đăng nhập thành công
+		res.cookie('refreshToken', refreshToken, {
+			httpOnly: true,
+			secure:
+				this.configService.getOrThrow<string>('NODE_ENV') !==
+				'development',
+			domain: this.configService.getOrThrow<string>('COOKIE_DOMAIN'),
+			sameSite: 'lax',
+			maxAge: 30 * 24 * 60 * 60 * 1000
+		})
+		return { accessToken }
 	}
 }

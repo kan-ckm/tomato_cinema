@@ -7,7 +7,6 @@ import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { TokenService } from '../token/token.service'
 import { AuthController } from './auth.controller'
-import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 
 @Module({
@@ -21,7 +20,6 @@ import { AuthService } from './auth.service'
 	controllers: [AuthController],
 	providers: [
 		AuthService,
-		AuthRepository,
 		OtpService,
 		RedisService,
 		UserRepository,

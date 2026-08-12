@@ -10,12 +10,10 @@ import { Account } from 'generated/client'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { TokenService } from '../token/token.service'
-import { AuthRepository } from './auth.repository'
 
 @Injectable()
 export class AuthService {
 	public constructor(
-		private readonly authRepository: AuthRepository,
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService,
 		private readonly tokenService: TokenService
@@ -32,7 +30,7 @@ export class AuthService {
 		}
 		// nếu người dùng chx có thì hệ thống sẽ tự tạo cho họ một tài khoản mới
 		if (!account) {
-			account = await this.authRepository.create({
+			account = await this.userRepository.create({
 				phone: type === 'phone' ? identifier : undefined,
 				email: type === 'email' ? identifier : undefined
 			})

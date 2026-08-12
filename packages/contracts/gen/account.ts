@@ -76,15 +76,23 @@ export interface AccountServiceClient {
 
   /** đổi email */
 
-  initEmailChange(request: InitEmailChangeRequest): Observable<InitEmailChangeResponse>;
+  initEmailChange(
+    request: InitEmailChangeRequest,
+  ): Observable<InitEmailChangeResponse>;
 
-  confirmEmailChange(request: ConfirmEmailChangeRequest): Observable<ConfirmEmailChangeResponse>;
+  confirmEmailChange(
+    request: ConfirmEmailChangeRequest,
+  ): Observable<ConfirmEmailChangeResponse>;
 
   /** đổi số điện thoại */
 
-  initPhoneChange(request: InitPhoneChangeRequest): Observable<InitPhoneChangeResponse>;
+  initPhoneChange(
+    request: InitPhoneChangeRequest,
+  ): Observable<InitPhoneChangeResponse>;
 
-  confirmPhoneChange(request: ConfirmPhoneChangeRequest): Observable<ConfirmPhoneChangeResponse>;
+  confirmPhoneChange(
+    request: ConfirmPhoneChangeRequest,
+  ): Observable<ConfirmPhoneChangeResponse>;
 }
 
 export interface AccountServiceController {
@@ -92,27 +100,42 @@ export interface AccountServiceController {
 
   getAccount(
     request: GetAccountRequest,
-  ): Promise<GetAccountResponse> | Observable<GetAccountResponse> | GetAccountResponse;
+  ):
+    | Promise<GetAccountResponse>
+    | Observable<GetAccountResponse>
+    | GetAccountResponse;
 
   /** đổi email */
 
   initEmailChange(
     request: InitEmailChangeRequest,
-  ): Promise<InitEmailChangeResponse> | Observable<InitEmailChangeResponse> | InitEmailChangeResponse;
+  ):
+    | Promise<InitEmailChangeResponse>
+    | Observable<InitEmailChangeResponse>
+    | InitEmailChangeResponse;
 
   confirmEmailChange(
     request: ConfirmEmailChangeRequest,
-  ): Promise<ConfirmEmailChangeResponse> | Observable<ConfirmEmailChangeResponse> | ConfirmEmailChangeResponse;
+  ):
+    | Promise<ConfirmEmailChangeResponse>
+    | Observable<ConfirmEmailChangeResponse>
+    | ConfirmEmailChangeResponse;
 
   /** đổi số điện thoại */
 
   initPhoneChange(
     request: InitPhoneChangeRequest,
-  ): Promise<InitPhoneChangeResponse> | Observable<InitPhoneChangeResponse> | InitPhoneChangeResponse;
+  ):
+    | Promise<InitPhoneChangeResponse>
+    | Observable<InitPhoneChangeResponse>
+    | InitPhoneChangeResponse;
 
   confirmPhoneChange(
     request: ConfirmPhoneChangeRequest,
-  ): Promise<ConfirmPhoneChangeResponse> | Observable<ConfirmPhoneChangeResponse> | ConfirmPhoneChangeResponse;
+  ):
+    | Promise<ConfirmPhoneChangeResponse>
+    | Observable<ConfirmPhoneChangeResponse>
+    | ConfirmPhoneChangeResponse;
 }
 
 export function AccountServiceControllerMethods() {
@@ -125,13 +148,27 @@ export function AccountServiceControllerMethods() {
       "confirmPhoneChange",
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("AccountService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod("AccountService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("AccountService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod("AccountService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }

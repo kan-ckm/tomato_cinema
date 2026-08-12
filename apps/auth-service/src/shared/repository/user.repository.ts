@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Account } from 'generated/client'
-import { AccountUpdateInput } from 'generated/models'
+import { AccountCreateInput, AccountUpdateInput } from 'generated/models'
 import { PrismaService } from '@/infrastucture/prisma/prisma.service'
 
 @Injectable()
@@ -34,6 +34,14 @@ export class UserRepository {
 			where: {
 				id
 			},
+			data
+		})
+	}
+
+	// logic tạo tài khoản
+
+	public async create(data: AccountCreateInput): Promise<Account> {
+		return await this.prismaService.account.create({
 			data
 		})
 	}
