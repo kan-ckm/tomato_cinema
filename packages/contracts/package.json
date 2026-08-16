@@ -15,11 +15,17 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
     "generate": "protoc -I ./proto ./proto/*.proto --ts_proto_out=./gen --ts_proto_opt=nestJs=true,package=omit"
   },
-  "files": ["proto", "gen", "dist"],
-  "publishConfig": { "access": "public" },
+  "files": [
+    "proto",
+    "gen",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@nestjs/microservices": "^11.1.28",
     "rxjs": "^7.8.1",
