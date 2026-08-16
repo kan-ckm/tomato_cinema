@@ -7,6 +7,7 @@ import {
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
 import { Account } from 'generated/client'
+import { MessagingService } from '@/infrastucture/messaging/messaging.service'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { TokenService } from '../token/token.service'
@@ -16,7 +17,8 @@ export class AuthService {
 	public constructor(
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService,
-		private readonly tokenService: TokenService
+		private readonly tokenService: TokenService,
+		private readonly messagingService: MessagingService
 	) {}
 
 	public async sendOtp(data: SendOtpRequest) {
@@ -35,11 +37,17 @@ export class AuthService {
 				email: type === 'email' ? identifier : undefined
 			})
 		}
-		const code = await this.otpService.send(
+		const { code } = await this.otpService.send(
 			identifier,
 			type as 'phone' | 'email'
 		)
-		console.debug('CODE', code)
+
+		await this.messagingService.otpRequested({
+			identifier,
+			type,
+			code
+		})
+
 		return { ok: true }
 	}
 	// hàm xác thực otp

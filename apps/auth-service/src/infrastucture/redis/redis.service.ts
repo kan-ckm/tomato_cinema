@@ -5,7 +5,7 @@ import {
 	OnModuleInit
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { AllConfig } from 'config/interfaces'
+import { AllConfigs } from 'config/interfaces'
 import Redis from 'ioredis'
 
 @Injectable()
@@ -15,7 +15,7 @@ export class RedisService
 {
 	private readonly logger = new Logger(RedisService.name)
 	public constructor(
-		private readonly configService: ConfigService<AllConfig>
+		private readonly configService: ConfigService<AllConfigs>
 	) {
 		super({
 			username: configService.get('redis.user', { infer: true }),

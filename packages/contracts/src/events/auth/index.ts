@@ -1,1 +1,1 @@
-export * from './otp-requested.interface'
+export * from "./otp-requested.interface";

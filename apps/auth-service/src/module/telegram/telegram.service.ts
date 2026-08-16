@@ -7,7 +7,7 @@ import {
 	TelegramConsumeRequest,
 	TelegramVerifyRequest
 } from '@tomatocinema/contracts/gen/auth'
-import { AllConfig } from 'config/interfaces'
+import { AllConfigs } from 'config/interfaces'
 import { createHash, createHmac, randomBytes } from 'crypto'
 import { RedisService } from '@/infrastucture/redis/redis.service'
 import { UserRepository } from '@/shared/repository'
@@ -23,7 +23,7 @@ export class TelegramService {
 
 	public constructor(
 		private readonly redisService: RedisService,
-		private readonly configService: ConfigService<AllConfig>,
+		private readonly configService: ConfigService<AllConfigs>,
 		private readonly telegramRepository: TelegramRepository,
 		private readonly tokenService: TokenService,
 		private readonly userRespoSitory: UserRepository

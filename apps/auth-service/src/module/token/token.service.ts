@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportService, TokenPayload } from '@tomatocinema/passport'
-import { AllConfig } from 'config/interfaces'
+import { AllConfigs } from 'config/interfaces'
 
 @Injectable()
 export class TokenService {
@@ -9,7 +9,7 @@ export class TokenService {
 	private readonly REFRESH_TOKEN_TTL: number
 
 	public constructor(
-		private readonly configService: ConfigService<AllConfig>,
+		private readonly configService: ConfigService<AllConfigs>,
 		private readonly passportService: PassportService
 	) {
 		this.ACCESS_TOKEN_TTL = this.configService.get('passport.accessTtl', {

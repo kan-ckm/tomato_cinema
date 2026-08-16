@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { AllConfig } from 'config/interfaces'
+import { AllConfigs } from 'config/interfaces'
 import { PrismaClient } from 'generated/client'
 
 @Injectable()
@@ -16,7 +16,7 @@ export class PrismaService
 {
 	private readonly logger = new Logger(PrismaService.name)
 	public constructor(
-		private readonly configService: ConfigService<AllConfig>
+		private readonly configService: ConfigService<AllConfigs>
 	) {
 		const adapter = new PrismaPg({
 			user: configService.get('database.user', { infer: true }),
