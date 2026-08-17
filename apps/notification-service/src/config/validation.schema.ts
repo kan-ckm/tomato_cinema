@@ -20,5 +20,13 @@ export default z.object({
 	RMQ_URL: z.string().nonempty(),
 
 	// Tên queue lắng nghe sự kiện của notification service (bắt buộc, không được để trống)
-	RMQ_QUEUE: z.string().nonempty()
+	RMQ_QUEUE: z.string().nonempty(),
+
+	// Cấu hình SMTP
+	SMT_HOST: z.string().nonempty(),
+	SMT_PORT: z.coerce.number(),
+	SMT_USERNAME: z.string().nonempty(),
+	SMT_PASSWORD: z.string().nonempty(),
+	SMT_FROM_ADDRESS: z.string().email().nonempty(),
+	SMT_SECURE: z.string().transform(v => v === 'true')
 })
