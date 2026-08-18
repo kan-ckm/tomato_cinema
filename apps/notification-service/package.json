@@ -33,6 +33,7 @@
     "@tomatocinema/passport": "workspace:*",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^2.0.1",
+    "handlebars": "^4.7.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^4.4.3"

@@ -1,8 +1,9 @@
 import { MailerModule } from '@nestjs-modules/mailer'
 import { Global, Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { getMailerConfig } from '../../config'
+import { getMailerConfig } from 'src/config/factories'
 import { MailService } from './mail.service'
+import { TemplateService } from './template.service'
 
 @Global()
 @Module({
@@ -12,7 +13,7 @@ import { MailService } from './mail.service'
 			inject: [ConfigService]
 		})
 	],
-	providers: [MailService],
-	exports: [MailService]
+	providers: [MailService, TemplateService],
+	exports: [MailService, TemplateService]
 })
 export class MailModule {}

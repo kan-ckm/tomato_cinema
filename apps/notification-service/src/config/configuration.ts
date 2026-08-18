@@ -26,12 +26,12 @@ export default () => {
 			queue: env.RMQ_QUEUE
 		},
 		smtp: {
-			host: env.SMT_HOST,
-			username: env.SMT_USERNAME,
-			password: env.SMT_PASSWORD,
-			port: env.SMT_PORT,
-			secure: env.SMT_SECURE,
-			fromAddress: env.SMT_FROM_ADDRESS
+			host: env.SMTP_HOST,
+			username: env.SMTP_USERNAME,
+			password: env.SMTP_PASSWORD,
+			port: env.SMTP_PORT,
+			secure: env.SMTP_SECURE,
+			fromAddress: env.SMTP_FROM_ADDRESS
 		}
 	}
 }
