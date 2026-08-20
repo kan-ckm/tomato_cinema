@@ -1,6 +1,5 @@
 import type { MailerOptions } from '@nestjs-modules/mailer'
 import { ConfigService } from '@nestjs/config'
-import { config } from 'process'
 
 export function getMailerConfig(configService: ConfigService): MailerOptions {
 	return {

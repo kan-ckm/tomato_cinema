@@ -28,5 +28,9 @@ export default z.object({
 	SMTP_USERNAME: z.string().nonempty(),
 	SMTP_PASSWORD: z.string().nonempty(),
 	SMTP_FROM_ADDRESS: z.email().nonempty(),
-	SMTP_SECURE: z.string().transform(v => v === 'true')
+	SMTP_SECURE: z.string().transform(v => v === 'true'),
+
+	// Cấu hình exolve
+	EXOLVE_API_KEY: z.string().nonempty(),
+	EXOLVE_SENDER: z.string().nonempty()
 })

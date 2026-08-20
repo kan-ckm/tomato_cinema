@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common'
+import { Controller, Logger } from '@nestjs/common'
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices'
 import type { otpRequestedEvent } from '@tomatocinema/contracts'
 import { RmqService } from 'src/infrastucture/rmq/rmq.service'
@@ -6,6 +6,7 @@ import { NotificationsService } from './notifications.service'
 
 @Controller()
 export class NotificationsController {
+	private readonly logger = new Logger(NotificationsController.name)
 	public constructor(
 		private readonly rmqService: RmqService,
 		private readonly notificationsService: NotificationsService
@@ -20,7 +21,7 @@ export class NotificationsController {
 			await this.notificationsService.sendOtp(data)
 			this.rmqService.ack(ctx)
 		} catch (error) {
-			console.log('OTP processing error', error.getMessage ?? error)
+			this.logger.error('OTP processing error', error.message ?? error)
 
 			this.rmqService.nack(ctx)
 		}
