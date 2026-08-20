@@ -1,159 +1,157 @@
-# Turborepo starter
+# 🍅 Tomato Cinema — Monorepo
 
-This Turborepo starter is maintained by the Turborepo core team.
+Hệ thống backend cho nền tảng đặt vé xem phim **Tomato Cinema**, xây dựng theo kiến trúc **microservices** với [NestJS](https://nestjs.com), quản lý bằng [Turborepo](https://turborepo.dev) và [pnpm workspaces](https://pnpm.io/workspaces).
 
-## Using this example
+---
 
-Run the following command:
+## 📁 Cấu trúc dự án
 
-```sh
-npx create-turbo@latest
+```
+tomato_cinema/
+├── apps/
+│   ├── auth-service/           # Xác thực, phân quyền, quản lý người dùng
+│   ├── gateway-service/        # API Gateway (REST → gRPC/RabbitMQ)
+│   ├── notification-service/   # Gửi thông báo qua Email & SMS
+│   ├── bot-service/            # Telegram Bot tích hợp
+│   ├── web/                    # Frontend Next.js
+│   └── docker/                 # Docker Compose hạ tầng (Postgres, RabbitMQ, Redis)
+│
+└── packages/
+    ├── contracts/              # Shared types & Protobuf definitions
+    ├── common/                 # Shared utilities, decorators, filters
+    ├── core/                   # Core abstractions tái sử dụng
+    ├── passport/               # JWT authentication strategy
+    ├── ui/                     # Shared UI components (React)
+    ├── eslint-config/          # ESLint config dùng chung
+    └── typescript-config/      # tsconfig dùng chung
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## 🏗️ Kiến trúc hệ thống
 
-### Apps and Packages
+```
+Client / Web
+     │
+     ▼
+┌─────────────────┐
+│  gateway-service│  ◄── REST API (HTTP)
+│  (NestJS + gRPC)│
+└────────┬────────┘
+         │ gRPC / RabbitMQ
+    ┌────┴──────────────────────┐
+    ▼                           ▼
+┌──────────────┐    ┌─────────────────────┐
+│ auth-service │    │ notification-service│
+│  PostgreSQL  │    │   Email + SMS       │
+│  Redis       │    │   (Exolve API)      │
+└──────────────┘    └─────────────────────┘
+         │
+    ┌────┴─────┐
+    ▼          ▼
+┌──────────┐  ┌────────────┐
+│ RabbitMQ │  │ bot-service│
+│ (queue)  │  │ (Telegram) │
+└──────────┘  └────────────┘
+```
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+---
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## 🚀 Bắt đầu
 
-### Utilities
+### Yêu cầu hệ thống
 
-This Turborepo has some additional tools already setup for you:
+- **Node.js** >= 20
+- **pnpm** >= 9
+- **Docker** & **Docker Compose**
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+### Cài đặt
+
+```bash
+# 1. Clone dự án
+git clone <repo-url> && cd tomato_cinema
+
+# 2. Cài dependencies
+pnpm install
+
+# 3. Khởi động hạ tầng (Postgres, Redis, RabbitMQ)
+cd apps/docker && cp .env.example .env
+# Điền thông tin vào .env
+docker compose up -d
+
+# 4. Tạo file .env cho từng service
+cp apps/auth-service/.env.example apps/auth-service/.env
+cp apps/notification-service/.env.example apps/notification-service/.env
+# ... điền thông tin cần thiết
+```
+
+### Chạy môi trường Development
+
+```bash
+# Chạy tất cả services cùng lúc
+pnpm dev
+
+# Chạy từng service riêng lẻ
+pnpm --filter auth-service dev
+pnpm --filter gateway-service dev
+pnpm --filter notification-service dev
+```
 
 ### Build
 
-To build all apps and packages, run the following command:
+```bash
+# Build toàn bộ monorepo
+pnpm build
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+# Build từng service
+pnpm --filter auth-service build
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+## 🛠️ Tech Stack
+
+| Lớp | Công nghệ |
+|-----|-----------|
+| Runtime | Node.js 20, TypeScript |
+| Framework | NestJS 11 |
+| Monorepo | Turborepo + pnpm workspaces |
+| Database | PostgreSQL 16 + Prisma |
+| Cache | Redis 8 |
+| Message Broker | RabbitMQ 3 |
+| RPC | gRPC (protobuf) |
+| Email | Nodemailer + Handlebars templates |
+| SMS | Exolve API (MTS) |
+| Bot | Telegraf (Telegram) |
+| Frontend | Next.js 16 |
+| Validation | Zod, class-validator |
+| Auth | JWT (access + refresh token) |
+| Containerization | Docker Compose |
+
+---
+
+## 📦 Packages nội bộ
+
+| Package | Mô tả |
+|---------|-------|
+| `@tomatocinema/contracts` | Types, interfaces & Protobuf-generated code dùng chung giữa các services |
+| `@tomatocinema/common` | Decorators, filters, guards tái sử dụng |
+| `@tomatocinema/core` | Core abstractions và base classes |
+| `@tomatocinema/passport` | JWT strategy và authentication helpers |
+
+---
+
+## 📜 Scripts hữu ích
+
+```bash
+pnpm dev          # Chạy tất cả services ở chế độ watch
+pnpm build        # Build toàn bộ dự án
+pnpm lint         # Kiểm tra linting toàn bộ
+pnpm check-types  # Kiểm tra TypeScript types
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## 📄 License
 
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Private — All rights reserved.
