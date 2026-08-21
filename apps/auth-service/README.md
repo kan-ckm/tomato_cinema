@@ -1,280 +1,98 @@
-# 🔐 Auth Service — Tomato Cinema Authentication & Authorization
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-Microservice đảm nhận vai trò hạt nhân trong việc **Xác thực (Authentication)**, **Phân quyền (Authorization)**, và **Quản lý Tài khoản** cho toàn bộ nền tảng **Tomato Cinema**. Service cung cấp gRPC API hiệu năng cao cho `gateway-service`, lưu trữ dữ liệu bền vững với **PostgreSQL (Prisma ORM)**, tối ưu tốc độ và session bằng **Redis**, và phát sự kiện bất đồng bộ qua **RabbitMQ**.
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
----
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## 🏛️ Kiến trúc hệ thống (Auth Service Architecture)
+## Description
 
-```mermaid
-flowchart TD
-    GW["🚪 gateway-service"] -->|gRPC Request (auth.v1, account.v1)| AuthGrpc["gRPC Controllers\n(AuthController / AccountController)"]
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-    subgraph CoreAuth["🔐 auth-service Core"]
-        direction TB
-        AuthGrpc --> AuthSvc["AuthService"]
-        AuthGrpc --> AccSvc["AccountService"]
-        AuthSvc & AccSvc --> OtpSvc["OtpService (Tạo mã & Băm SHA-256)"]
-        AuthSvc & AccSvc --> MsgSvc["MessagingService (RabbitMQ Producer)"]
-        AuthSvc & AccSvc --> Passport["@tomatocinema/passport (JWT Signing)"]
-
-        AuthSvc & AccSvc & OtpSvc --> UserRepo["UserRepository / AccountRepository"]
-    end
-
-    subgraph DataStorage["💾 Data & Cache Layer"]
-        PG[("🐘 PostgreSQL (Prisma ORM)\nAccounts & PendingContactChanges")]
-        Redis[("⚡ Redis (ioredis)\nSessions & OTP Cache")]
-    end
-
-    subgraph EventBroker["📨 Message Broker"]
-        RMQ{{"🐇 RabbitMQ\ntomatocinema_queue"}}
-    end
-
-    UserRepo -->|Queries / Transactions| PG
-    OtpSvc & AuthSvc -->|Get / Set / Expire| Redis
-    MsgSvc -->|Emit: auth.otp.requested\naccount.email.changed\naccount.phone.changed| RMQ
-    RMQ --> NotifSvc["🔔 notification-service (Email & SMS)"]
-
-    style GW fill:#1e3a8a,stroke:#3b82f6,color:#fff
-    style AuthGrpc fill:#0284c7,stroke:#38bdf8,color:#fff
-    style AuthSvc fill:#0284c7,stroke:#38bdf8,color:#fff
-    style AccSvc fill:#0284c7,stroke:#38bdf8,color:#fff
-    style OtpSvc fill:#0d9488,stroke:#14b8a6,color:#fff
-    style Passport fill:#7c3aed,stroke:#a855f7,color:#fff
-    style UserRepo fill:#0284c7,stroke:#38bdf8,color:#fff
-    style MsgSvc fill:#ea580c,stroke:#f97316,color:#fff
-    style PG fill:#334155,stroke:#64748b,color:#fff
-    style Redis fill:#dc2626,stroke:#ef4444,color:#fff
-    style RMQ fill:#d97706,stroke:#f59e0b,color:#fff
-    style NotifSvc fill:#4f46e5,stroke:#6366f1,color:#fff
-```
-
----
-
-## 🗄️ Sơ đồ thực thể cơ sở dữ liệu (Database ERD)
-
-```mermaid
-%%{
-  init: {
-    'theme': 'dark',
-    'themeVariables': {
-      'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#e2e8f0',
-      'primaryBorderColor': '#60a5fa',
-      'lineColor': '#60a5fa',
-      'secondaryColor': '#0f172a',
-      'tertiaryColor': '#1e293b'
-    }
-  }
-}%%
-erDiagram
-    %% PostgreSQL Entities
-    ACCOUNTS {
-        string id PK "UUID, Khóa chính tự sinh"
-        string phone UK "Số điện thoại (Unique, Nullable)"
-        string email UK "Địa chỉ email (Unique, Nullable)"
-        boolean is_phone_verifed "Đã xác thực OTP SĐT chưa"
-        boolean is_email_verifed "Đã xác thực OTP Email chưa"
-        enum role "Quyền: USER | ADMIN"
-        string telegram_id UK "ID Telegram định danh (Nullable)"
-        datetime created_at "Thời gian tạo tài khoản"
-        datetime updated_at "Thời gian cập nhật gần nhất"
-    }
-
-    PENDING_CONTACT_CHANGES {
-        string id PK "UUID"
-        string type "Loại: 'email' | 'phone'"
-        string value "Giá trị mới chờ xác thực"
-        string code_hash "Mã OTP đã băm SHA-256"
-        datetime expires_at "Thời điểm hết hạn OTP"
-        string accountId FK "Khóa ngoại tới ACCOUNTS (Cascade Delete)"
-        datetime created_at "Thời gian tạo yêu cầu"
-        datetime updated_at "Thời gian cập nhật"
-    }
-
-    %% Redis Cache Entities
-    REDIS_OTP_CACHE {
-        string key PK "otp:{type}:{identifier}"
-        string hash "Mã băm OTP"
-        int ttl "Thời gian sống (ví dụ: 300s)"
-    }
-
-    REDIS_TELEGRAM_SESSION {
-        string key PK "telegram:session:{sessionId}"
-        string data "Thông tin đăng nhập tạm từ Telegram"
-        int ttl "Thời gian sống session"
-    }
-
-    %% Quan hệ
-    ACCOUNTS ||--o{ PENDING_CONTACT_CHANGES : "1 Account có nhiều yêu cầu thay đổi (@@unique([accountId, type]))"
-    ACCOUNTS ||--o{ REDIS_OTP_CACHE : "cache OTP đăng nhập"
-    ACCOUNTS ||--o{ REDIS_TELEGRAM_SESSION : "cache phiên đăng nhập bot"
-```
-
----
-
-## 🔄 Các luồng xử lý chính (Sequence Diagrams)
-
-### 1. Luồng Gửi & Xác thực OTP (Passwordless Login)
-
-```mermaid
-%%{
-  init: {
-    'theme': 'dark',
-    'themeVariables': {
-      'actorBkg': '#1e3a8a',
-      'actorBorder': '#60a5fa',
-      'actorTextColor': '#e2e8f0',
-      'noteBkgColor': '#1e293b',
-      'noteBorderColor': '#60a5fa',
-      'noteTextColor': '#e2e8f0',
-      'activationBkgColor': '#0f172a',
-      'sequenceNumberColor': '#e2e8f0'
-    }
-  }
-}%%
-sequenceDiagram
-    autonumber
-    participant GW as gateway-service
-    participant Auth as auth-service
-    participant Redis as ⚡ Redis
-    participant RMQ as 🐇 RabbitMQ
-    participant DB as 🐘 PostgreSQL
-
-    GW->>Auth: gRPC SendOtp(type, identifier)
-    Auth->>Auth: Sinh mã OTP ngẫu nhiên 6 số & băm SHA-256
-    Auth->>Redis: Lưu OTP hash với TTL 5 phút
-    Auth->>RMQ: Publish event 'auth.otp.requested' { type, identifier, code }
-    Auth-->>GW: { ok: true }
-
-    GW->>Auth: gRPC VerifyOtp(type, identifier, code)
-    Auth->>Redis: Lấy OTP hash & đối chiếu
-    alt OTP Hợp lệ
-        Auth->>DB: Tìm hoặc Tạo mới Account (upsert)
-        Auth->>Auth: Sinh cặp Access Token + Refresh Token (@tomatocinema/passport)
-        Auth->>Redis: Lưu Refresh Token / Phiên đăng nhập
-        Auth-->>GW: { accessToken, refreshToken }
-    else OTP Không hợp lệ / Hết hạn
-        Auth-->>GW: gRPC Error (INVALID_ARGUMENT / NOT_FOUND)
-    end
-```
-
-### 2. Luồng Cập nhật Email / Số điện thoại 2 bước
-
-```mermaid
-%%{
-  init: {
-    'theme': 'dark',
-    'themeVariables': {
-      'actorBkg': '#1e3a8a',
-      'actorBorder': '#60a5fa',
-      'actorTextColor': '#e2e8f0',
-      'noteBkgColor': '#1e293b',
-      'noteBorderColor': '#60a5fa',
-      'noteTextColor': '#e2e8f0',
-      'activationBkgColor': '#0f172a',
-      'sequenceNumberColor': '#e2e8f0'
-    }
-  }
-}%%
-sequenceDiagram
-    autonumber
-    participant GW as gateway-service
-    participant Auth as auth-service
-    participant DB as 🐘 PostgreSQL
-    participant RMQ as 🐇 RabbitMQ
-
-    Note over GW,RMQ: Bước 1: Yêu cầu đổi thông tin & Gửi mã xác nhận
-    GW->>Auth: gRPC InitEmailChange({ userId, email })
-    Auth->>DB: Kiểm tra email đã được ai dùng chưa
-    Auth->>Auth: Sinh OTP 6 số & băm SHA-256
-    Auth->>DB: Upsert vào bảng `pending_contact_changes` (Hạn 5 phút)
-    Auth->>RMQ: Publish event 'account.email.changed' { email, code }
-    Auth-->>GW: { ok: true }
-
-    Note over GW,RMQ: Bước 2: Xác nhận mã OTP để hoàn tất thay đổi
-    GW->>Auth: gRPC ConfirmEmailChange({ userId, email, code })
-    Auth->>DB: Tìm yêu cầu trong `pending_contact_changes`
-    Auth->>Auth: Đối chiếu mã hash OTP
-    Auth->>DB: Cập nhật `email` và `is_email_verifed = true` trong bảng `accounts`
-    Auth->>DB: Xóa bản ghi trong `pending_contact_changes`
-    Auth-->>GW: { ok: true }
-```
-
----
-
-## 📡 gRPC Service Contracts
-
-Microservice implement 2 gRPC Services được định nghĩa trong gói `@tomatocinema/contracts`:
-
-### 1. `AuthService` (`auth.v1.proto`)
-
-- `SendOtp(SendOtpRequest) -> Empty`
-- `VerifyOtp(VerifyOtpRequest) -> AuthTokenResponse`
-- `RefreshToken(RefreshTokenRequest) -> AuthTokenResponse`
-- `TelegramInit(Empty) -> TelegramInitResponse`
-- `TelegramVerify(TelegramVerifyRequest) -> TelegramVerifyResponse`
-- `TelegramConsume(TelegramConsumeRequest) -> AuthTokenResponse`
-
-### 2. `AccountService` (`account.v1.proto`)
-
-- `InitEmailChange(InitEmailChangeRequest) -> Empty`
-- `ConfirmEmailChange(ConfirmEmailChangeRequest) -> Empty`
-- `InitPhoneChange(InitPhoneChangeRequest) -> Empty`
-- `ConfirmPhoneChange(ConfirmPhoneChangeRequest) -> Empty`
-
----
-
-## ⚙️ Biến môi trường (.env)
-
-Tạo file `.env` từ `.env.example`:
+## Project setup
 
 ```bash
-cp .env.example .env
+$ pnpm install
 ```
 
-| Biến                       | Bắt buộc | Mặc định / Ví dụ                                                  | Mô tả                                          |
-| :------------------------- | :------: | :---------------------------------------------------------------- | :--------------------------------------------- |
-| `NODE_ENV`                 |    Có    | `development` / `production`                                      | Môi trường triển khai                          |
-| `DATABASE_URL`             |    Có    | `postgresql://user:pass@localhost:5432/tomato_auth?schema=public` | Connection URL tới PostgreSQL                  |
-| `DATABASE_HOST`            |    Có    | `localhost`                                                       | Host database PostgreSQL                       |
-| `DATABASE_PORT`            |    Có    | `5432`                                                            | Port database PostgreSQL                       |
-| `DATABASE_USER`            |    Có    | `postgres`                                                        | Username database                              |
-| `DATABASE_PASSWORD`        |    Có    | `secret`                                                          | Mật khẩu database                              |
-| `DATABASE_NAME`            |    Có    | `tomato_auth`                                                     | Tên database                                   |
-| `GRPC_HOST`                |    Có    | `0.0.0.0`                                                         | Host gRPC server lắng nghe                     |
-| `GRPC_PORT`                |    Có    | `50051`                                                           | Port gRPC server                               |
-| `RMQ_URL`                  |    Có    | `amqp://user:pass@localhost:5672`                                 | RabbitMQ connection URL                        |
-| `REDIS_HOST`               |    Có    | `localhost`                                                       | Host của Redis                                 |
-| `REDIS_PORT`               |    Có    | `6379`                                                            | Port của Redis                                 |
-| `REDIS_USER`               |  Không   | `default`                                                         | Username Redis (nếu có)                        |
-| `REDIS_PASSWORD`           |  Không   | `redis_secret`                                                    | Password Redis                                 |
-| `PASSPORT_SECRET_KEY`      |    Có    | `your-jwt-secret-key`                                             | Secret key ký và giải mã JWT Token             |
-| `PASSPORT_ACCESS_TTL`      |    Có    | `900` (15 phút)                                                   | Thời gian sống Access Token (giây)             |
-| `PASSPORT_REFRESH_TTL`     |    Có    | `2592000` (30 ngày)                                               | Thời gian sống Refresh Token (giây)            |
-| `TELEGRAM_BOT_ID`          |    Có    | `123456789`                                                       | ID của Telegram Bot                            |
-| `TELEGRAM_BOT_TOKEN`       |    Có    | `bot_token_secret`                                                | Token truy cập Telegram Bot API                |
-| `TELEGRAM_BOT_USERNAME`    |    Có    | `TomatoCinemaBot`                                                 | Username của Telegram Bot                      |
-| `TELEGRAM_REDIRECT_ORIGIN` |    Có    | `http://localhost:3000`                                           | Redirect origin sau khi đăng nhập qua Telegram |
-
----
-
-## 🚀 Quản lý Database & Chạy Service
+## Compile and run the project
 
 ```bash
-# 1. Chạy migrations cho database PostgreSQL
-pnpm --filter auth-service prisma migrate dev
+# development
+$ pnpm run start
 
-# 2. Mở Prisma Studio để xem và quản trị dữ liệu trực quan
-pnpm --filter auth-service prisma studio
+# watch mode
+$ pnpm run start:dev
 
-# 3. Chạy ở chế độ Development (Watch mode)
-pnpm --filter auth-service dev
-
-# 4. Chạy ở chế độ Debug
-pnpm --filter auth-service debug
-
-# 5. Build và Chạy Production
-pnpm --filter auth-service build
-pnpm --filter auth-service start:prod
+# production mode
+$ pnpm run start:prod
 ```
+
+## Run tests
+
+```bash
+# unit tests
+$ pnpm run test
+
+# e2e tests
+$ pnpm run test:e2e
+
+# test coverage
+$ pnpm run test:cov
+```
+
+## Deployment
+
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+
+```bash
+$ pnpm install -g @nestjs/mau
+$ mau deploy
+```
+
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
