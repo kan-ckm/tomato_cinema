@@ -60,17 +60,14 @@ flowchart TD
 ```mermaid
 %%{
   init: {
-    'theme': 'base',
+    'theme': 'dark',
     'themeVariables': {
       'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#ffffff',
-      'primaryBorderColor': '#3b82f6',
-      'lineColor': '#2563eb',
-      'secondaryColor': '#1e293b',
-      'tertiaryColor': '#0f172a',
-      'attributeBackgroundColorOdd': '#1e293b',
-      'attributeBackgroundColorEven': '#0f172a',
-      'attributeTextColor': '#ffffff'
+      'primaryTextColor': '#e2e8f0',
+      'primaryBorderColor': '#60a5fa',
+      'lineColor': '#60a5fa',
+      'secondaryColor': '#0f172a',
+      'tertiaryColor': '#1e293b'
     }
   }
 }%%
@@ -145,26 +142,16 @@ erDiagram
 ```mermaid
 %%{
   init: {
-    'theme': 'base',
+    'theme': 'dark',
     'themeVariables': {
-      'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#ffffff',
-      'primaryBorderColor': '#3b82f6',
-      'actorBkg': '#1e293b',
-      'actorBorder': '#3b82f6',
-      'actorTextColor': '#ffffff',
-      'actorLineColor': '#3b82f6',
-      'signalColor': '#2563eb',
-      'labelBoxBkgColor': '#1e293b',
-      'labelBoxBorderColor': '#3b82f6',
-      'labelTextColor': '#ffffff',
-      'loopTextColor': '#2563eb',
-      'noteBkgColor': '#1e3a8a',
-      'noteBorderColor': '#3b82f6',
-      'noteTextColor': '#ffffff',
-      'activationBkgColor': '#334155',
-      'activationBorderColor': '#60a5fa',
-      'sequenceNumberColor': '#ffffff'
+      'actorBkg': '#1e3a8a',
+      'actorBorder': '#60a5fa',
+      'actorTextColor': '#e2e8f0',
+      'noteBkgColor': '#1e293b',
+      'noteBorderColor': '#60a5fa',
+      'noteTextColor': '#e2e8f0',
+      'activationBkgColor': '#0f172a',
+      'sequenceNumberColor': '#e2e8f0'
     }
   }
 }%%
@@ -192,26 +179,16 @@ sequenceDiagram
 ```mermaid
 %%{
   init: {
-    'theme': 'base',
+    'theme': 'dark',
     'themeVariables': {
-      'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#ffffff',
-      'primaryBorderColor': '#3b82f6',
-      'actorBkg': '#1e293b',
-      'actorBorder': '#3b82f6',
-      'actorTextColor': '#ffffff',
-      'actorLineColor': '#3b82f6',
-      'signalColor': '#2563eb',
-      'labelBoxBkgColor': '#1e293b',
-      'labelBoxBorderColor': '#3b82f6',
-      'labelTextColor': '#ffffff',
-      'loopTextColor': '#2563eb',
-      'noteBkgColor': '#1e3a8a',
-      'noteBorderColor': '#3b82f6',
-      'noteTextColor': '#ffffff',
-      'activationBkgColor': '#334155',
-      'activationBorderColor': '#60a5fa',
-      'sequenceNumberColor': '#ffffff'
+      'actorBkg': '#1e3a8a',
+      'actorBorder': '#60a5fa',
+      'actorTextColor': '#e2e8f0',
+      'noteBkgColor': '#1e293b',
+      'noteBorderColor': '#60a5fa',
+      'noteTextColor': '#e2e8f0',
+      'activationBkgColor': '#0f172a',
+      'sequenceNumberColor': '#e2e8f0'
     }
   }
 }%%
@@ -237,26 +214,16 @@ sequenceDiagram
 ```mermaid
 %%{
   init: {
-    'theme': 'base',
+    'theme': 'dark',
     'themeVariables': {
-      'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#ffffff',
-      'primaryBorderColor': '#3b82f6',
-      'actorBkg': '#1e293b',
-      'actorBorder': '#3b82f6',
-      'actorTextColor': '#ffffff',
-      'actorLineColor': '#3b82f6',
-      'signalColor': '#2563eb',
-      'labelBoxBkgColor': '#1e293b',
-      'labelBoxBorderColor': '#3b82f6',
-      'labelTextColor': '#ffffff',
-      'loopTextColor': '#2563eb',
-      'noteBkgColor': '#1e3a8a',
-      'noteBorderColor': '#3b82f6',
-      'noteTextColor': '#ffffff',
-      'activationBkgColor': '#334155',
-      'activationBorderColor': '#60a5fa',
-      'sequenceNumberColor': '#ffffff'
+      'actorBkg': '#1e3a8a',
+      'actorBorder': '#60a5fa',
+      'actorTextColor': '#e2e8f0',
+      'noteBkgColor': '#1e293b',
+      'noteBorderColor': '#60a5fa',
+      'noteTextColor': '#e2e8f0',
+      'activationBkgColor': '#0f172a',
+      'sequenceNumberColor': '#e2e8f0'
     }
   }
 }%%
@@ -292,26 +259,16 @@ sequenceDiagram
 ```mermaid
 %%{
   init: {
-    'theme': 'base',
+    'theme': 'dark',
     'themeVariables': {
-      'primaryColor': '#1e3a8a',
-      'primaryTextColor': '#ffffff',
-      'primaryBorderColor': '#3b82f6',
-      'actorBkg': '#1e293b',
-      'actorBorder': '#3b82f6',
-      'actorTextColor': '#ffffff',
-      'actorLineColor': '#3b82f6',
-      'signalColor': '#2563eb',
-      'labelBoxBkgColor': '#1e293b',
-      'labelBoxBorderColor': '#3b82f6',
-      'labelTextColor': '#ffffff',
-      'loopTextColor': '#2563eb',
-      'noteBkgColor': '#1e3a8a',
-      'noteBorderColor': '#3b82f6',
-      'noteTextColor': '#ffffff',
-      'activationBkgColor': '#334155',
-      'activationBorderColor': '#60a5fa',
-      'sequenceNumberColor': '#ffffff'
+      'actorBkg': '#1e3a8a',
+      'actorBorder': '#60a5fa',
+      'actorTextColor': '#e2e8f0',
+      'noteBkgColor': '#1e293b',
+      'noteBorderColor': '#60a5fa',
+      'noteTextColor': '#e2e8f0',
+      'activationBkgColor': '#0f172a',
+      'sequenceNumberColor': '#e2e8f0'
     }
   }
 }%%
