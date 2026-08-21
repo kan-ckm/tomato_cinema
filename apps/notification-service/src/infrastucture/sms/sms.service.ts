@@ -24,6 +24,13 @@ export class SmsService {
 		})
 	}
 
+	public sendPhoneChanged(phone: string, code: string) {
+		return this.send({
+			destination: phone,
+			text: `Mã xác nhận thay đổi số điện thoại của bạn: ${code}`
+		})
+	}
+
 	public async send(data: SendSmsRequest): Promise<SendSmsResponse> {
 		const payload = {
 			number: data.sender ?? this.options.sender,
