@@ -6,6 +6,6 @@ Shared ESLint configuration dùng chung trong toàn bộ monorepo **Tomato Cinem
 
 ```js
 // eslint.config.mjs
-import { config } from '@tomatocinema/eslint-config'
-export default config
+import { config } from "@tomatocinema/eslint-config";
+export default config;
 ```

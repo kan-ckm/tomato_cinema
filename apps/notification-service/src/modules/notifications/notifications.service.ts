@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { otpRequestedEvent, PhoneChangedEvent } from '@tomatocinema/contracts'
+import {
+	EmailChangedEvent,
+	otpRequestedEvent,
+	PhoneChangedEvent
+} from '@tomatocinema/contracts'
 import { MailService } from 'src/infrastucture/mail/mail.service'
 import { SmsService } from 'src/infrastucture/sms/sms.service'
 
@@ -21,8 +25,13 @@ export class NotificationsService {
 		}
 	}
 
-	public async sendPhoneChang(data: PhoneChangedEvent) {
-		const {phone, code,} = data
+	public async sendPhoneChange(data: PhoneChangedEvent) {
+		const { phone, code } = data
 		return await this.smsService.sendPhoneChanged(phone, code)
+	}
+
+	public async sendEmailChange(data: EmailChangedEvent) {
+		const { email, code } = data
+		return await this.mailService.sendEmailChange(email, code)
 	}
 }

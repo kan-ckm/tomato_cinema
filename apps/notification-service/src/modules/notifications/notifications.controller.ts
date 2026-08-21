@@ -1,6 +1,10 @@
 import { Controller, Logger } from '@nestjs/common'
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices'
-import type { EmailChangedEvent, otpRequestedEvent, PhoneChangedEvent } from '@tomatocinema/contracts'
+import type {
+	EmailChangedEvent,
+	otpRequestedEvent,
+	PhoneChangedEvent
+} from '@tomatocinema/contracts'
 import { RmqService } from 'src/infrastucture/rmq/rmq.service'
 import { NotificationsService } from './notifications.service'
 
@@ -33,10 +37,25 @@ export class NotificationsController {
 		@Ctx() ctx: RmqContext
 	) {
 		try {
-			await this.notificationsService.sendPhoneChanged(data)
+			await this.notificationsService.sendPhoneChange(data)
 			this.rmqService.ack(ctx)
 		} catch (error) {
-			this.logger.error('OTP processing error', error.message ?? error)
+			this.logger.error('Phone changed error', error.message ?? error)
+
+			this.rmqService.nack(ctx)
+		}
+	}
+
+	@EventPattern('account.email.changed')
+	public async emailChanged(
+		@Payload() data: EmailChangedEvent,
+		@Ctx() ctx: RmqContext
+	) {
+		try {
+			await this.notificationsService.sendEmailChange(data)
+			this.rmqService.ack(ctx)
+		} catch (error) {
+			this.logger.error('Email changed error', error.message ?? error)
 
 			this.rmqService.nack(ctx)
 		}

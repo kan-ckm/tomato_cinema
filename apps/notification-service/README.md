@@ -53,19 +53,19 @@ pnpm install
 
 ## Biến môi trường
 
-| Biến | Mô tả |
-|------|-------|
-| `NODE_ENV` | Môi trường (`development` / `production`) |
-| `RMQ_URL` | RabbitMQ connection URL |
-| `RMQ_QUEUE` | Tên queue để lắng nghe |
-| `SMTP_HOST` | SMTP server host |
-| `SMTP_PORT` | SMTP server port |
-| `SMTP_USERNAME` | SMTP username |
-| `SMTP_PASSWORD` | SMTP password |
-| `SMTP_FROM_ADDRESS` | Địa chỉ email gửi đi |
-| `SMTP_SECURE` | Sử dụng TLS (`true` / `false`) |
-| `EXOLVE_API_KEY` | API key của Exolve (MTS) |
-| `EXOLVE_SENDER` | Số điện thoại / tên người gửi SMS |
+| Biến                | Mô tả                                     |
+| ------------------- | ----------------------------------------- |
+| `NODE_ENV`          | Môi trường (`development` / `production`) |
+| `RMQ_URL`           | RabbitMQ connection URL                   |
+| `RMQ_QUEUE`         | Tên queue để lắng nghe                    |
+| `SMTP_HOST`         | SMTP server host                          |
+| `SMTP_PORT`         | SMTP server port                          |
+| `SMTP_USERNAME`     | SMTP username                             |
+| `SMTP_PASSWORD`     | SMTP password                             |
+| `SMTP_FROM_ADDRESS` | Địa chỉ email gửi đi                      |
+| `SMTP_SECURE`       | Sử dụng TLS (`true` / `false`)            |
+| `EXOLVE_API_KEY`    | API key của Exolve (MTS)                  |
+| `EXOLVE_SENDER`     | Số điện thoại / tên người gửi SMS         |
 
 ## Chạy service
 

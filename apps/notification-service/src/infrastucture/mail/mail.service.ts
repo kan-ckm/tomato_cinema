@@ -18,4 +18,16 @@ export class MailService {
 			html: html
 		})
 	}
+
+	public async sendEmailChange(email: string, code: string) {
+		const html = await this.templateService.render('email-changed', {
+			code
+		})
+
+		await this.transporter.sendMail({
+			to: email,
+			subject: 'Tomato Cinema - Thay đổi email',
+			html: html
+		})
+	}
 }

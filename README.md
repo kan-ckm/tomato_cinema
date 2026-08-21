@@ -111,33 +111,33 @@ pnpm --filter auth-service build
 
 ## 🛠️ Tech Stack
 
-| Lớp | Công nghệ |
-|-----|-----------|
-| Runtime | Node.js 20, TypeScript |
-| Framework | NestJS 11 |
-| Monorepo | Turborepo + pnpm workspaces |
-| Database | PostgreSQL 16 + Prisma |
-| Cache | Redis 8 |
-| Message Broker | RabbitMQ 3 |
-| RPC | gRPC (protobuf) |
-| Email | Nodemailer + Handlebars templates |
-| SMS | Exolve API (MTS) |
-| Bot | Telegraf (Telegram) |
-| Frontend | Next.js 16 |
-| Validation | Zod, class-validator |
-| Auth | JWT (access + refresh token) |
-| Containerization | Docker Compose |
+| Lớp              | Công nghệ                         |
+| ---------------- | --------------------------------- |
+| Runtime          | Node.js 20, TypeScript            |
+| Framework        | NestJS 11                         |
+| Monorepo         | Turborepo + pnpm workspaces       |
+| Database         | PostgreSQL 16 + Prisma            |
+| Cache            | Redis 8                           |
+| Message Broker   | RabbitMQ 3                        |
+| RPC              | gRPC (protobuf)                   |
+| Email            | Nodemailer + Handlebars templates |
+| SMS              | Exolve API (MTS)                  |
+| Bot              | Telegraf (Telegram)               |
+| Frontend         | Next.js 16                        |
+| Validation       | Zod, class-validator              |
+| Auth             | JWT (access + refresh token)      |
+| Containerization | Docker Compose                    |
 
 ---
 
 ## 📦 Packages nội bộ
 
-| Package | Mô tả |
-|---------|-------|
+| Package                   | Mô tả                                                                    |
+| ------------------------- | ------------------------------------------------------------------------ |
 | `@tomatocinema/contracts` | Types, interfaces & Protobuf-generated code dùng chung giữa các services |
-| `@tomatocinema/common` | Decorators, filters, guards tái sử dụng |
-| `@tomatocinema/core` | Core abstractions và base classes |
-| `@tomatocinema/passport` | JWT strategy và authentication helpers |
+| `@tomatocinema/common`    | Decorators, filters, guards tái sử dụng                                  |
+| `@tomatocinema/core`      | Core abstractions và base classes                                        |
+| `@tomatocinema/passport`  | JWT strategy và authentication helpers                                   |
 
 ---
 
