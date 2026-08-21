@@ -9,6 +9,7 @@ import {
 	InitPhoneChangeRequest,
 	RoleUser
 } from '@tomatocinema/contracts/gen/account'
+import { MessagingService } from '@/infrastucture/messaging/messaging.service'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { AccountRepository } from './account.repository'
@@ -16,6 +17,7 @@ import { AccountRepository } from './account.repository'
 @Injectable()
 export class AccountService {
 	public constructor(
+		private readonly messagingService: MessagingService,
 		private readonly accountRepository: AccountRepository,
 		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService
@@ -54,8 +56,11 @@ export class AccountService {
 
 		// Tạo và gửi mã OTP đến email mới
 		const { code, hash } = await this.otpService.send(email, 'email')
-		console.log('code thay đổi email', code)
-
+		console.log('code email:', code)
+		await this.messagingService.emailChanged({
+			email,
+			code
+		})
 		// Lưu thông tin yêu cầu thay đổi (Pending Change) vào database để chờ xác nhận, có hạn 5 phút
 		await this.accountRepository.upsertPendingChange({
 			accountId: userId,
@@ -110,7 +115,7 @@ export class AccountService {
 
 	public async initChangePhone(data: InitPhoneChangeRequest) {
 		const { phone, userId } = data
-		const existing = await this.userRepository.findByEmail(phone)
+		const existing = await this.userRepository.findByPhone(phone)
 
 		if (existing)
 			throw new RpcException({
@@ -118,9 +123,11 @@ export class AccountService {
 				details: 'số điện thoại đã được sử dụng'
 			})
 		const { code, hash } = await this.otpService.send(phone, 'phone')
-
-		console.log('code thay đổi phone', code)
-
+		console.log('code phone:', code)
+		await this.messagingService.phoneChanged({
+			phone,
+			code
+		})
 		await this.accountRepository.upsertPendingChange({
 			accountId: userId,
 			type: 'phone',
@@ -141,7 +148,7 @@ export class AccountService {
 
 		if (!pending)
 			throw new RpcException({
-				code: RpcStatus,
+				code: RpcStatus.NOT_FOUND,
 				details: 'Không có yêu cầu nào đang chờ xử lý'
 			})
 
@@ -161,7 +168,7 @@ export class AccountService {
 
 		await this.userRepository.update(userId, {
 			phone,
-			isEmailVerified: true
+			isPhoneVerified: true
 		})
 		await this.accountRepository.deletePendingChange(userId, 'phone')
 		return { ok: true }

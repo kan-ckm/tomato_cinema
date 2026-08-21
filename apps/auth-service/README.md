@@ -31,27 +31,27 @@ pnpm install
 
 ## Biến môi trường
 
-| Biến | Mô tả |
-|------|-------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `DATABASE_HOST` | Host của PostgreSQL |
-| `DATABASE_PORT` | Port của PostgreSQL |
-| `DATABASE_USER` | Username PostgreSQL |
-| `DATABASE_PASSWORD` | Password PostgreSQL |
-| `DATABASE_NAME` | Tên database |
-| `GRPC_HOST` | gRPC server host |
-| `GRPC_PORT` | gRPC server port |
-| `RMQ_URL` | RabbitMQ connection URL |
-| `REDIS_HOST` | Redis host |
-| `REDIS_PORT` | Redis port |
-| `REDIS_USER` | Redis username |
-| `REDIS_PASSWORD` | Redis password |
-| `PASSPORT_SECRET_KEY` | Secret key cho JWT signing |
-| `PASSPORT_ACCESS_TTL` | TTL của access token (giây) |
-| `PASSPORT_REFRESH_TTL` | TTL của refresh token (giây) |
-| `TELEGRAM_BOT_ID` | ID của Telegram Bot |
-| `TELEGRAM_BOT_TOKEN` | Token của Telegram Bot |
-| `TELEGRAM_BOT_USERNAME` | Username Telegram Bot |
+| Biến                       | Mô tả                                      |
+| -------------------------- | ------------------------------------------ |
+| `DATABASE_URL`             | PostgreSQL connection string               |
+| `DATABASE_HOST`            | Host của PostgreSQL                        |
+| `DATABASE_PORT`            | Port của PostgreSQL                        |
+| `DATABASE_USER`            | Username PostgreSQL                        |
+| `DATABASE_PASSWORD`        | Password PostgreSQL                        |
+| `DATABASE_NAME`            | Tên database                               |
+| `GRPC_HOST`                | gRPC server host                           |
+| `GRPC_PORT`                | gRPC server port                           |
+| `RMQ_URL`                  | RabbitMQ connection URL                    |
+| `REDIS_HOST`               | Redis host                                 |
+| `REDIS_PORT`               | Redis port                                 |
+| `REDIS_USER`               | Redis username                             |
+| `REDIS_PASSWORD`           | Redis password                             |
+| `PASSPORT_SECRET_KEY`      | Secret key cho JWT signing                 |
+| `PASSPORT_ACCESS_TTL`      | TTL của access token (giây)                |
+| `PASSPORT_REFRESH_TTL`     | TTL của refresh token (giây)               |
+| `TELEGRAM_BOT_ID`          | ID của Telegram Bot                        |
+| `TELEGRAM_BOT_TOKEN`       | Token của Telegram Bot                     |
+| `TELEGRAM_BOT_USERNAME`    | Username Telegram Bot                      |
 | `TELEGRAM_REDIRECT_ORIGIN` | Origin URL redirect sau đăng nhập Telegram |
 
 ## Chạy service
