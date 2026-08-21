@@ -34,6 +34,19 @@ flowchart TD
     OtpSvc & AuthSvc -->|Get / Set / Expire| Redis
     MsgSvc -->|Emit: auth.otp.requested\naccount.email.changed\naccount.phone.changed| RMQ
     RMQ --> NotifSvc["🔔 notification-service (Email & SMS)"]
+
+    style GW fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style AuthGrpc fill:#0284c7,stroke:#38bdf8,color:#fff
+    style AuthSvc fill:#0284c7,stroke:#38bdf8,color:#fff
+    style AccSvc fill:#0284c7,stroke:#38bdf8,color:#fff
+    style OtpSvc fill:#0d9488,stroke:#14b8a6,color:#fff
+    style Passport fill:#7c3aed,stroke:#a855f7,color:#fff
+    style UserRepo fill:#0284c7,stroke:#38bdf8,color:#fff
+    style MsgSvc fill:#ea580c,stroke:#f97316,color:#fff
+    style PG fill:#334155,stroke:#64748b,color:#fff
+    style Redis fill:#dc2626,stroke:#ef4444,color:#fff
+    style RMQ fill:#d97706,stroke:#f59e0b,color:#fff
+    style NotifSvc fill:#4f46e5,stroke:#6366f1,color:#fff
 ```
 
 ---
@@ -41,6 +54,22 @@ flowchart TD
 ## 🗄️ Sơ đồ thực thể cơ sở dữ liệu (Database ERD)
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'lineColor': '#2563eb',
+      'secondaryColor': '#1e293b',
+      'tertiaryColor': '#0f172a',
+      'attributeBackgroundColorOdd': '#1e293b',
+      'attributeBackgroundColorEven': '#0f172a',
+      'attributeTextColor': '#ffffff'
+    }
+  }
+}%%
 erDiagram
     %% PostgreSQL Entities
     ACCOUNTS {
@@ -92,6 +121,31 @@ erDiagram
 ### 1. Luồng Gửi & Xác thực OTP (Passwordless Login)
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     participant GW as gateway-service
@@ -121,6 +175,31 @@ sequenceDiagram
 ### 2. Luồng Cập nhật Email / Số điện thoại 2 bước
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     participant GW as gateway-service

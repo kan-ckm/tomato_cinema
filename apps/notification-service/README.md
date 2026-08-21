@@ -22,25 +22,24 @@ Microservice gửi thông báo cho hệ thống **Tomato Cinema** — xử lý g
 
 ## Luồng xử lý OTP
 
-```
-auth-service
-    │
-    │ publish: auth.otp.requested
-    ▼
-RabbitMQ
-    │
-    ▼
-notification-service
-    │
-    ├── type === 'email' ──► MailService.sendOtp()
-    │                              │
-    │                              ▼
-    │                         SMTP Server
-    │
-    └── type === 'phone' ──► SmsService.sendOtp()
-                                   │
-                                   ▼
-                            Exolve SMS API
+```mermaid
+flowchart TD
+    Auth["🔐 auth-service"] -->|publish: auth.otp.requested| RMQ[("🐇 RabbitMQ\ntomatocinema_queue")]
+    RMQ --> Notif["🔔 notification-service\n(Consumer)"]
+
+    Notif -->|type === 'email'| Mail["✉️ MailService.sendOtp()\n(Nodemailer + Handlebars)"]
+    Notif -->|type === 'phone'| SMS["📱 SmsService.sendOtp()\n(Exolve SMS API)"]
+
+    Mail --> SMTP[("📧 SMTP Server")]
+    SMS --> Exolve[("☁️ MTS Exolve Gateway")]
+
+    style Auth fill:#0284c7,stroke:#38bdf8,color:#fff
+    style RMQ fill:#d97706,stroke:#f59e0b,color:#fff
+    style Notif fill:#4f46e5,stroke:#6366f1,color:#fff
+    style Mail fill:#0d9488,stroke:#14b8a6,color:#fff
+    style SMS fill:#0284c7,stroke:#38bdf8,color:#fff
+    style SMTP fill:#334155,stroke:#64748b,color:#fff
+    style Exolve fill:#334155,stroke:#64748b,color:#fff
 ```
 
 ## Cài đặt

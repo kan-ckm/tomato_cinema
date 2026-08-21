@@ -40,6 +40,17 @@ flowchart TD
     AC -->|gRPC Unary Calls| AuthSvc
     ACC -->|gRPC Unary Calls| AuthSvc
     Filter -->|HTTP Error Response| Clients
+
+    style Web fill:#2563eb,stroke:#3b82f6,color:#fff
+    style Mobile fill:#2563eb,stroke:#3b82f6,color:#fff
+    style CORS fill:#0284c7,stroke:#38bdf8,color:#fff
+    style ValPipe fill:#0d9488,stroke:#14b8a6,color:#fff
+    style AuthGuard fill:#7c3aed,stroke:#a855f7,color:#fff
+    style AC fill:#0284c7,stroke:#38bdf8,color:#fff
+    style ACC fill:#0284c7,stroke:#38bdf8,color:#fff
+    style HC fill:#16a34a,stroke:#22c55e,color:#fff
+    style Filter fill:#dc2626,stroke:#ef4444,color:#fff
+    style AuthSvc fill:#1e3a8a,stroke:#3b82f6,color:#fff
 ```
 
 ---
@@ -47,6 +58,22 @@ flowchart TD
 ## 📊 Mô hình dữ liệu & Quan hệ DTO (Entity / Contract Model)
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'lineColor': '#2563eb',
+      'secondaryColor': '#1e293b',
+      'tertiaryColor': '#0f172a',
+      'attributeBackgroundColorOdd': '#1e293b',
+      'attributeBackgroundColorEven': '#0f172a',
+      'attributeTextColor': '#ffffff'
+    }
+  }
+}%%
 erDiagram
     SendOtpRequest {
         string type "email | phone"
@@ -79,7 +106,7 @@ erDiagram
 
     ConfirmEmailChangeRequest {
         string email "Email mới"
-        string code "Mã OTP nhận tại email mới"
+        string code "Mã OTP nhận tại Email mới"
         string userId "Trích xuất từ @CurrentUser"
     }
 
@@ -116,6 +143,31 @@ erDiagram
 ### 1. Đăng nhập Passwordless bằng OTP (Email / SĐT)
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     actor User as Client (Web / Mobile)
@@ -138,6 +190,31 @@ sequenceDiagram
 ### 2. Làm mới Token tự động (Refresh Token Rotation)
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     actor User as Client
@@ -158,6 +235,31 @@ sequenceDiagram
 ### 3. Đăng nhập Telegram OAuth / SSO
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     actor User as Client
@@ -188,6 +290,31 @@ sequenceDiagram
 ### 4. Thay đổi Email / Số điện thoại 2 bước
 
 ```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#1e3a8a',
+      'primaryTextColor': '#ffffff',
+      'primaryBorderColor': '#3b82f6',
+      'actorBkg': '#1e293b',
+      'actorBorder': '#3b82f6',
+      'actorTextColor': '#ffffff',
+      'actorLineColor': '#3b82f6',
+      'signalColor': '#2563eb',
+      'labelBoxBkgColor': '#1e293b',
+      'labelBoxBorderColor': '#3b82f6',
+      'labelTextColor': '#ffffff',
+      'loopTextColor': '#2563eb',
+      'noteBkgColor': '#1e3a8a',
+      'noteBorderColor': '#3b82f6',
+      'noteTextColor': '#ffffff',
+      'activationBkgColor': '#334155',
+      'activationBorderColor': '#60a5fa',
+      'sequenceNumberColor': '#ffffff'
+    }
+  }
+}%%
 sequenceDiagram
     autonumber
     actor User as Client (Authenticated)
@@ -223,6 +350,16 @@ flowchart LR
     G -- No --> Ctrl
     Ctrl --> Grpc[gRPC Call]
     Grpc --> Res[Response + Set-Cookie]
+
+    style Req fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style C fill:#0284c7,stroke:#38bdf8,color:#fff
+    style V fill:#0d9488,stroke:#14b8a6,color:#fff
+    style G fill:#d97706,stroke:#f59e0b,color:#fff
+    style AG fill:#7c3aed,stroke:#a855f7,color:#fff
+    style RG fill:#7c3aed,stroke:#a855f7,color:#fff
+    style Ctrl fill:#0284c7,stroke:#38bdf8,color:#fff
+    style Grpc fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style Res fill:#16a34a,stroke:#22c55e,color:#fff
 ```
 
 ### Chi tiết bộ lọc lỗi gRPC (`GrpcExceptionFilter`)

@@ -30,29 +30,24 @@ tomato_cinema/
 
 ## 🏗️ Kiến trúc hệ thống
 
-```
-Client / Web
-     │
-     ▼
-┌─────────────────┐
-│  gateway-service│  ◄── REST API (HTTP)
-│  (NestJS + gRPC)│
-└────────┬────────┘
-         │ gRPC / RabbitMQ
-    ┌────┴──────────────────────┐
-    ▼                           ▼
-┌──────────────┐    ┌─────────────────────┐
-│ auth-service │    │ notification-service│
-│  PostgreSQL  │    │   Email + SMS       │
-│  Redis       │    │   (Exolve API)      │
-└──────────────┘    └─────────────────────┘
-         │
-    ┌────┴─────┐
-    ▼          ▼
-┌──────────┐  ┌────────────┐
-│ RabbitMQ │  │ bot-service│
-│ (queue)  │  │ (Telegram) │
-└──────────┘  └────────────┘
+```mermaid
+flowchart TD
+    Client["🌐 Client (Web / Mobile)"] -->|HTTP REST / Cookie| GW["🚪 gateway-service\n(NestJS + gRPC)"]
+
+    GW -->|gRPC Unary Calls| Auth["🔐 auth-service\n(PostgreSQL + Redis)"]
+    GW -.->|Event Pub| RMQ[("🐇 RabbitMQ\nMessage Broker")]
+
+    Auth -->|Publish Events| RMQ
+    RMQ -->|auth.otp.requested\naccount.*.changed| Notif["🔔 notification-service\n(Email & SMS Exolve)"]
+
+    Auth -.->|gRPC Bot Verify| Bot["🤖 bot-service\n(Telegram Bot)"]
+
+    style Client fill:#2563eb,stroke:#3b82f6,color:#fff
+    style GW fill:#1e3a8a,stroke:#3b82f6,color:#fff
+    style Auth fill:#0284c7,stroke:#38bdf8,color:#fff
+    style RMQ fill:#d97706,stroke:#f59e0b,color:#fff
+    style Notif fill:#4f46e5,stroke:#6366f1,color:#fff
+    style Bot fill:#0d9488,stroke:#14b8a6,color:#fff
 ```
 
 ---
