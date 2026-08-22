@@ -1,10 +1,13 @@
 import { INestApplication } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MicroserviceOptions, Transport } from '@nestjs/microservices'
-import { AllConfigs } from 'config/interfaces'
+import { AllConfigs } from 'src/config'
 import { grpcLoader, grpcPackages, grpcProtoPaths } from './grpc-options'
 
-export function createGrpcServer(app: INestApplication, config: ConfigService) {
+export function createGrpcServer(
+	app: INestApplication,
+	config: ConfigService<AllConfigs>
+) {
 	const host = config.get('grpc.host', { infer: true })
 	const port = config.get('grpc.port', { infer: true })
 	const url = `${host}:${port}`
