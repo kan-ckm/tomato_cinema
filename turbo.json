@@ -14,10 +14,12 @@
       "dependsOn": ["^check-types"]
     },
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "debug": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     }
