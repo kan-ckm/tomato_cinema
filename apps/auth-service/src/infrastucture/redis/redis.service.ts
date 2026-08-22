@@ -5,8 +5,8 @@ import {
 	OnModuleInit
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { AllConfigs } from 'config/interfaces'
 import Redis from 'ioredis'
+import { AllConfigs } from '@/config'
 
 @Injectable()
 export class RedisService

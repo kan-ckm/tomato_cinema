@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MicroserviceOptions, Transport } from '@nestjs/microservices'
-import { AllConfigs } from 'config/interfaces'
+import { AllConfigs } from '@/config'
 import { grpcLoader, grpcPackages, grpcProtoPaths } from './grpc-options'
 
 export function createGrpcServer(

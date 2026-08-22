@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
-import { AllConfigs } from 'config/interfaces/all-configs-intertface'
+import { AllConfigs } from '@/config'
 import { MessagingService } from './messaging.service'
 
 @Global()

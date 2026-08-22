@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportService, TokenPayload } from '@tomatocinema/passport'
-import { AllConfigs } from 'config/interfaces'
+import { AllConfigs } from '@/config'
 
 @Injectable()
 export class TokenService {

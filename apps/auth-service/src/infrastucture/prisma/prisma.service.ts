@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { AllConfigs } from 'config/interfaces'
 import { PrismaClient } from 'generated/client'
+import { AllConfigs } from '@/config'
 
 @Injectable()
 export class PrismaService

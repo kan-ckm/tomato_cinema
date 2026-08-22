@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportModule } from '@tomatocinema/passport'
-import { getPassportConfig } from 'config'
+import { getPassportConfig } from '@/config'
 import { TokenService } from './token.service'
 
 @Module({

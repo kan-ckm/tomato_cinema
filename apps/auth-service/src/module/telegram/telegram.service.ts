@@ -7,8 +7,8 @@ import {
 	TelegramConsumeRequest,
 	TelegramVerifyRequest
 } from '@tomatocinema/contracts/gen/auth'
-import { AllConfigs } from 'config/interfaces'
 import { createHash, createHmac, randomBytes } from 'crypto'
+import { AllConfigs } from '@/config'
 import { RedisService } from '@/infrastucture/redis/redis.service'
 import { UserRepository } from '@/shared/repository'
 import { TokenService } from '../token/token.service'

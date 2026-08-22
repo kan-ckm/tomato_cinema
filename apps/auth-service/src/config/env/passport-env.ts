@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config'
-import { PassportConfig } from 'config/interfaces'
-import { PassportValidator } from 'config/validators'
 import { validateEnv } from '@/shared/utils/env'
+import { PassportConfig } from '../interfaces'
+import { PassportValidator } from '../validators'
 
 export const passportEnv = registerAs<PassportConfig>('passport', () => {
 	validateEnv(process.env, PassportValidator)

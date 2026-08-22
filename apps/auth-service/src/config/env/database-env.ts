@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config'
-import { DatabaseConfig } from 'config/interfaces'
-import { DatabaseValidator } from 'config/validators'
 import { validateEnv } from '@/shared/utils/env'
+import { DatabaseConfig } from '../interfaces'
+import { DatabaseValidator } from '../validators'
 
 export const databaseEnv = registerAs<DatabaseConfig>('database', () => {
 	validateEnv(process.env, DatabaseValidator)

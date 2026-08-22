@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config'
-import { RmqConfig } from 'config/interfaces/rmq.interface'
-import { RmqValidator } from 'config/validators'
 import { validateEnv } from '@/shared/utils/env'
+import { RmqConfig } from '../interfaces/rmq.interface'
+import { RmqValidator } from '../validators'
 
 export const rmqEnv = registerAs<RmqConfig>('rmq', () => {
 	validateEnv(process.env, RmqValidator)
