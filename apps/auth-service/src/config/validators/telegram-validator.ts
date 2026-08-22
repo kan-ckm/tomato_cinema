@@ -7,6 +7,6 @@ export class TelegramValidator {
 	public TELEGRAM_BOT_TOKEN: string
 	@IsString()
 	public TELEGRAM_BOT_USERNAME: string
-	@IsUrl()
+	@IsUrl({ require_tld: false })
 	public TELEGRAM_REDIRECT_ORIGIN: string
 }
