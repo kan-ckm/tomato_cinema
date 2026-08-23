@@ -3,5 +3,5 @@ export interface DatabaseConfig {
 	password: string
 	host: string
 	port: number
-	name: string
+	db_name: string
 }

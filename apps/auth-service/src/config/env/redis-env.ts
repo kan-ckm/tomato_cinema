@@ -4,12 +4,12 @@ import { RedisConfig } from '../interfaces'
 import { RedisValidator } from '../validators'
 
 export const redisEnv = registerAs<RedisConfig>('redis', () => {
-	validateEnv(process.env, RedisValidator)
+	const validatedConfig = validateEnv(process.env, RedisValidator)
 
 	return {
-		user: process.env.REDIS_USER,
-		password: process.env.REDIS_PASSWORD,
-		host: process.env.REDIS_HOST,
-		port: parseInt(process.env.REDIS_PORT)
+		user: validatedConfig.REDIS_USER,
+		password: validatedConfig.REDIS_PASSWORD,
+		host: validatedConfig.REDIS_HOST,
+		port: validatedConfig.REDIS_PORT
 	}
 })

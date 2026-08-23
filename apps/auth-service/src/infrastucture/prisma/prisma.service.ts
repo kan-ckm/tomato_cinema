@@ -23,7 +23,7 @@ export class PrismaService
 			password: configService.get('database.password', { infer: true }),
 			host: configService.get('database.host', { infer: true }),
 			port: configService.get('database.port', { infer: true }),
-			database: configService.get('database.name', { infer: true })
+			database: configService.get('database.db_name', { infer: true })
 		})
 
 		super({ adapter })

@@ -2,7 +2,7 @@ import { IsInt, IsString, Max, Min } from 'class-validator'
 
 export class DatabaseValidator {
 	@IsString()
-	public DATABASE_USER: string
+	public DATABASE_USERNAME: string
 	@IsString()
 	public DATABASE_PASSWORD: string
 	@IsString()

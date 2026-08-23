@@ -4,12 +4,12 @@ import { TelegramConfig } from '../interfaces'
 import { TelegramValidator } from '../validators'
 
 export const telegramEnv = registerAs<TelegramConfig>('telegram', () => {
-	validateEnv(process.env, TelegramValidator)
+	const validatedConfig = validateEnv(process.env, TelegramValidator)
 
 	return {
-		botId: process.env.TELEGRAM_BOT_ID,
-		botToken: process.env.TELEGRAM_BOT_TOKEN,
-		botUsername: process.env.TELEGRAM_BOT_USERNAME,
-		redirectOrigin: process.env.TELEGRAM_REDIRECT_ORIGIN
+		botId: validatedConfig.TELEGRAM_BOT_ID,
+		botToken: validatedConfig.TELEGRAM_BOT_TOKEN,
+		botUsername: validatedConfig.TELEGRAM_BOT_USERNAME,
+		redirectOrigin: validatedConfig.TELEGRAM_REDIRECT_ORIGIN
 	}
 })
