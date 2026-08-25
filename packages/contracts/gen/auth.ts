@@ -58,9 +58,7 @@ export interface TelegramVerifyRequest_QueryEntry {
 
 export interface TelegramVerifyResponse {
   /** Trả về URL (Ví dụ: Chuyển hướng sang trang cập nhật thông tin nếu là user mới) */
-  url?:
-    | string
-    | undefined;
+  url?: string | undefined;
   /** Đăng nhập thành công -> Trả thẳng Token */
   accessToken?: string | undefined;
   refreshToken?: string | undefined;
@@ -101,39 +99,68 @@ export interface AuthServiceClient {
 
   /** Xác minh dữ liệu Telegram trả về */
 
-  telegramVerify(request: TelegramVerifyRequest): Observable<TelegramVerifyResponse>;
+  telegramVerify(
+    request: TelegramVerifyRequest,
+  ): Observable<TelegramVerifyResponse>;
 
-  telegramComplete(request: TelegramCompleteRequest): Observable<TelegramCompleteResponse>;
+  telegramComplete(
+    request: TelegramCompleteRequest,
+  ): Observable<TelegramCompleteResponse>;
 
-  telegramConsume(request: TelegramConsumeRequest): Observable<TelegramConsumeResponse>;
+  telegramConsume(
+    request: TelegramConsumeRequest,
+  ): Observable<TelegramConsumeResponse>;
 }
 
 export interface AuthServiceController {
   /** Nhóm tính năng Xác thực không mật khẩu (OTP) */
 
-  sendOtp(request: SendOtpRequest): Promise<SendOtpResponse> | Observable<SendOtpResponse> | SendOtpResponse;
+  sendOtp(
+    request: SendOtpRequest,
+  ): Promise<SendOtpResponse> | Observable<SendOtpResponse> | SendOtpResponse;
 
-  verifyOtp(request: VerifyOtpRequest): Promise<VerifyOtpResponse> | Observable<VerifyOtpResponse> | VerifyOtpResponse;
+  verifyOtp(
+    request: VerifyOtpRequest,
+  ):
+    | Promise<VerifyOtpResponse>
+    | Observable<VerifyOtpResponse>
+    | VerifyOtpResponse;
 
-  refresh(request: RefreshRequest): Promise<RefreshResponse> | Observable<RefreshResponse> | RefreshResponse;
+  refresh(
+    request: RefreshRequest,
+  ): Promise<RefreshResponse> | Observable<RefreshResponse> | RefreshResponse;
 
   /** Nhóm tính năng Đăng nhập qua Telegram */
 
-  telegramInit(request: Empty): Promise<TelegramInitResponse> | Observable<TelegramInitResponse> | TelegramInitResponse;
+  telegramInit(
+    request: Empty,
+  ):
+    | Promise<TelegramInitResponse>
+    | Observable<TelegramInitResponse>
+    | TelegramInitResponse;
 
   /** Xác minh dữ liệu Telegram trả về */
 
   telegramVerify(
     request: TelegramVerifyRequest,
-  ): Promise<TelegramVerifyResponse> | Observable<TelegramVerifyResponse> | TelegramVerifyResponse;
+  ):
+    | Promise<TelegramVerifyResponse>
+    | Observable<TelegramVerifyResponse>
+    | TelegramVerifyResponse;
 
   telegramComplete(
     request: TelegramCompleteRequest,
-  ): Promise<TelegramCompleteResponse> | Observable<TelegramCompleteResponse> | TelegramCompleteResponse;
+  ):
+    | Promise<TelegramCompleteResponse>
+    | Observable<TelegramCompleteResponse>
+    | TelegramCompleteResponse;
 
   telegramConsume(
     request: TelegramConsumeRequest,
-  ): Promise<TelegramConsumeResponse> | Observable<TelegramConsumeResponse> | TelegramConsumeResponse;
+  ):
+    | Promise<TelegramConsumeResponse>
+    | Observable<TelegramConsumeResponse>
+    | TelegramConsumeResponse;
 }
 
 export function AuthServiceControllerMethods() {
@@ -148,13 +175,27 @@ export function AuthServiceControllerMethods() {
       "telegramConsume",
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("AuthService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod("AuthService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("AuthService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod("AuthService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }

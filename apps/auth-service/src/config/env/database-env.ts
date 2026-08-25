@@ -4,7 +4,7 @@ import { DatabaseConfig } from '../interfaces'
 import { DatabaseValidator } from '../validators'
 
 export const databaseEnv = registerAs<DatabaseConfig>('database', () => {
-const validatedConfig =	validateEnv(process.env, DatabaseValidator)
+	const validatedConfig = validateEnv(process.env, DatabaseValidator)
 
 	return {
 		user: validatedConfig.DATABASE_USERNAME,

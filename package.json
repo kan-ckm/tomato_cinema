@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "debug": "turbo run debug",
+    "dev": "pnpm format && turbo run dev",
+    "debug": "pnpm format && turbo run debug",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
