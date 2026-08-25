@@ -8,6 +8,7 @@ export const grpcAuthEnv = registerAs<GrpcAuthConfig>('grpc_auth', () => {
 
 	return {
 		auth_host: validatedConfig.GRPC_AUTH_HOST,
-		auth_port: validatedConfig.GRPC_AUTH_PORT
+		auth_port: validatedConfig.GRPC_AUTH_PORT,
+		url: `${validatedConfig.GRPC_AUTH_HOST}:${validatedConfig.GRPC_AUTH_PORT}`
 	}
 })

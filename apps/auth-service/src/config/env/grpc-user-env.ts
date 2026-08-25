@@ -8,6 +8,7 @@ export const grpcUserEnv = registerAs<GrpcUserConfig>('grpc_user', () => {
 
 	return {
 		user_host: validatedConfig.GRPC_USER_HOST,
-		user_port: validatedConfig.GRPC_USER_PORT
+		user_port: validatedConfig.GRPC_USER_PORT,
+		url: `${validatedConfig.GRPC_USER_HOST}:${validatedConfig.GRPC_USER_PORT}`
 	}
 })

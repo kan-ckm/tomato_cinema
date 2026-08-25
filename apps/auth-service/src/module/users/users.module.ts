@@ -16,7 +16,7 @@ import { UsersClientGrpc } from '@/infrastucture/grpc/clients/users.client'
 					options: {
 						package: 'users.v1',
 						protoPath: PROTO_PATHS.USERS,
-						url: `${configService.get('grpc_user.user_host', { infer: true })}:${configService.get('grpc_user.user_port', { infer: true })}`
+						url: configService.get('grpc_user.url', { infer: true })
 					}
 				})
 			}
