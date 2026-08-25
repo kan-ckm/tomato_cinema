@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import {
 	databaseEnv,
-	grpcEnv,
+	grpcAuthEnv,
+	grpcUserEnv,
 	passportEnv,
 	redisEnv,
 	rmqEnv,
@@ -23,12 +24,13 @@ import { TokenModule } from './module/token/token.module'
 		ConfigModule.forRoot({
 			isGlobal: true,
 			load: [
-				grpcEnv,
 				databaseEnv,
 				redisEnv,
 				passportEnv,
 				rmqEnv,
-				telegramEnv
+				telegramEnv,
+				grpcAuthEnv,
+				grpcUserEnv
 			]
 		}),
 		AuthModule,

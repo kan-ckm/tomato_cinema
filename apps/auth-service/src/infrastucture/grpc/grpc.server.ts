@@ -8,8 +8,8 @@ export function createGrpcServer(
 	app: INestApplication,
 	config: ConfigService<AllConfigs>
 ) {
-	const host = config.get('grpc.host', { infer: true })
-	const port = config.get('grpc.port', { infer: true })
+	const host = config.get('grpc_auth.auth_host', { infer: true })
+	const port = config.get('grpc_auth.auth_port', { infer: true })
 	const url = `${host}:${port}`
 	//khai báo cổng máy chủ Grpc auth và thiết lập sử dụng đúng bản hợp đồng auth.proto
 	app.connectMicroservice<MicroserviceOptions>({
