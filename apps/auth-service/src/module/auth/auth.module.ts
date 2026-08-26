@@ -5,6 +5,7 @@ import { getPassportConfig } from '@/config'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { TokenService } from '../token/token.service'
+import { UsersModule } from '../users/users.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 
@@ -14,7 +15,8 @@ import { AuthService } from './auth.service'
 		PassportModule.registerAsync({
 			useFactory: getPassportConfig,
 			inject: [ConfigService]
-		})
+		}),
+		UsersModule
 	],
 	controllers: [AuthController],
 	providers: [AuthService, OtpService, UserRepository, TokenService]

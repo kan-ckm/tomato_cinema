@@ -2,13 +2,13 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 	UpdateDateColumn
 } from 'typeorm'
 
 @Entity({ name: 'users' })
 export class UserEntity {
-	@PrimaryGeneratedColumn('uuid')
+	@PrimaryColumn('uuid')
 	public id: string
 
 	@Column({ type: 'varchar', nullable: true })

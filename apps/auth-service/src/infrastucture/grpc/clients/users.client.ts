@@ -2,8 +2,12 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import type { ClientGrpc } from '@nestjs/microservices'
 import type {
 	CreateUserRequest,
+	CreateUserResponse,
 	UsersServiceClient
 } from '@tomatocinema/contracts/gen/users'
+import { lastValueFrom } from 'rxjs'
+
+// Client gRPC kết nối từ auth-service sang user-service
 
 @Injectable()
 export class UsersClientGrpc implements OnModuleInit {
@@ -18,7 +22,10 @@ export class UsersClientGrpc implements OnModuleInit {
 			this.client.getService<UsersServiceClient>('UsersService')
 	}
 
-	public createUser(request: CreateUserRequest) {
-		return this.usersService?.createUser(request)
+	public async create(
+		request: CreateUserRequest
+	): Promise<CreateUserResponse> {
+		if (!this.usersService) return undefined
+		return await lastValueFrom(this.usersService.createUser(request))
 	}
 }
