@@ -26,6 +26,7 @@ export class UsersClientGrpc implements OnModuleInit {
 		request: CreateUserRequest
 	): Promise<CreateUserResponse> {
 		if (!this.usersService) return undefined
-		return await lastValueFrom(this.usersService.createUser(request))
+		await lastValueFrom(this.usersService.createUser(request))
+		return { ok: true }
 	}
 }
