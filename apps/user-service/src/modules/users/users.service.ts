@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import {
 	CreateUserRequest,
-	CreateUserResponse
+	CreateUserResponse,
+	GetMeRequest,
+	GetMeResponse
 } from '@tomatocinema/contracts/gen/users'
 import { UserRepository } from 'src/shared/repository'
 
@@ -11,6 +13,10 @@ import { UserRepository } from 'src/shared/repository'
 @Injectable()
 export class UsersService {
 	public constructor(private readonly userRepository: UserRepository) {}
+
+	public async getMe(data: GetMeRequest): Promise<{ ok: boolean }> {
+		return { ok: true }
+	}
 
 	/**
 	 * Khởi tạo Profile người dùng mới với id được đồng bộ từ auth-service
