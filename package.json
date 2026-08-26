@@ -7,7 +7,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "pnpm format && turbo run dev",
-    "debug": "pnpm format && turbo run debug",
+    "debug": "turbo run debug",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
