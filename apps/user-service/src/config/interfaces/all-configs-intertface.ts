@@ -1,7 +1,9 @@
 import { DatabaseConfig } from './database-interface'
-import { GrpcConfig } from './grpc-interface'
+import { GrpcAuthConfig } from './grpc-auth-interface'
+import { GrpcUserConfig } from './grpc-user-interface'
 
 export interface AllConfigs {
-	grpc: GrpcConfig
+	grpc_user: GrpcUserConfig
 	database: DatabaseConfig
+	grpc_auth: GrpcAuthConfig
 }

@@ -1,3 +1,4 @@
-export * from './grpc-interface'
+export * from './grpc-user-interface'
 export * from './all-configs-intertface'
 export * from './database-interface'
+export * from './grpc-auth-interface'

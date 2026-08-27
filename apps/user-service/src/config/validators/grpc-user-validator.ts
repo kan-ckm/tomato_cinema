@@ -1,11 +1,11 @@
 import { IsInt, IsString, Max, Min } from 'class-validator'
 
-export class GrpcValidator {
+export class GrpcUserValidator {
 	@IsString()
-	public GRPC_HOST: string
+	public GRPC_USER_HOST: string
 
 	@IsInt()
 	@Min(1)
 	@Max(65535)
-	public GRPC_PORT: number
+	public GRPC_USER_PORT: number
 }
