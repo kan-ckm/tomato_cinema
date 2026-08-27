@@ -4,7 +4,9 @@ import type {
 	CreateUserRequest,
 	CreateUserResponse,
 	GetMeRequest,
-	GetMeResponse
+	GetMeResponse,
+	PatchUserRequest,
+	PatchUserResponse
 } from '@tomatocinema/contracts/gen/users'
 import { UsersService } from './users.service'
 
@@ -15,12 +17,17 @@ export class UsersController {
 	public constructor(private readonly usersService: UsersService) {}
 
 	@GrpcMethod('UsersService', 'GetMe')
-	public async getMe(data: GetMeRequest): Promise<{ ok: boolean }> {
-		return { ok: true }
+	public async getMe(data: GetMeRequest): Promise<GetMeResponse> {
+		return await this.usersService.getMe(data)
 	}
 
 	@GrpcMethod('UsersService', 'CreateUser')
 	public async create(data: CreateUserRequest): Promise<CreateUserResponse> {
 		return await this.usersService.createUser(data)
+	}
+
+	@GrpcMethod('UsersService', 'PatchUser')
+	public async patchUser(data: PatchUserRequest): Promise<PatchUserResponse> {
+		return await this.usersService.updateUser(data)
 	}
 }
