@@ -26,6 +26,15 @@ export interface CreateUserResponse {
   ok: boolean;
 }
 
+export interface PatchUserRequest {
+  userId: string;
+  name?: string | undefined;
+}
+
+export interface PatchUserResponse {
+  ok: boolean;
+}
+
 export interface User {
   id: string;
   name?: string | undefined;
@@ -40,6 +49,8 @@ export interface UsersServiceClient {
   getMe(request: GetMeRequest): Observable<GetMeResponse>;
 
   createUser(request: CreateUserRequest): Observable<CreateUserResponse>;
+
+  patchUser(request: PatchUserRequest): Observable<PatchUserResponse>;
 }
 
 export interface UsersServiceController {
@@ -48,11 +59,13 @@ export interface UsersServiceController {
   createUser(
     request: CreateUserRequest,
   ): Promise<CreateUserResponse> | Observable<CreateUserResponse> | CreateUserResponse;
+
+  patchUser(request: PatchUserRequest): Promise<PatchUserResponse> | Observable<PatchUserResponse> | PatchUserResponse;
 }
 
 export function UsersServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["getMe", "createUser"];
+    const grpcMethods: string[] = ["getMe", "createUser", "patchUser"];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod("UsersService", method)(constructor.prototype[method], method, descriptor);
