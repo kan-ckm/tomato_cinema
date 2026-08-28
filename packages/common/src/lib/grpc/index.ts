@@ -1,0 +1,5 @@
+export * from './decorator'
+export * from './grpc.module'
+export * from './factory/grpc-client.factory'
+export * from './registry/grpc.registry'
+export * from './constants/grpc.constants'
