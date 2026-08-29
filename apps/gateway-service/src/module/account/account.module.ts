@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common'
+import { Global, Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 import { PROTO_PATHS } from '@tomatocinema/contracts'
 import { AccountControler } from './account.controller'
 import { AccountClientGrpc } from './account.grpc'
 
+@Global()
 @Module({
 	imports: [
 		ClientsModule.registerAsync([

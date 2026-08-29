@@ -13,7 +13,6 @@ import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { RoleUser } from '@tomatocinema/contracts/gen/account'
 import type { Request, Response } from 'express'
-import { lastValueFrom } from 'rxjs'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { AuthClientGrpc } from './auth.grpc'
 import {
@@ -42,7 +41,7 @@ export class AuthController {
 	@HttpCode(HttpStatus.OK)
 	public async sendOtp(@Body() dto: SendOtpRequest) {
 		// Giao việc gửi OTP cho Auth Service xử lý
-		return this.client.sendOtp(dto)
+		return await this.client.call('sendOtp', dto)
 	}
 
 	@ApiOperation({
@@ -57,8 +56,9 @@ export class AuthController {
 		@Res({ passthrough: true }) res: Response // passthrough: true để NestJS tự lo việc return
 	) {
 		// Lấy cặp token từ Auth Service (gRPC) trả về
-		const { accessToken, refreshToken } = await lastValueFrom(
-			this.client.verifyOtp(dto)!
+		const { accessToken, refreshToken } = await this.client.call(
+			'verifyOtp',
+			dto
 		)
 
 		// Nhét Refresh Token vào Cookie bảo mật (Giấu không cho JS ở Frontend đọc được)
@@ -89,7 +89,7 @@ export class AuthController {
 		@Res({ passthrough: true }) res: Response
 	) {
 		// Móc Refresh Token từ Cookie mà Frontend tự động gửi lên
-		const refreshToken = await req.cookies?.refreshToken
+		const refreshToken = await req.cookies.refreshToken
 
 		// Chặn cửa ngay nếu không có Token
 		if (!refreshToken) {
@@ -100,7 +100,7 @@ export class AuthController {
 
 		// Xin Auth Service cấp cặp token mới
 		const { accessToken, refreshToken: newRefreshToken } =
-			await lastValueFrom(this.client.refresh({ refreshToken })!)
+			await this.client.call('refresh', { refreshToken })
 
 		// Cập nhật lại Cookie bằng Refresh Token mới (Refresh Token Rotation)
 		res.cookie('refreshToken', newRefreshToken, {
@@ -151,7 +151,7 @@ export class AuthController {
 	@HttpCode(HttpStatus.OK)
 	public async telegramInit() {
 		// Lấy link Bot Telegram từ Auth Service trả về cho Frontend
-		return this.client.telegramInit()
+		return await this.client.call('telegramInit', {})
 	}
 
 	@Post('telegram/verify')
@@ -164,9 +164,7 @@ export class AuthController {
 		const query = JSON.parse(atob(dto.tgAuthResult))
 
 		// Gửi qua Auth Service để đối chiếu chữ ký
-		const result = await lastValueFrom(
-			this.client.telegramVerify({ query })!
-		)
+		const result = await this.client.call('telegramVerify', { query })
 
 		// Nếu User là người mới/chưa có sđt -> Trả về URL để ép ra Telegram Bot cung cấp SĐT
 		if ('url' in result && result.url) return result
@@ -200,8 +198,9 @@ export class AuthController {
 		const { sessionId } = dto
 
 		//User đã lên Bot cấp SĐT xong, mang sessionId đi lấy Token thật
-		const { accessToken, refreshToken } = await lastValueFrom(
-			this.client.telegramConsume({ sessionId })!
+		const { accessToken, refreshToken } = await this.client.call(
+			'telegramConsume',
+			{ sessionId }
 		)
 
 		// Set Cookie bảo mật và cho phép đăng nhập thành công
