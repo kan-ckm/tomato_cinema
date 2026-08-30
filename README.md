@@ -24,12 +24,13 @@
 ---
 
 > [!NOTE]
+>
 > ### 🎓 LỜI MỞ ĐẦU & MỤC ĐÍCH DỰ ÁN
+>
 > Đây là **project cá nhân do một mình mình (tomato) tự tìm tòi, nghiên cứu và phát triển** — hoàn toàn **không có team hay tổ chức nào cả**. Mục đích duy nhất của dự án là để mình tự học hỏi, thử nghiệm thực tế cách thiết kế và vận hành một hệ sinh thái theo mô hình **Microservices phân tán** thay vì Monolith truyền thống.
-> 
+>
 > 🚧 **Dự án vẫn đang trong quá trình phát triển (Work in Progress):**
 > Vì là dự án làm một mình trong thời gian rảnh, toàn bộ từ kiến trúc backend, gRPC, event broker đến database đang được mình liên tục refactor, tối ưu hóa và bổ sung tính năng mới. Dự án chắc chắn sẽ còn nhiều điểm chưa hoàn hảo, rất hoan nghênh các anh/chị và các bạn đóng góp ý kiến để cùng nhau tiến bộ!
-
 
 ---
 
@@ -48,6 +49,7 @@
 ## 1. Giới thiệu dự án & Mục tiêu học tập
 
 Ý tưởng của dự án là mô phỏng lại một nền tảng xem phim trực tuyến (**Tomato Cinema**) nhưng được phân tách thành các dịch vụ độc lập để giải quyết các bài toán về:
+
 - **Giao tiếp liên dịch vụ tốc độ cao:** Sử dụng **gRPC (HTTP/2 + Protocol Buffers)** thay vì REST HTTP/1.1 nội bộ để giảm payload và tối ưu độ trễ.
 - **Xử lý tác vụ bất đồng bộ (Asynchronous Tasks):** Dùng **RabbitMQ** theo mô hình Event-Driven để xử lý các việc tốn thời gian (gửi mail OTP, thông báo) mà không làm nghẽn luồng xử lý chính của người dùng.
 - **Tổ chức Monorepo quy mô lớn:** Sử dụng **Turborepo** và **pnpm workspace** để quản lý đa service, chia sẻ types, contracts và code logic dùng chung (`@tomatocinema/common`, `@tomatocinema/contracts`).
@@ -61,7 +63,7 @@
   <img src="./assets/architecture.png" alt="Tomato Cinema Architecture Diagram" width="100%" />
 </p>
 
-*Sơ đồ phác thảo trực quan kiến trúc phân tầng: **Clients** (Web / Bot) ➔ **API Gateway** (REST API) ➔ **Microservices** (gRPC nội bộ) ➔ **RabbitMQ** (Message Broker) & **Storage** (PostgreSQL, Redis).*
+_Sơ đồ phác thảo trực quan kiến trúc phân tầng: **Clients** (Web / Bot) ➔ **API Gateway** (REST API) ➔ **Microservices** (gRPC nội bộ) ➔ **RabbitMQ** (Message Broker) & **Storage** (PostgreSQL, Redis)._
 
 ---
 
@@ -99,17 +101,17 @@ tomato_cinema/
 
 ## 4. Các công nghệ thực hành trong project
 
-| Mảng | Công nghệ sử dụng | Mục đích áp dụng |
-| :--- | :--- | :--- |
-| **Language** | TypeScript | Type-safe từ Frontend đến Backend và Database |
-| **Backend** | NestJS 11 | Framework backend dạng module hóa, dễ dàng tích hợp gRPC và Microservices |
-| **IPC (Liên service)** | gRPC, Protocol Buffers | Giao tiếp nội bộ cực nhanh, đảm bảo hợp đồng dữ liệu chuẩn xác |
-| **Event Broker** | RabbitMQ | Xử lý hàng đợi phi đồng bộ, giảm tải cho request chính |
-| **Database & Cache** | PostgreSQL 16, Redis 8 | Lưu trữ dữ liệu quan hệ kết hợp Redis lưu cache, session và chống spam OTP |
-| **ORM** | Prisma, TypeORM | Thực hành cả 2 ORM phổ biến trong hệ sinh thái Node.js |
-| **Frontend** | Next.js 16, React 19 | Thử nghiệm các tính năng mới nhất của React Server Components |
-| **Monorepo Tool** | Turborepo, pnpm | Tối ưu hóa tốc độ build, chia sẻ code không cần publish lên npm |
-| **DevOps cục bộ** | Docker, Docker Compose | Dựng môi trường database, message broker chỉ với 1 câu lệnh |
+| Mảng                   | Công nghệ sử dụng      | Mục đích áp dụng                                                           |
+| :--------------------- | :--------------------- | :------------------------------------------------------------------------- |
+| **Language**           | TypeScript             | Type-safe từ Frontend đến Backend và Database                              |
+| **Backend**            | NestJS 11              | Framework backend dạng module hóa, dễ dàng tích hợp gRPC và Microservices  |
+| **IPC (Liên service)** | gRPC, Protocol Buffers | Giao tiếp nội bộ cực nhanh, đảm bảo hợp đồng dữ liệu chuẩn xác             |
+| **Event Broker**       | RabbitMQ               | Xử lý hàng đợi phi đồng bộ, giảm tải cho request chính                     |
+| **Database & Cache**   | PostgreSQL 16, Redis 8 | Lưu trữ dữ liệu quan hệ kết hợp Redis lưu cache, session và chống spam OTP |
+| **ORM**                | Prisma, TypeORM        | Thực hành cả 2 ORM phổ biến trong hệ sinh thái Node.js                     |
+| **Frontend**           | Next.js 16, React 19   | Thử nghiệm các tính năng mới nhất của React Server Components              |
+| **Monorepo Tool**      | Turborepo, pnpm        | Tối ưu hóa tốc độ build, chia sẻ code không cần publish lên npm            |
+| **DevOps cục bộ**      | Docker, Docker Compose | Dựng môi trường database, message broker chỉ với 1 câu lệnh                |
 
 ---
 
@@ -118,7 +120,9 @@ tomato_cinema/
 Nếu bạn muốn clone project về máy để tham khảo hoặc chạy thử, hãy làm theo các bước dưới đây:
 
 ### Bước 1: Chuẩn bị môi trường
+
 Máy bạn cần cài sẵn:
+
 - **Node.js**: Phiên bản 18 trở lên (Khuyên dùng Node 20 LTS).
 - **pnpm**: Phiên bản 9 trở lên (`npm install -g pnpm`).
 - **Docker Desktop** (hoặc Docker Engine trên Linux): Dùng để chạy Postgres, Redis, RabbitMQ.
@@ -126,6 +130,7 @@ Máy bạn cần cài sẵn:
 ---
 
 ### Bước 2: Clone repository & Cài đặt thư viện
+
 ```bash
 # Clone dự án về máy
 git clone https://github.com/your-username/tomato_cinema.git
@@ -138,6 +143,7 @@ pnpm install
 ---
 
 ### Bước 3: Bật các dịch vụ hạ tầng với Docker
+
 Project đã có sẵn cấu hình Docker Compose trong thư mục `apps/docker/`:
 
 ```bash
@@ -150,7 +156,8 @@ docker compose up -d
 cd ../..
 ```
 
-*Các cổng mặc định được mở trên máy host:*
+_Các cổng mặc định được mở trên máy host:_
+
 - **PostgreSQL**: `localhost:5433`
 - **Redis**: `localhost:6379`
 - **RabbitMQ**: `localhost:5673` (AMQP) và `localhost:15673` (Dashboard quản trị)
@@ -158,14 +165,17 @@ cd ../..
 ---
 
 ### Bước 4: Cấu hình biến môi trường (`.env`)
+
 Tạo file `.env` dựa theo các file `.env.example` tại từng thư mục service:
+
 - `apps/gateway-service/.env`
 - `apps/auth-service/.env`
 - `apps/user-service/.env`
 - `apps/notification-service/.env`
 - `apps/bot-service/.env`
 
-*Ví dụ cấu hình cơ bản cho API Gateway:*
+_Ví dụ cấu hình cơ bản cho API Gateway:_
+
 ```env
 PORT=3000
 NODE_ENV=development
@@ -177,6 +187,7 @@ USERS_GRPC_URL=localhost:50052
 ---
 
 ### Bước 5: Biên dịch Protobuf Contracts (gRPC)
+
 Trước khi chạy backend, các file `.proto` cần được biên dịch sang mã TypeScript:
 
 ```bash
@@ -186,6 +197,7 @@ pnpm --filter @tomatocinema/contracts build
 ---
 
 ### Bước 6: Đồng bộ Cơ sở dữ liệu (Database Migration)
+
 Chạy migration cho cơ sở dữ liệu của `auth-service` (dùng Prisma):
 
 ```bash
@@ -195,13 +207,15 @@ pnpm --filter auth-service exec prisma db push
 ---
 
 ### Bước 7: Khởi động toàn bộ dự án
+
 Nhờ có **Turborepo**, bạn chỉ cần 1 câu lệnh duy nhất tại thư mục gốc để khởi động tất cả các service cùng lúc:
 
 ```bash
 pnpm dev
 ```
 
-*Nếu bạn chỉ muốn chạy riêng một service cụ thể để kiểm tra:*
+_Nếu bạn chỉ muốn chạy riêng một service cụ thể để kiểm tra:_
+
 ```bash
 # Chỉ chạy Gateway:
 pnpm --filter gateway-service dev
@@ -214,6 +228,7 @@ pnpm --filter user-service dev
 ```
 
 Khi chạy thành công:
+
 - **API Gateway (Swagger Docs):** Mở trình duyệt truy cập `http://localhost:3000/docs` để xem tài liệu API và test thử.
 - **Web Frontend:** Truy cập `http://localhost:3500`.
 - **RabbitMQ Management Dashboard:** Truy cập `http://localhost:15673`.
@@ -263,4 +278,3 @@ Dự án vẫn đang được mình tiếp tục hoàn thiện trong thời gian
 Dự án này là nơi mình tự ghi lại hành trình học hỏi về thiết kế hệ thống (System Design) và kiến trúc microservices thực chiến. Nếu bạn thấy project thú vị hoặc có bất kỳ góp ý, chia sẻ kinh nghiệm nào để hoàn thiện hơn, rất hoan nghênh bạn mở Issue hoặc Pull Request nhé!
 
 Cảm ơn bạn đã ghé thăm repository! ⭐
-
