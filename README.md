@@ -57,7 +57,14 @@
 
 ## 2. Sơ đồ kiến trúc hệ thống
 
-Dưới đây là sơ đồ tổng quan cách các service kết nối với nhau:
+<p align="center">
+  <img src="./assets/architecture.png" alt="Tomato Cinema Architecture Diagram" width="100%" />
+</p>
+
+*Sơ đồ phác thảo trực quan kiến trúc phân tầng: **Clients** (Web / Bot) ➔ **API Gateway** (REST API) ➔ **Microservices** (gRPC nội bộ) ➔ **RabbitMQ** (Message Broker) & **Storage** (PostgreSQL, Redis).*
+
+<details>
+<summary><b>📐 Xem sơ đồ dạng mã nguồn Mermaid (Click để mở)</b></summary>
 
 ```mermaid
 flowchart TD
@@ -95,6 +102,8 @@ flowchart TD
     Auth --> Redis
     User --> Postgres
 ```
+
+</details>
 
 ---
 
