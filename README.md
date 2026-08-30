@@ -63,48 +63,6 @@
 
 *Sơ đồ phác thảo trực quan kiến trúc phân tầng: **Clients** (Web / Bot) ➔ **API Gateway** (REST API) ➔ **Microservices** (gRPC nội bộ) ➔ **RabbitMQ** (Message Broker) & **Storage** (PostgreSQL, Redis).*
 
-<details>
-<summary><b>📐 Xem sơ đồ dạng mã nguồn Mermaid (Click để mở)</b></summary>
-
-```mermaid
-flowchart TD
-    subgraph Clients["Clients"]
-        Web["Web Frontend (Next.js 16)"]
-        Bot["Telegram Bot"]
-    end
-
-    subgraph GatewayLayer["Cổng đón Request (API Gateway)"]
-        Gateway["API Gateway (NestJS REST API)\n- Cổng ra ngoài cho Frontend\n- Xác thực JWT, Cookie\n- Phân quyền RBAC @Protected"]
-    end
-
-    subgraph InternalServices["Hệ sinh thái Microservices nội bộ"]
-        Auth["Auth Service\n- Xác thực OTP\n- Telegram SSO\n- Quản lý Token"]
-        User["User Service\n- Thông tin Profile\n- Quản lý Role người dùng"]
-        Notify["Notification Service\n- Consumer nhận event từ RabbitMQ\n- Gửi email thông báo"]
-    end
-
-    subgraph Infra["Hạ tầng & Dữ liệu"]
-        RabbitMQ[("RabbitMQ\n(Message Broker)")]
-        Postgres[("PostgreSQL 16\n(Database chính)")]
-        Redis[("Redis 8\n(Cache & Session & OTP)")]
-    end
-
-    Web -->|"HTTP REST"| Gateway
-    Bot -->|"Telegram API / Webhook"| Gateway
-
-    Gateway -->|"gRPC nội bộ"| Auth
-    Gateway -->|"gRPC nội bộ"| User
-
-    Auth -->|"Publish Event (OTP Requested)"| RabbitMQ
-    RabbitMQ -->|"Consume Event"| Notify
-
-    Auth --> Postgres
-    Auth --> Redis
-    User --> Postgres
-```
-
-</details>
-
 ---
 
 ## 3. Cấu trúc thư mục (Monorepo)
