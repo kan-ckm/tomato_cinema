@@ -3,9 +3,9 @@ import {
 	TelegramCompleteResponse
 } from '@tomatocinema/contracts/gen/auth'
 import { Telegraf } from 'telegraf'
-import { authClient } from '@/infrastructure/grpc/auth.client'
-import { TelegrafContext } from '@/shared'
-import { callUnary } from '@/shared/utils/call-unary'
+import { authClient } from '../../../infrastructure/grpc/auth.client'
+import { TelegrafContext } from '../../../shared'
+import { callUnary } from '../../../shared/utils/call-unary'
 
 export function registerContactHandler(bot: Telegraf<TelegrafContext>) {
 	bot.on('contact', async ctx => {
