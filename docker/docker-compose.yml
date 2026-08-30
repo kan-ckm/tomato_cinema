@@ -1,0 +1,21 @@
+# ==============================================================================
+# TỔNG HỢP TOÀN BỘ HỆ THỐNG TOMATO CINEMA
+# Vị trí: docker/docker-compose.yml
+#
+# Tệp này gộp cả 2 thành phần bằng tính năng "include":
+#   1. infra/docker-compose.yml -> Postgres, Redis, RabbitMQ  (env: infra/.env)
+#   2. apps/docker-compose.yml  -> Auth, User, Gateway, ...   (env: apps/.env)
+#
+# Cách chạy:
+#   - Bật toàn bộ:      cd docker && docker compose up -d
+#   - Chỉ bật hạ tầng:  cd docker/infra && docker compose up -d
+#   - Chỉ bật apps:     cd docker/apps  && docker compose up -d
+# ==============================================================================
+
+name: tomato-cinema
+
+include:
+  - path: ./infra/docker-compose.yml
+    env_file: ./infra/.env
+  - path: ./apps/docker-compose.yml
+    env_file: ./apps/.env

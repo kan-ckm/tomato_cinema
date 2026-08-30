@@ -1,0 +1,156 @@
+
+
+# ==============================================================================
+# 🚀 CÁC MICROSERVICES BACKEND (AUTH, USER, GATEWAY, NOTIFICATION, BOT)
+# Vị trí: docker/apps/docker-compose.yml
+#
+# File .env: docker/apps/.env (biến app + biến kết nối hạ tầng)
+#
+# Cách chạy độc lập (hạ tầng phải đã chạy trước):
+#   cd docker/apps && docker compose up -d
+# ==============================================================================
+
+name: tomato-cinema
+
+networks:
+  tomatocinema:
+    name: tomato-cinema_tomatocinema
+    driver: bridge
+
+services:
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        APP_NAME: auth-service
+    container_name: auth_service_tomato_cinema
+    restart: unless-stopped
+    command: >
+      sh -c "
+        (cd apps/auth-service && ./node_modules/.bin/prisma db push --accept-data-loss) &&
+        node apps/auth-service/dist/src/main.js
+      "
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/auth?schema=public
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=${POSTGRES_PORT}
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=auth
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - RMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASSWORD}@rabbitmq:${RABBITMQ_PORT}
+      - GRPC_AUTH_HOST=0.0.0.0
+      - GRPC_AUTH_PORT=${AUTH_GRPC_PORT}
+      - GRPC_USER_HOST=user-service
+      - GRPC_USER_PORT=${USER_GRPC_PORT}
+      - PASSPORT_SECRET_KEY=${PASSPORT_SECRET_KEY}
+      - PASSPORT_ACCESS_TTL=${PASSPORT_ACCESS_TTL}
+      - PASSPORT_REFRESH_TTL=${PASSPORT_REFRESH_TTL}
+      - TELEGRAM_BOT_ID=${TELEGRAM_BOT_ID}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - TELEGRAM_REDIRECT_ORIGIN=${TELEGRAM_REDIRECT_ORIGIN}
+    ports:
+      - "${AUTH_GRPC_PORT}:${AUTH_GRPC_PORT}"
+    networks:
+      - tomatocinema
+
+  user-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        APP_NAME: user-service
+    container_name: user_service_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=${POSTGRES_PORT}
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=users
+      - DATABASE_USER=users
+      - DATABASE_LOGGING=${DATABASE_LOGGING:-false}
+      - DATABASE_SYNC=${DATABASE_SYNC:-true}
+      - GRPC_USER_HOST=0.0.0.0
+      - GRPC_USER_PORT=${USER_GRPC_PORT}
+      - GRPC_AUTH_HOST=auth-service
+      - GRPC_AUTH_PORT=${AUTH_GRPC_PORT}
+      - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
+    ports:
+      - "${USER_GRPC_PORT}:${USER_GRPC_PORT}"
+    networks:
+      - tomatocinema
+
+  gateway-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        APP_NAME: gateway-service
+    container_name: gateway_service_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - HTTP_PORT=${GATEWAY_HTTP_PORT}
+      - HTTP_HOST=${HTTP_HOST:-http://localhost}
+      - HTTP_CORS=${HTTP_CORS:-http://localhost:3000}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
+      - COOKIE_SECRET=${COOKIE_SECRET}
+      - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
+      - ACCOUNT_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
+      - USERS_GRPC_URL=user-service:${USER_GRPC_PORT}
+      - PASSPORT_SECRET_KEY=${PASSPORT_SECRET_KEY}
+    ports:
+      - "${GATEWAY_HTTP_PORT}:${GATEWAY_HTTP_PORT}"
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - tomatocinema
+
+  notification-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        APP_NAME: notification-service
+    container_name: notification_service_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - RMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASSWORD}@rabbitmq:${RABBITMQ_PORT}
+      - RMQ_QUEUE=${RMQ_QUEUE}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
+      - SMTP_SECURE=${SMTP_SECURE}
+      - EXOLVE_API_KEY=${EXOLVE_API_KEY}
+      - EXOLVE_SENDER=${EXOLVE_SENDER}
+    networks:
+      - tomatocinema
+
+  bot-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        APP_NAME: bot-service
+    container_name: bot_service_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
+      - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      - auth-service
+    networks:
+      - tomatocinema
