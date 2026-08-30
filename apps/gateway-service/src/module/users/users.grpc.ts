@@ -1,30 +1,12 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import type { ClientGrpc } from '@nestjs/microservices'
-import type {
-	GetMeRequest,
-	PatchUserRequest,
-	UsersServiceClient
-} from '@tomatocinema/contracts/gen/users'
+import { InjectGrpcClient } from '@tomatocinema/common'
+import { UsersServiceClient } from '@tomatocinema/contracts/gen/users'
+import { AbstractGrpcClient } from '../../shared/grpc'
 
-// Controller đóng vai trò API Gateway:
-// Tiếp nhận HTTP Request từ Client (người dùng), giao tiếp qua gRPC sang User-Service để xử lý logic, và trả
 @Injectable()
-export class UsersClientGrpc implements OnModuleInit {
-	private usersService?: UsersServiceClient
-
-	public constructor(
-		@Inject('USERS_PACKAGE') private readonly client: ClientGrpc
-	) {}
-	public onModuleInit() {
-		this.usersService =
-			this.client.getService<UsersServiceClient>('UsersService')
-	}
-
-	public getMe(request: GetMeRequest) {
-		return this.usersService?.getMe(request)
-	}
-
-	public patchUser(request: PatchUserRequest) {
-		return this.usersService?.patchUser(request)
+export class UsersClientGrpc extends AbstractGrpcClient<UsersServiceClient> {
+	constructor(@InjectGrpcClient('USERS_PACKAGE') client: ClientGrpc) {
+		super(client, 'UsersService')
 	}
 }

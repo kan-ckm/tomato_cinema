@@ -30,7 +30,7 @@ export class AccountControler {
 		@Body() dto: InitEmailChangeRequest,
 		@CurrentUser() userId: string
 	) {
-		return this.client.initEmailChange({
+		return this.client.call('initEmailChange', {
 			...dto,
 			userId
 		})
@@ -49,7 +49,7 @@ export class AccountControler {
 		@Body() dto: ConfirmEmailChangeRequest,
 		@CurrentUser() userId: string
 	) {
-		return this.client.confirmEmailChange({
+		return this.client.call('confirmEmailChange', {
 			...dto,
 			userId
 		})
@@ -68,7 +68,7 @@ export class AccountControler {
 		@Body() dto: InitPhoneChangeRequest,
 		@CurrentUser() userId: string
 	) {
-		return this.client.initPhoneChange({
+		return this.client.call('initPhoneChange', {
 			...dto,
 			userId
 		})
@@ -87,7 +87,7 @@ export class AccountControler {
 		@Body() dto: ConfirmPhoneChangeRequest,
 		@CurrentUser() userId: string
 	) {
-		return this.client.confirmPhoneChange({
+		return this.client.call('confirmPhoneChange', {
 			...dto,
 			userId
 		})

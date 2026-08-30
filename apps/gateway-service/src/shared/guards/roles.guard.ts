@@ -33,9 +33,9 @@ export class RolesGuard implements CanActivate {
 
 		if (!user) throw new ForbiddenException('Thiếu ngữ cảnh người dùng')
 
-		const account = await lastValueFrom(
-			this.accountClient.getAccount({ id: user.id })!
-		)
+		const account = await this.accountClient.call('getAccount', {
+			id: user.id
+		})
 
 		if (!account) throw new NotFoundException('Tài khoản không tìm thấy')
 
