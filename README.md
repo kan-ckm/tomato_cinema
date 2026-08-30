@@ -82,14 +82,14 @@ flowchart TD
         Redis[("Redis 8\n(Cache & Session & OTP)")]
     end
 
-    Web -->|HTTP REST| Gateway
-    Bot -->|Telegram API / Webhook| Gateway
+    Web -->|"HTTP REST"| Gateway
+    Bot -->|"Telegram API / Webhook"| Gateway
 
-    Gateway -->|gRPC nội bộ| Auth
-    Gateway -->|gRPC nội bộ| User
+    Gateway -->|"gRPC nội bộ"| Auth
+    Gateway -->|"gRPC nội bộ"| User
 
-    Auth -->|Publish Event (OTP Requested)| RabbitMQ
-    RabbitMQ -->|Consume Event| Notify
+    Auth -->|"Publish Event (OTP Requested)"| RabbitMQ
+    RabbitMQ -->|"Consume Event"| Notify
 
     Auth --> Postgres
     Auth --> Redis
