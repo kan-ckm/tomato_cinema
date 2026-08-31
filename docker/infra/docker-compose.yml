@@ -78,3 +78,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ----------------------------------------------------------------------------
+  # EXPORTERS (PROMETHEUS METRICS)
+  # ----------------------------------------------------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres_exporter_tomato_cinema
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    networks:
+      - tomatocinema
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0-alpine
+    container_name: redis_exporter_tomato_cinema
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis:${REDIS_PORT}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    networks:
+      - tomatocinema
+    depends_on:
+      redis:
+        condition: service_healthy
