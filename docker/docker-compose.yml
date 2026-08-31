@@ -19,3 +19,5 @@ include:
     env_file: ./infra/.env
   - path: ./apps/docker-compose.yml
     env_file: ./apps/.env
+  - path: ./observability/docker-compose.yml
+    env_file: ./observability/.env

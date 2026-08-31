@@ -1,0 +1,67 @@
+# ==============================================================================
+# 🛰️ CẤU HÌNH OPENTELEMETRY COLLECTOR (CONTRIB)
+# ==============================================================================
+
+receivers:
+  # Cổng tiếp nhận chuẩn OTLP từ các microservice (NestJS)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Gom batch để tối ưu hiệu năng truyền tin qua mạng
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  # Bộ đệm bộ nhớ tránh OOM khi tải cao
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+exporters:
+  # 1. Chuyển tiếp Traces sang Grafana Tempo qua gRPC
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # 2. Xuất Metrics ra endpoint để Prometheus cào (pull)
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: tomatocinema
+
+  # 3. Chuyển tiếp Logs sang Grafana Loki qua OTLP HTTP
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # 4. Ghi log debug ra console (hữu ích khi debug trace/metric mới)
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
+
+  telemetry:
+    logs:
+      level: info

@@ -1,0 +1,114 @@
+# ==============================================================================
+# 📊 CỤM OBSERVABILITY (OPENTELEMETRY + PROMETHEUS + TEMPO + LOKI + GRAFANA)
+# Vị trí: docker/observability/docker-compose.yml
+#
+# File .env: docker/observability/.env
+#
+# Cách chạy độc lập (hạ tầng mạng phải đã tồn tại):
+#   cd docker/observability && docker compose up -d
+# ==============================================================================
+
+name: tomato-cinema
+
+networks:
+  tomatocinema:
+    name: tomato-cinema_tomatocinema
+    external: true
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  tempo_data:
+  loki_data:
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. OPENTELEMETRY COLLECTOR: Trạm trung chuyển gom toàn bộ Telemetry
+  # ----------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.98.0
+    container_name: otel_collector_tomato_cinema
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"       # OTLP gRPC receiver (NestJS gửi vào đây)
+      - "${OTEL_HTTP_PORT:-4318}:4318"       # OTLP HTTP receiver
+      - "${OTEL_METRICS_PORT:-8889}:8889"   # Prometheus metrics exporter
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
+  # 2. TEMPO: Distributed Tracing backend
+  # ----------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo_tomato_cinema
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"           # Tempo HTTP API
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
+  # 3. PROMETHEUS: Metrics Storage & Querying
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: prometheus_tomato_cinema
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
+  # 4. LOKI: Centralized Logging backend
+  # ----------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki_tomato_cinema
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"           # Loki API
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
+  # 5. GRAFANA: Dashboard trực quan hóa trung tâm
+  # ----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"         # Web Dashboard: http://localhost:3001
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+    networks:
+      - tomatocinema

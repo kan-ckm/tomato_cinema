@@ -1,0 +1,50 @@
+# ==============================================================================
+# 📊 PROVISIONING GRAFANA DATA SOURCES TỰ ĐỘNG
+# ==============================================================================
+
+apiVersion: 1
+
+datasources:
+  # 1. Prometheus (Metrics)
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  # 2. Tempo (Traces)
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: true
+    jsonData:
+      httpMethod: GET
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        filterByTraceID: true
+        filterBySpanID: true
+        customTags:
+          - key: service.name
+            value: service_name
+
+  # 3. Loki (Logs)
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # Nhấp chuột trực tiếp vào trace_id trong log để nhảy sang xem Trace trên Tempo
+        - datasourceUid: tempo
+          matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)'
+          name: TraceID
+          url: "$${__value.raw}"

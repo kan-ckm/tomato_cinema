@@ -130,6 +130,25 @@ docker compose down -v
 | **RabbitMQ Management**| `15673` | `15672` | [http://localhost:15673](http://localhost:15673) |
 | **Auth gRPC** | `50051` | `50051` | `localhost:50051` |
 | **User gRPC** | `50052` | `50052` | `localhost:50052` |
+| **Grafana** | `3001` | `3000` | [http://localhost:3001](http://localhost:3001) |
+| **Prometheus** | `9090` | `9090` | [http://localhost:9090](http://localhost:9090) |
+| **Tempo (Traces)** | `3200` | `3200` | `localhost:3200` |
+| **Loki (Logs)** | `3100` | `3100` | `localhost:3100` |
+| **PostgreSQL Exporter**| `9187` | `9187` | [http://localhost:9187/metrics](http://localhost:9187/metrics) |
+| **Redis Exporter** | `9121` | `9121` | [http://localhost:9121/metrics](http://localhost:9121/metrics) |
+| **RabbitMQ Metrics** | - | `15692` | [http://localhost:15673/metrics](http://localhost:15673/metrics) (nội bộ: 15692) |
+
+---
+
+## 📊 5. Khuyến Nghị Dashboard Grafana Cho Hạ Tầng
+
+Khi truy cập [Grafana (http://localhost:3001)](http://localhost:3001) với tài khoản mặc định `admin` / `admin`, bạn có thể vào mục **Dashboards -> New -> Import** và nhập các ID chuẩn cộng đồng sau để có ngay biểu đồ trực quan:
+
+| Thành phần hạ tầng | Grafana Dashboard ID | Tên Dashboard gợi ý |
+| :--- | :---: | :--- |
+| **PostgreSQL** | `9628` | PostgreSQL Database |
+| **Redis** | `11835` | Redis Dashboard for Prometheus Redis Exporter 1.x |
+| **RabbitMQ** | `10991` | RabbitMQ-Prometheus |
 
 ---
 
