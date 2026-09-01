@@ -4,6 +4,7 @@ import { PassportModule } from '@tomatocinema/passport'
 import { AccountModule } from '../module/account/account.module'
 import { AuthModule } from '../module/auth/auth.module'
 import { UsersModule } from '../module/users/users.module'
+import { ObservabilityModule } from '../observability/observability.module'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { getPassportConfig } from './config'
@@ -19,7 +20,8 @@ import { getPassportConfig } from './config'
 		}),
 		AccountModule,
 		AuthModule,
-		UsersModule
+		UsersModule,
+		ObservabilityModule
 	],
 	controllers: [AppController],
 	providers: [AppService]
