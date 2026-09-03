@@ -54,26 +54,50 @@ export interface UsersServiceClient {
 }
 
 export interface UsersServiceController {
-  getMe(request: GetMeRequest): Promise<GetMeResponse> | Observable<GetMeResponse> | GetMeResponse;
+  getMe(
+    request: GetMeRequest,
+  ): Promise<GetMeResponse> | Observable<GetMeResponse> | GetMeResponse;
 
   createUser(
     request: CreateUserRequest,
-  ): Promise<CreateUserResponse> | Observable<CreateUserResponse> | CreateUserResponse;
+  ):
+    | Promise<CreateUserResponse>
+    | Observable<CreateUserResponse>
+    | CreateUserResponse;
 
-  patchUser(request: PatchUserRequest): Promise<PatchUserResponse> | Observable<PatchUserResponse> | PatchUserResponse;
+  patchUser(
+    request: PatchUserRequest,
+  ):
+    | Promise<PatchUserResponse>
+    | Observable<PatchUserResponse>
+    | PatchUserResponse;
 }
 
 export function UsersServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = ["getMe", "createUser", "patchUser"];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("UsersService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod("UsersService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("UsersService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod("UsersService", method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }
