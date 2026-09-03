@@ -1,7 +1,5 @@
-
-
 # ==============================================================================
-# 🚀 CÁC MICROSERVICES BACKEND (AUTH, USER, GATEWAY, NOTIFICATION, BOT)
+# CÁC MICROSERVICES BACKEND (AUTH, USER, GATEWAY, NOTIFICATION, BOT)
 # Vị trí: docker/apps/docker-compose.yml
 #
 # File .env: docker/apps/.env (biến app + biến kết nối hạ tầng)
@@ -22,8 +20,10 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
+      # args: Truyền biến APP_NAME vào Dockerfile đa năng để Turborepo cắt tỉa và chỉ build riêng service này
       args:
         APP_NAME: auth-service
+    image: tomato-cinema/auth-service:latest
     container_name: auth_service_tomato_cinema
     restart: unless-stopped
     command: >
@@ -57,6 +57,8 @@ services:
       - TELEGRAM_REDIRECT_ORIGIN=${TELEGRAM_REDIRECT_ORIGIN}
     ports:
       - "${AUTH_GRPC_PORT}:${AUTH_GRPC_PORT}"
+    expose:
+      - '9101'
     networks:
       - tomatocinema
 
@@ -64,8 +66,10 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
+      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: user-service
+    image: tomato-cinema/user-service:latest
     container_name: user_service_tomato_cinema
     restart: unless-stopped
     environment:
@@ -92,8 +96,10 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
+      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: gateway-service
+    image: tomato-cinema/gateway-service:latest
     container_name: gateway_service_tomato_cinema
     restart: unless-stopped
     environment:
@@ -119,8 +125,10 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
+      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: notification-service
+    image: tomato-cinema/notification-service:latest
     container_name: notification_service_tomato_cinema
     restart: unless-stopped
     environment:
@@ -142,8 +150,10 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
+      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: bot-service
+    image: tomato-cinema/bot-service:latest
     container_name: bot_service_tomato_cinema
     restart: unless-stopped
     environment:
@@ -154,3 +164,6 @@ services:
       - auth-service
     networks:
       - tomatocinema
+
+
+

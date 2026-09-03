@@ -7,16 +7,27 @@ global:
   evaluation_interval: 5s
 
 scrape_configs:
+# cào metrics từ gateway
   - job_name: "gateway"
     metrics_path: "/metrics"
     static_configs:
       - targets: ["gateway-service:4000"]
 
+#cào metrics từ auth
+  - job_name: "auth"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["auth-service:9101"]
 
   # Cào metrics từ chính Prometheus
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
+
+  - job_name: "node"
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
 
   # Cào metrics từ OpenTelemetry Collector (chứa metrics của các apps NestJS)
   - job_name: "otel-collector"

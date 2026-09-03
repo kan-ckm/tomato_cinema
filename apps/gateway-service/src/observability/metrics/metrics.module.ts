@@ -60,9 +60,9 @@ import { HttpMetricsInterceptor } from './http-metrics.interceptor'
 			labelNames: ['service', 'method', 'route', 'status']
 		}),
 		HttpMetricsInterceptor,
-		
+
 		//GLOBAL INTERCEPTOR: Tự động gắn HttpMetricsInterceptor vào tất cả các Request trong app
-		 
+
 		{
 			provide: APP_INTERCEPTOR,
 			useClass: HttpMetricsInterceptor

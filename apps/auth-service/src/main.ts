@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
@@ -10,6 +11,8 @@ async function bootstrap() {
 	createGrpcServer(app, config)
 
 	await app.startAllMicroservices()
-	await app.init()
+	await app.listen(9101)
+	Logger.log(`🚀 gRPC Auth Server is running on port 50051`)
+	Logger.log(`📊 Metrics endpoint available at http://localhost:9101/metrics`)
 }
 bootstrap()
