@@ -32,10 +32,12 @@
     "@tomatocinema/contracts": "workspace:*",
     "@tomatocinema/core": "workspace:*",
     "@tomatocinema/passport": "workspace:*",
+    "@willsoto/nestjs-prometheus": "^6.1.0",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^2.0.1",
     "axios": "^1.19.0",
     "handlebars": "^4.7.9",
+    "prom-client": "^15.1.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^4.4.3"
