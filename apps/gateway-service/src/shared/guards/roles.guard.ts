@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core'
 import { RoleUser } from '@tomatocinema/contracts/gen/account'
 import { lastValueFrom, Observable } from 'rxjs'
-import { AccountClientGrpc } from '../../module/account/account.grpc'
+import { AccountClientGrpc } from '../../modules/account/account.grpc'
 import { ROLES_KEY } from '../decorators'
 
 // kiểm tra và phân quyềnbộ user

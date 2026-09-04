@@ -1,4 +1,4 @@
-import { createBot } from './module/bot/bot.factorty'
+import { createBot } from './modules/bot/bot.factorty'
 
 async function bootstrap() {
 	try {

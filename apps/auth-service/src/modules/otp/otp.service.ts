@@ -3,7 +3,7 @@ import { RpcException } from '@nestjs/microservices'
 import { RpcStatus } from '@tomatocinema/common'
 import { createHash } from 'crypto'
 import { generateCode } from 'patcode'
-import { RedisService } from '@/infrastucture/redis/redis.service'
+import { RedisService } from '@/infrastructure/redis/redis.service'
 
 // file này dùng nội bộ cho auth service
 @Injectable()

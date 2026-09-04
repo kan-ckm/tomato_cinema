@@ -9,7 +9,7 @@ import {
 	InitPhoneChangeRequest,
 	RoleUser
 } from '@tomatocinema/contracts/gen/account'
-import { MessagingService } from '@/infrastucture/messaging/messaging.service'
+import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { AccountRepository } from './account.repository'

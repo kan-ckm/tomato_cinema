@@ -9,14 +9,14 @@ import {
 	rmqEnv,
 	telegramEnv
 } from '@/config'
-import { MessagingModule } from './infrastucture/messaging/messaging.module'
-import { PrismaModule } from './infrastucture/prisma/prisma.module'
-import { RedisModule } from './infrastucture/redis/redis.module'
-import { AccountModule } from './module/account/account.module'
-import { AuthModule } from './module/auth/auth.module'
-import { OtpModule } from './module/otp/otp.module'
-import { TelegramModule } from './module/telegram/telegram.module'
-import { TokenModule } from './module/token/token.module'
+import { MessagingModule } from './infrastructure/messaging/messaging.module'
+import { PrismaModule } from './infrastructure/prisma/prisma.module'
+import { RedisModule } from './infrastructure/redis/redis.module'
+import { AccountModule } from './modules/account/account.module'
+import { AuthModule } from './modules/auth/auth.module'
+import { OtpModule } from './modules/otp/otp.module'
+import { TelegramModule } from './modules/telegram/telegram.module'
+import { TokenModule } from './modules/token/token.module'
 import { ObservabilityModule } from './observability/observability.module'
 
 @Module({

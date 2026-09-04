@@ -3,7 +3,7 @@ import {
 	ValidatorConstraint,
 	ValidatorConstraintInterface
 } from 'class-validator'
-import { SendOtpRequest } from '../../module/auth/dto'
+import { SendOtpRequest } from '../../modules/auth/dto'
 
 // kiểm tra dữ liệu và ngăn chặn mã độc cho chức năng gửi mã otp
 @ValidatorConstraint({

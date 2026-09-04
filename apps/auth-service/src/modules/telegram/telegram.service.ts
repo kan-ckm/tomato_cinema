@@ -9,7 +9,7 @@ import {
 } from '@tomatocinema/contracts/gen/auth'
 import { createHash, createHmac, randomBytes } from 'crypto'
 import { AllConfigs } from '@/config'
-import { RedisService } from '@/infrastucture/redis/redis.service'
+import { RedisService } from '@/infrastructure/redis/redis.service'
 import { UserRepository } from '@/shared/repository'
 import { TokenService } from '../token/token.service'
 import { UsersClientGrpc } from '../users/users.grpc'

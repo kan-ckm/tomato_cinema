@@ -8,7 +8,7 @@ import {
 	GetMeResponse,
 	PatchUserRequest
 } from '@tomatocinema/contracts/gen/users'
-import { AccountClientGrpc } from 'src/infrastucture/grpc/clients/account.client'
+import { AccountClientGrpc } from 'src/infrastructure/grpc/clients/account.client'
 import { UserRepository } from 'src/shared/repository'
 
 /**

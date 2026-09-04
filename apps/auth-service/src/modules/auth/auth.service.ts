@@ -7,7 +7,7 @@ import {
 	VerifyOtpRequest
 } from '@tomatocinema/contracts/gen/auth'
 import { Account, Prisma } from 'generated/client'
-import { MessagingService } from '@/infrastucture/messaging/messaging.service'
+import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { TokenService } from '../token/token.service'

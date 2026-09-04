@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config'
-import { SmsOptions } from 'src/infrastucture/sms/interfaces'
+import { SmsOptions } from 'src/infrastructure/sms/interfaces'
 
 export function getExolveConfig(configService: ConfigService): SmsOptions {
 	return {

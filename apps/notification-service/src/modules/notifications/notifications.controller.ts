@@ -5,7 +5,7 @@ import type {
 	otpRequestedEvent,
 	PhoneChangedEvent
 } from '@tomatocinema/contracts'
-import { RmqService } from 'src/infrastucture/rmq/rmq.service'
+import { RmqService } from 'src/infrastructure/rmq/rmq.service'
 import { NotificationsService } from './notifications.service'
 
 @Controller()

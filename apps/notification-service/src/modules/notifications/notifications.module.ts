@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { getExolveConfig } from 'src/config/factories'
-import { MailModule } from 'src/infrastucture/mail/mail.module'
-import { MailService } from 'src/infrastucture/mail/mail.service'
-import { SmsModule } from 'src/infrastucture/sms/sms.module'
+import { MailModule } from 'src/infrastructure/mail/mail.module'
+import { MailService } from 'src/infrastructure/mail/mail.service'
+import { SmsModule } from 'src/infrastructure/sms/sms.module'
 import { NotificationsController } from './notifications.controller'
 import { NotificationsService } from './notifications.service'
 

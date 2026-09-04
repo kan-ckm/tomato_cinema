@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Account } from 'generated/client'
 import { AccountCreateInput, AccountUpdateInput } from 'generated/models'
-import { PrismaService } from '@/infrastucture/prisma/prisma.service'
+import { PrismaService } from '@/infrastructure/prisma/prisma.service'
 
 /**
  * Repository thao tác với bảng Account qua Prisma

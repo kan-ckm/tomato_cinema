@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 import { PROTO_PATHS } from '@tomatocinema/contracts'
 import { AllConfigs } from '@/config'
-import { UsersClientGrpc } from '@/infrastucture/grpc/clients/users.client'
+import { UsersClientGrpc } from '@/infrastructure/grpc/clients/users.client'
 
 @Module({
 	imports: [
