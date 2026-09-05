@@ -13,7 +13,7 @@ name: tomato-cinema
 networks:
   tomatocinema:
     name: tomato-cinema_tomatocinema
-    external: true
+    driver: bridge
 
 volumes:
   prometheus_data:
