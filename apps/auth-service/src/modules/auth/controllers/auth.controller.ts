@@ -14,13 +14,17 @@ import type {
 	ResetPasswordResponse
 } from '@tomatocinema/contracts/gen/auth'
 import { AuthService } from '../services/auth.service'
+import { ForgotPasswordService } from '../services/forgot-password.service'
 
 /**
  * Controller tiếp nhận các yêu cầu gRPC cho AuthService từ API Gateway và các Service khác.
  */
 @Controller()
 export class AuthController {
-	public constructor(private readonly authService: AuthService) {}
+	public constructor(
+		private readonly authService: AuthService,
+		private readonly forgotPasswordService: ForgotPasswordService
+	) {}
 
 	@GrpcMethod('AuthService', 'Register')
 	public async register(data: RegisterRequest): Promise<AuthResponse> {
@@ -41,20 +45,20 @@ export class AuthController {
 	public async forgotPassword(
 		data: ForgotPasswordRequest
 	): Promise<ForgotPasswordResponse> {
-		return await this.authService.forgotPassword(data)
+		return await this.forgotPasswordService.forgotPassword(data)
 	}
 
 	@GrpcMethod('AuthService', 'ResetPassword')
 	public async resetPassword(
 		data: ResetPasswordRequest
 	): Promise<ResetPasswordResponse> {
-		return await this.authService.resetPassword(data)
+		return await this.forgotPasswordService.resetPassword(data)
 	}
 
 	@GrpcMethod('AuthService', 'ChangePassword')
 	public async changePassword(
 		data: ChangePasswordRequest
 	): Promise<ChangePasswordResponse> {
-		return await this.authService.changePassword(data)
+		return await this.forgotPasswordService.changePassword(data)
 	}
 }
