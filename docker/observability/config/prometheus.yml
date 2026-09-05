@@ -19,6 +19,12 @@ scrape_configs:
     static_configs:
       - targets: ["auth-service:9101"]
 
+#cào metrics từ auth
+  - job_name: "notification"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["notification-service:9102"]
+
   # Cào metrics từ chính Prometheus
   - job_name: "prometheus"
     static_configs:
