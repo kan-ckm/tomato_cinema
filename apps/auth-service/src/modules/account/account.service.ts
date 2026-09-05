@@ -10,7 +10,6 @@ import {
 	RoleUser
 } from '@tomatocinema/contracts/gen/account'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
-import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { AccountRepository } from './account.repository'
 
@@ -19,9 +18,9 @@ export class AccountService {
 	public constructor(
 		private readonly messagingService: MessagingService,
 		private readonly accountRepository: AccountRepository,
-		private readonly userRepository: UserRepository,
 		private readonly otpService: OtpService
 	) {}
+
 	// Lấy thông tin chi tiết của tài khoản dựa vào ID
 	public async getAccount(data: GetAccountRequest) {
 		const { id } = data
@@ -46,7 +45,7 @@ export class AccountService {
 	// Bắt đầu quy trình thay đổi Email (Gửi yêu cầu đổi email)
 	public async initChangeEmail(data: InitEmailChangeRequest) {
 		const { email, userId } = data
-		const existing = await this.userRepository.findByEmail(email)
+		const existing = await this.accountRepository.findByEmail(email)
 
 		if (existing)
 			throw new RpcException({
@@ -76,7 +75,7 @@ export class AccountService {
 	public async confirmEmailChange(data: ConfirmEmailChangeRequest) {
 		const { email, code, userId } = data
 
-		//Tìm yêu cầu đổi email đang chờ của user này
+		// Tìm yêu cầu đổi email đang chờ của user này
 		const pending = await this.accountRepository.findPendingChange(
 			userId,
 			'email'
@@ -100,10 +99,10 @@ export class AccountService {
 				details: 'Code hết hạn'
 			})
 
-		this.otpService.verify(pending.value, code, 'email')
+		await this.otpService.verify(pending.value, code, 'email')
 
 		// Nếu OTP đúng, tiến hành cập nhật email mới vào hồ sơ user và đánh dấu đã xác minh
-		await this.userRepository.update(userId, {
+		await this.accountRepository.update(userId, {
 			email,
 			isEmailVerified: true
 		})
@@ -112,10 +111,9 @@ export class AccountService {
 	}
 
 	// Bắt đầu quy trình thay đổi Số điện thoại (Tương tự như đổi Email)
-
 	public async initChangePhone(data: InitPhoneChangeRequest) {
 		const { phone, userId } = data
-		const existing = await this.userRepository.findByPhone(phone)
+		const existing = await this.accountRepository.findByPhone(phone)
 
 		if (existing)
 			throw new RpcException({
@@ -164,9 +162,9 @@ export class AccountService {
 				details: 'Code hết hạn'
 			})
 
-		this.otpService.verify(pending.value, code, 'phone')
+		await this.otpService.verify(pending.value, code, 'phone')
 
-		await this.userRepository.update(userId, {
+		await this.accountRepository.update(userId, {
 			phone,
 			isPhoneVerified: true
 		})

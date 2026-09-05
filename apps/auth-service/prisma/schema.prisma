@@ -19,6 +19,7 @@ model Account {
 
   phone String? @unique // Số điện thoại (Tùy chọn, nhưng nếu có thì không được trùng)
   email String? @unique // Email (Tùy chọn, không được trùng)
+  passwordHash String? @map("password_hash") // Mật khẩu băm (Argon2id)
 
   isPhoneVerified Boolean @default(false) @map("is_phone_verifed") // Đánh dấu SDT đã xác minh OTP chưa
   isEmailVerified Boolean @default(false) @map("is_email_verifed") // Đánh dấu Email đã xác minh OTP chưa

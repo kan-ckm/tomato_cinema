@@ -11,6 +11,7 @@ import { createHash, createHmac, randomBytes } from 'crypto'
 import { AllConfigs } from '@/config'
 import { RedisService } from '@/infrastructure/redis/redis.service'
 import { UserRepository } from '@/shared/repository'
+import { AccountRepository } from '../account/repositories/account.repository'
 import { TokenService } from '../token/token.service'
 import { UsersClientGrpc } from '../users/users.grpc'
 import { TelegramRepository } from './telegram.repository'
@@ -29,6 +30,7 @@ export class TelegramService {
 		private readonly redisService: RedisService,
 		private readonly configService: ConfigService<AllConfigs>,
 		private readonly telegramRepository: TelegramRepository,
+		private readonly accountRepository: AccountRepository,
 		private readonly tokenService: TokenService,
 		private readonly userRespoSitory: UserRepository,
 		private readonly usersClient: UsersClientGrpc
@@ -78,6 +80,7 @@ export class TelegramService {
 		const telegramId = data.query.id
 		const exists =
 			await this.telegramRepository.findByTelegramId(telegramId)
+		await this.accountRepository.findByTelegramId(telegramId)
 
 		// 2.2 Nếu tài khoản đã có và đã có số điện thoại -> Cấp token ngay
 		if (exists && exists.phone) {
@@ -119,15 +122,15 @@ export class TelegramService {
 
 		// 3.1 Tìm theo số điện thoại, nếu chưa có thì tạo mới
 		let isNew = false
-		let user = await this.userRespoSitory.findByPhone(phone)
+		let user = await this.accountRepository.findByPhone(phone)
 
 		if (!user) {
-			user = await this.userRespoSitory.create({ phone })
+			user = await this.accountRepository.create({ phone })
 			isNew = true
 		}
 
 		// 3.2 Cập nhật telegramId và đánh dấu sđt đã xác minh
-		await this.userRespoSitory.update(user.id, {
+		await this.accountRepository.update(user.id, {
 			telegramId,
 			isPhoneVerified: true
 		})

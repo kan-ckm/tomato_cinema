@@ -1,20 +1,14 @@
 import { Module } from '@nestjs/common'
 import { RedisService } from '@/infrastructure/redis/redis.service'
-import { UserRepository } from '@/shared/repository'
 import { OtpService } from '../otp/otp.service'
 import { AccountController } from './account.controller'
-import { AccountRepository } from './account.repository'
 import { AccountService } from './account.service'
+import { AccountRepository } from './repositories/account.repository'
 
 @Module({
 	imports: [],
 	controllers: [AccountController],
-	providers: [
-		AccountService,
-		AccountRepository,
-		UserRepository,
-		OtpService,
-		RedisService
-	]
+	providers: [AccountService, AccountRepository, OtpService, RedisService],
+	exports: [AccountRepository, AccountService]
 })
 export class AccountModule {}
