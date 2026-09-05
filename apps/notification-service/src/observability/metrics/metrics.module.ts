@@ -23,13 +23,18 @@ import {
 		}),
 
 		makeCounterProvider({
-			name: 'rmq_event_total',
+			name: 'rmq_events_total',
 			help: 'Total RabbitMQ events processed',
 			labelNames: ['service', 'event', 'status']
 		}),
 
 		makeCounterProvider({
-			name: 'rmq_event_nack_total',
+			name: 'rmq_events_ack_total',
+			help: 'Total ACKed RMQ events',
+			labelNames: ['service', 'event']
+		}),
+		makeCounterProvider({
+			name: 'rmq_events_nack_total',
 			help: 'Total NACKed RMQ events',
 			labelNames: ['service', 'event']
 		})
