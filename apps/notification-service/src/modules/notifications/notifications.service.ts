@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common'
 import {
 	EmailChangedEvent,
 	otpRequestedEvent,
+	PasswordChangedEvent,
+	PasswordResetRequestedEvent,
 	PhoneChangedEvent
 } from '@tomatocinema/contracts'
 import { MailService } from 'src/infrastructure/mail/mail.service'
@@ -14,15 +16,18 @@ export class NotificationsService {
 		private readonly smsService: SmsService
 	) {}
 
-	public async sendOtp(data: otpRequestedEvent) {
-		const { identifier, code, type } = data
-		console.log(`OTP event received: `, data)
+	public async sendPasswordReset(data: PasswordResetRequestedEvent) {
+		const { email, code, expiresInMinutes } = data
+		return await this.mailService.sendPasswordReset(
+			email,
+			code,
+			expiresInMinutes
+		)
+	}
 
-		if (data.type === 'email') {
-			await this.mailService.sendOtp(identifier, code)
-		} else {
-			this.smsService.sendOtp(identifier, code)
-		}
+	public async sendPasswordChanged(data: PasswordChangedEvent) {
+		const { email } = data
+		return await this.mailService.sendPasswordChanged(email)
 	}
 
 	public async sendPhoneChange(data: PhoneChangedEvent) {
@@ -33,5 +38,18 @@ export class NotificationsService {
 	public async sendEmailChange(data: EmailChangedEvent) {
 		const { email, code } = data
 		return await this.mailService.sendEmailChange(email, code)
+	}
+
+	/**
+	 * @deprecated OTP auth đã được thay thế
+	 */
+	public async sendOtp(data: otpRequestedEvent) {
+		const { identifier, code } = data
+
+		if (data.type === 'email') {
+			await this.mailService.sendOtp(identifier, code)
+		} else {
+			this.smsService.sendOtp(identifier, code)
+		}
 	}
 }
