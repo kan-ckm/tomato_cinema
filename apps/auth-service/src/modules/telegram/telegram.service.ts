@@ -14,7 +14,7 @@ import { UserRepository } from '@/shared/repository'
 import { AccountRepository } from '../account/repositories/account.repository'
 import { TokenService } from '../token/token.service'
 import { UsersClientGrpc } from '../users/users.grpc'
-import { TelegramRepository } from './telegram.repository'
+import { TelegramRepository } from './repositories/telegram.repository'
 
 /**
  * Service xử lý toàn bộ luồng đăng nhập qua Telegram OAuth / Telegram Bot
