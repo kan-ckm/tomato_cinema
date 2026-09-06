@@ -6,7 +6,7 @@ import * as argon2 from 'argon2'
  * Tách biệt khỏi AuthService theo nguyên tắc Single Responsibility Principle (SRP).
  */
 @Injectable()
-export class PasswordService {
+export class HashPasswordService {
 	/**
 	 * Băm mật khẩu sử dụng thuật toán Argon2id (chuẩn khuyến nghị OWASP)
 	 * @param password Mật khẩu văn bản thô

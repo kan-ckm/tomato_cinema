@@ -118,8 +118,6 @@ export interface AuthServiceClient {
 
   resetPassword(request: ResetPasswordRequest): Observable<ResetPasswordResponse>;
 
-  changePassword(request: ChangePasswordRequest): Observable<ChangePasswordResponse>;
-
   /** Nhóm tính năng Đăng nhập qua Telegram SSO */
 
   telegramInit(request: Empty): Observable<TelegramInitResponse>;
@@ -150,10 +148,6 @@ export interface AuthServiceController {
     request: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> | Observable<ResetPasswordResponse> | ResetPasswordResponse;
 
-  changePassword(
-    request: ChangePasswordRequest,
-  ): Promise<ChangePasswordResponse> | Observable<ChangePasswordResponse> | ChangePasswordResponse;
-
   /** Nhóm tính năng Đăng nhập qua Telegram SSO */
 
   telegramInit(request: Empty): Promise<TelegramInitResponse> | Observable<TelegramInitResponse> | TelegramInitResponse;
@@ -179,7 +173,6 @@ export function AuthServiceControllerMethods() {
       "refresh",
       "forgotPassword",
       "resetPassword",
-      "changePassword",
       "telegramInit",
       "telegramVerify",
       "telegramComplete",

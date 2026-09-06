@@ -10,8 +10,7 @@ import {
 import { createHash, createHmac, randomBytes } from 'crypto'
 import { AllConfigs } from '@/config'
 import { RedisService } from '@/infrastructure/redis/redis.service'
-import { UserRepository } from '@/shared/repository'
-import { AccountRepository } from '../account/repositories/account.repository'
+import { AccountRepository } from '../account/repositories'
 import { TokenService } from '../token/token.service'
 import { UsersClientGrpc } from '../users/users.grpc'
 import { TelegramRepository } from './repositories/telegram.repository'
@@ -32,7 +31,6 @@ export class TelegramService {
 		private readonly telegramRepository: TelegramRepository,
 		private readonly accountRepository: AccountRepository,
 		private readonly tokenService: TokenService,
-		private readonly userRespoSitory: UserRepository,
 		private readonly usersClient: UsersClientGrpc
 	) {
 		this.BOT_ID = this.configService.get('telegram.botId', { infer: true })

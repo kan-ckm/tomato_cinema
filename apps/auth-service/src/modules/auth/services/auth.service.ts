@@ -11,10 +11,10 @@ import {
 import type { Account } from 'generated/client'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
-import { AccountRepository } from '../../account/repositories/account.repository'
+import { AccountRepository } from '@/modules/account/repositories'
+import { HashPasswordService } from '@/shared/hash-password'
 import { TokenService } from '../../token/token.service'
 import { UsersClientGrpc } from '../../users/users.grpc'
-import { PasswordService } from './hash-password.service'
 
 /**
  * Service trung tâm xử lý nghiệp vụ Xác thực (Authentication).
@@ -24,7 +24,7 @@ import { PasswordService } from './hash-password.service'
 export class AuthService {
 	public constructor(
 		private readonly accountRepository: AccountRepository,
-		private readonly passwordService: PasswordService,
+		private readonly hashPasswordService: HashPasswordService,
 		private readonly tokenService: TokenService,
 		private readonly redisService: RedisService,
 		private readonly messagingService: MessagingService,
@@ -66,7 +66,7 @@ export class AuthService {
 			})
 		}
 
-		const passwordHash = await this.passwordService.hash(password)
+		const passwordHash = await this.hashPasswordService.hash(password)
 
 		//Tạo tài khoản trong PostgreSQL
 		let account: Account
@@ -131,7 +131,7 @@ export class AuthService {
 		}
 
 		//Kiểm tra mật khẩu khớp với hash Argon2id
-		const isPasswordValid = await this.passwordService.compare(
+		const isPasswordValid = await this.hashPasswordService.compare(
 			password,
 			account.passwordHash
 		)

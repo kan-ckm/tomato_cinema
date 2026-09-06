@@ -14,8 +14,7 @@ service AuthService {
     // Nhóm tính năng Quản lý mật khẩu qua Email (Mở rộng)
     rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
     rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
-    rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
-
+    
     // Nhóm tính năng Đăng nhập qua Telegram SSO
     rpc TelegramInit(google.protobuf.Empty) returns (TelegramInitResponse);
     rpc TelegramVerify(TelegramVerifyRequest) returns (TelegramVerifyResponse);

@@ -67,6 +67,25 @@ export interface ConfirmPhoneChangeResponse {
   ok: boolean;
 }
 
+export interface InitPasswordChangeRequest {
+  currentPassword: string;
+  userId: string;
+}
+
+export interface InitPasswordChangeResponse {
+  ok: boolean;
+}
+
+export interface ConfirmPasswordChangeRequest {
+  newPassword: string;
+  code: string;
+  userId: string;
+}
+
+export interface ConfirmPasswordChangeResponse {
+  ok: boolean;
+}
+
 export const ACCOUNT_V1_PACKAGE_NAME = "account.v1";
 
 export interface AccountServiceClient {
@@ -85,6 +104,12 @@ export interface AccountServiceClient {
   initPhoneChange(request: InitPhoneChangeRequest): Observable<InitPhoneChangeResponse>;
 
   confirmPhoneChange(request: ConfirmPhoneChangeRequest): Observable<ConfirmPhoneChangeResponse>;
+
+  /** đổi mk */
+
+  initPasswordChange(request: InitPasswordChangeRequest): Observable<InitPasswordChangeResponse>;
+
+  confirmPasswordChange(request: ConfirmPasswordChangeRequest): Observable<ConfirmPasswordChangeResponse>;
 }
 
 export interface AccountServiceController {
@@ -113,6 +138,16 @@ export interface AccountServiceController {
   confirmPhoneChange(
     request: ConfirmPhoneChangeRequest,
   ): Promise<ConfirmPhoneChangeResponse> | Observable<ConfirmPhoneChangeResponse> | ConfirmPhoneChangeResponse;
+
+  /** đổi mk */
+
+  initPasswordChange(
+    request: InitPasswordChangeRequest,
+  ): Promise<InitPasswordChangeResponse> | Observable<InitPasswordChangeResponse> | InitPasswordChangeResponse;
+
+  confirmPasswordChange(
+    request: ConfirmPasswordChangeRequest,
+  ): Promise<ConfirmPasswordChangeResponse> | Observable<ConfirmPasswordChangeResponse> | ConfirmPasswordChangeResponse;
 }
 
 export function AccountServiceControllerMethods() {
@@ -123,6 +158,8 @@ export function AccountServiceControllerMethods() {
       "confirmEmailChange",
       "initPhoneChange",
       "confirmPhoneChange",
+      "initPasswordChange",
+      "confirmPasswordChange",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

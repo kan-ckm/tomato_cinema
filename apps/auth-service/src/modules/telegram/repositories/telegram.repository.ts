@@ -12,4 +12,7 @@ export class TelegramRepository {
 			}
 		})
 	}
+	/**
+	 * Tìm tài khoản theo Telegram ID
+	 */
 }

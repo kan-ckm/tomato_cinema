@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportModule } from '@tomatocinema/passport'
 import { getPassportConfig } from '@/config'
+import { HashPasswordService } from '@/shared/hash-password'
 import { AccountModule } from '../account/account.module'
 import { TokenModule } from '../token/token.module'
 import { UsersModule } from '../users/users.module'
 import { AuthController } from './controllers/auth.controller'
 import { AuthService } from './services/auth.service'
 import { ForgotPasswordService } from './services/forgot-password.service'
-import { PasswordService } from './services/hash-password.service'
 
 /**
  * Module quản lý định danh & xác thực (Auth Module).
@@ -25,7 +25,7 @@ import { PasswordService } from './services/hash-password.service'
 		UsersModule
 	],
 	controllers: [AuthController],
-	providers: [AuthService, PasswordService, ForgotPasswordService],
-	exports: [AuthService, PasswordService, ForgotPasswordService]
+	providers: [AuthService, HashPasswordService, ForgotPasswordService],
+	exports: [AuthService, HashPasswordService, ForgotPasswordService]
 })
 export class AuthModule {}

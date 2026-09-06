@@ -2,8 +2,6 @@ import { Controller } from '@nestjs/common'
 import { GrpcMethod } from '@nestjs/microservices'
 import type {
 	AuthResponse,
-	ChangePasswordRequest,
-	ChangePasswordResponse,
 	ForgotPasswordRequest,
 	ForgotPasswordResponse,
 	LoginRequest,
@@ -55,10 +53,10 @@ export class AuthController {
 		return await this.forgotPasswordService.resetPassword(data)
 	}
 
-	@GrpcMethod('AuthService', 'ChangePassword')
-	public async changePassword(
-		data: ChangePasswordRequest
-	): Promise<ChangePasswordResponse> {
-		return await this.forgotPasswordService.changePassword(data)
-	}
+	// @GrpcMethod('AuthService', 'ChangePassword')
+	// public async changePassword(
+	// 	data: ChangePasswordRequest
+	// ): Promise<ChangePasswordResponse> {
+	// 	return await this.forgotPasswordService.changePassword(data)
+	// }
 }

@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { RpcStatus } from '@tomatocinema/common'
 import {
-	ChangePasswordRequest,
-	ChangePasswordResponse,
 	ForgotPasswordRequest,
 	ForgotPasswordResponse,
 	ResetPasswordRequest,
@@ -11,17 +9,17 @@ import {
 } from '@tomatocinema/contracts/gen/auth'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
-import { AccountRepository } from '@/modules/account/account.repository'
+import { AccountRepository } from '@/modules/account/repositories'
 import { TokenService } from '@/modules/token/token.service'
 import { UsersClientGrpc } from '@/modules/users/users.grpc'
-import { PasswordService } from './hash-password.service'
+import { HashPasswordService } from '@/shared/hash-password'
 
 @Injectable()
 export class ForgotPasswordService {
 	//QUÊN MẬT KHẨU (GỬI MÃ QUA EMAIL)
 	public constructor(
 		private readonly accountRepository: AccountRepository,
-		private readonly passwordService: PasswordService,
+		private readonly hashPasswordService: HashPasswordService,
 		private readonly tokenService: TokenService,
 		private readonly redisService: RedisService,
 		private readonly messagingService: MessagingService,
@@ -121,7 +119,7 @@ export class ForgotPasswordService {
 		}
 
 		//Băm mật khẩu mới bằng Argon2id
-		const passwordHash = await this.passwordService.hash(newPassword)
+		const passwordHash = await this.hashPasswordService.hash(newPassword)
 
 		//Cập nhật mật khẩu trong DB
 		await this.accountRepository.update(account.id, {
@@ -141,64 +139,64 @@ export class ForgotPasswordService {
 
 	//ĐỔI MẬT KHẨU KHI ĐÃ ĐĂNG NHẬP
 
-	/**
-	 * Đổi mật khẩu chủ động cho người dùng đã đăng nhập
-	 */
-	public async changePassword(
-		data: ChangePasswordRequest
-	): Promise<ChangePasswordResponse> {
-		const { userId, currentPassword, newPassword } = data
+	// /**
+	//  * Đổi mật khẩu chủ động cho người dùng đã đăng nhập
+	//  */
+	// public async changePassword(
+	// 	data: ChangePasswordRequest
+	// ): Promise<ChangePasswordResponse> {
+	// 	const { userId, currentPassword, newPassword } = data
 
-		if (!userId || !currentPassword || !newPassword) {
-			throw new RpcException({
-				code: RpcStatus.INVALID_ARGUMENT,
-				details: 'Vui lòng cung cấp đầy đủ thông tin'
-			})
-		}
+	// 	if (!userId || !currentPassword || !newPassword) {
+	// 		throw new RpcException({
+	// 			code: RpcStatus.INVALID_ARGUMENT,
+	// 			details: 'Vui lòng cung cấp đầy đủ thông tin'
+	// 		})
+	// 	}
 
-		if (newPassword.length < 6) {
-			throw new RpcException({
-				code: RpcStatus.INVALID_ARGUMENT,
-				details: 'Mật khẩu mới phải có ít nhất 6 ký tự'
-			})
-		}
+	// 	if (newPassword.length < 6) {
+	// 		throw new RpcException({
+	// 			code: RpcStatus.INVALID_ARGUMENT,
+	// 			details: 'Mật khẩu mới phải có ít nhất 6 ký tự'
+	// 		})
+	// 	}
 
-		const account = await this.accountRepository.findById(userId)
-		if (!account || !account.passwordHash) {
-			throw new RpcException({
-				code: RpcStatus.NOT_FOUND,
-				details: 'Tài khoản không tồn tại'
-			})
-		}
+	// 	const account = await this.accountRepository.findById(userId)
+	// 	if (!account || !account.passwordHash) {
+	// 		throw new RpcException({
+	// 			code: RpcStatus.NOT_FOUND,
+	// 			details: 'Tài khoản không tồn tại'
+	// 		})
+	// 	}
 
-		//Kiểm tra mật khẩu hiện tại
-		const isCurrentValid = await this.passwordService.compare(
-			currentPassword,
-			account.passwordHash
-		)
+	// 	//Kiểm tra mật khẩu hiện tại
+	// 	const isCurrentValid = await this.passwordService.compare(
+	// 		currentPassword,
+	// 		account.passwordHash
+	// 	)
 
-		if (!isCurrentValid) {
-			throw new RpcException({
-				code: RpcStatus.UNAUTHENTICATED,
-				details: 'Mật khẩu hiện tại không chính xác'
-			})
-		}
+	// 	if (!isCurrentValid) {
+	// 		throw new RpcException({
+	// 			code: RpcStatus.UNAUTHENTICATED,
+	// 			details: 'Mật khẩu hiện tại không chính xác'
+	// 		})
+	// 	}
 
-		//Băm mật khẩu mới bằng Argon2id
-		const passwordHash = await this.passwordService.hash(newPassword)
+	// 	//Băm mật khẩu mới bằng Argon2id
+	// 	const passwordHash = await this.passwordService.hash(newPassword)
 
-		//Cập nhật DB
-		await this.accountRepository.update(account.id, {
-			passwordHash
-		})
+	// 	//Cập nhật DB
+	// 	await this.accountRepository.update(account.id, {
+	// 		passwordHash
+	// 	})
 
-		//Gửi email thông báo nếu tài khoản có email
-		if (account.email) {
-			await this.messagingService.passwordChanged({
-				email: account.email
-			})
-		}
+	// 	//Gửi email thông báo nếu tài khoản có email
+	// 	if (account.email) {
+	// 		await this.messagingService.passwordChanged({
+	// 			email: account.email
+	// 		})
+	// 	}
 
-		return { ok: true }
-	}
+	// 	return { ok: true }
+	// }
 }
