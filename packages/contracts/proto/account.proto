@@ -13,6 +13,12 @@ service AccountService {
     // đổi số điện thoại
     rpc InitPhoneChange (InitPhoneChangeRequest) returns (InitPhoneChangeResponse);
     rpc ConfirmPhoneChange (ConfirmPhoneChangeRequest) returns (ConfirmPhoneChangeResponse);
+
+    // đổi mk
+    rpc InitPasswordChange (InitPasswordChangeRequest) returns (InitPasswordChangeResponse);
+    rpc ConfirmPasswordChange (ConfirmPasswordChangeRequest) returns (ConfirmPasswordChangeResponse);
+
+
 }
 
 message GetAccountRequest {
@@ -64,6 +70,27 @@ message ConfirmPhoneChangeRequest {
 message ConfirmPhoneChangeResponse {
     bool ok = 1;
 }
+
+message InitPasswordChangeRequest {
+    string currentPassword = 1;
+    string user_id = 2;
+}
+
+message InitPasswordChangeResponse{
+    bool ok = 1; 
+}
+
+message ConfirmPasswordChangeRequest {
+    string newPassword = 1;
+    string code = 2;
+    string user_id = 3;
+}
+
+message ConfirmPasswordChangeResponse {
+    bool ok = 1;
+}
+
+
 
 enum RoleUser {
     USER = 0;

@@ -5,6 +5,7 @@ import { AccountModule } from '../modules/account/account.module'
 import { AuthModule } from '../modules/auth/auth.module'
 import { UsersModule } from '../modules/users/users.module'
 import { ObservabilityModule } from '../observability/observability.module'
+import { RateLimitModule } from '../shared/rate-limit/rate-limit.module'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { getPassportConfig } from './config'
@@ -21,7 +22,8 @@ import { getPassportConfig } from './config'
 		AccountModule,
 		AuthModule,
 		UsersModule,
-		ObservabilityModule
+		ObservabilityModule,
+		RateLimitModule
 	],
 	controllers: [AppController],
 	providers: [AppService]

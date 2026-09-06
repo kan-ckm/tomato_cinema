@@ -3,25 +3,28 @@ import { RpcException } from '@nestjs/microservices'
 import { convertEnum, RpcStatus } from '@tomatocinema/common'
 import {
 	ConfirmEmailChangeRequest,
+	ConfirmPasswordChangeRequest,
 	ConfirmPhoneChangeRequest,
 	type GetAccountRequest,
 	InitEmailChangeRequest,
+	InitPasswordChangeRequest,
 	InitPhoneChangeRequest,
 	RoleUser
 } from '@tomatocinema/contracts/gen/account'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
-import { UserRepository } from '@/shared/repository'
+import { HashPasswordService } from '../../shared/hash-password/hash-password.service'
 import { OtpService } from '../otp/otp.service'
-import { AccountRepository } from './account.repository'
+import { AccountRepository } from './repositories'
 
 @Injectable()
 export class AccountService {
 	public constructor(
 		private readonly messagingService: MessagingService,
 		private readonly accountRepository: AccountRepository,
-		private readonly userRepository: UserRepository,
-		private readonly otpService: OtpService
+		private readonly otpService: OtpService,
+		private readonly hashPasswordService: HashPasswordService
 	) {}
+
 	// Lấy thông tin chi tiết của tài khoản dựa vào ID
 	public async getAccount(data: GetAccountRequest) {
 		const { id } = data
@@ -46,7 +49,7 @@ export class AccountService {
 	// Bắt đầu quy trình thay đổi Email (Gửi yêu cầu đổi email)
 	public async initChangeEmail(data: InitEmailChangeRequest) {
 		const { email, userId } = data
-		const existing = await this.userRepository.findByEmail(email)
+		const existing = await this.accountRepository.findByEmail(email)
 
 		if (existing)
 			throw new RpcException({
@@ -76,7 +79,7 @@ export class AccountService {
 	public async confirmEmailChange(data: ConfirmEmailChangeRequest) {
 		const { email, code, userId } = data
 
-		//Tìm yêu cầu đổi email đang chờ của user này
+		// Tìm yêu cầu đổi email đang chờ của user này
 		const pending = await this.accountRepository.findPendingChange(
 			userId,
 			'email'
@@ -100,10 +103,10 @@ export class AccountService {
 				details: 'Code hết hạn'
 			})
 
-		this.otpService.verify(pending.value, code, 'email')
+		await this.otpService.verify(pending.value, code, 'email')
 
 		// Nếu OTP đúng, tiến hành cập nhật email mới vào hồ sơ user và đánh dấu đã xác minh
-		await this.userRepository.update(userId, {
+		await this.accountRepository.update(userId, {
 			email,
 			isEmailVerified: true
 		})
@@ -112,10 +115,9 @@ export class AccountService {
 	}
 
 	// Bắt đầu quy trình thay đổi Số điện thoại (Tương tự như đổi Email)
-
 	public async initChangePhone(data: InitPhoneChangeRequest) {
 		const { phone, userId } = data
-		const existing = await this.userRepository.findByPhone(phone)
+		const existing = await this.accountRepository.findByPhone(phone)
 
 		if (existing)
 			throw new RpcException({
@@ -164,13 +166,78 @@ export class AccountService {
 				details: 'Code hết hạn'
 			})
 
-		this.otpService.verify(pending.value, code, 'phone')
+		await this.otpService.verify(pending.value, code, 'phone')
 
-		await this.userRepository.update(userId, {
+		await this.accountRepository.update(userId, {
 			phone,
 			isPhoneVerified: true
 		})
 		await this.accountRepository.deletePendingChange(userId, 'phone')
+		return { ok: true }
+	}
+
+	public async initChangePassword(data: InitPasswordChangeRequest) {
+		const { currentPassword, userId } = data
+		const account = await this.accountRepository.findById(userId)
+
+		if (!account)
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'người dùng không tồn tại'
+			})
+
+		if (!account.email) {
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Thiếu thông tin email để nhận mã xác nhận'
+			})
+		}
+		const isPaswordValid = await this.hashPasswordService.compare(
+			currentPassword,
+			account.passwordHash
+		)
+		if (!isPaswordValid) {
+			throw new RpcException({
+				code: RpcStatus.INVALID_ARGUMENT,
+				details: 'Mật khẩu hiện tại không chính xác'
+			})
+		}
+
+		const { code } = await this.otpService.send(account.email, 'email')
+
+		await this.messagingService.passwordResetRequested({
+			email: account.email,
+			code,
+			expiresInMinutes: 5
+		})
+		return { ok: true }
+	}
+
+	public async confirmPasswordChange(data: ConfirmPasswordChangeRequest) {
+		const { newPassword, code, userId } = data
+
+		if (!newPassword || newPassword.length < 6) {
+			throw new RpcException({
+				code: RpcStatus.INVALID_ARGUMENT,
+				details: 'Mật khẩu mới phải có 6 ký tự'
+			})
+		}
+
+		const account = await this.accountRepository.findById(userId)
+		if (!account || !account.email) {
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Tài khoản không hợp lệ'
+			})
+		}
+
+		await this.otpService.verify(account.email, code, 'email')
+
+		const newPasswodHash = await this.hashPasswordService.hash(newPassword)
+
+		await this.accountRepository.update(userId, {
+			passwordHash: newPasswodHash
+		})
 		return { ok: true }
 	}
 }

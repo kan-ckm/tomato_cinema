@@ -420,8 +420,8 @@ export function DatabaseSection() {
                     <td>-</td>
                     <td>-</td>
                     <td>
-                      Loại yêu cầu: <code>'email'</code> hoặc{" "}
-                      <code>'phone'</code>
+                      Loại yêu cầu: <code>&apos;email&apos;</code> hoặc{" "}
+                      <code>&apos;phone&apos;</code>
                     </td>
                   </tr>
                   <tr>
@@ -605,7 +605,7 @@ export function DatabaseSection() {
                     <code>UUID</code>
                   </td>
                   <td>
-                    <code>@PrimaryColumn('uuid')</code>
+                    <code>@PrimaryColumn(&apos;uuid&apos;)</code>
                   </td>
                   <td>
                     <span className="badge badge-red">PK</span> (Distributed

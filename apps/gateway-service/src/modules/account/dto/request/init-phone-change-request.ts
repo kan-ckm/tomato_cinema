@@ -7,6 +7,9 @@ export class InitPhoneChangeRequest {
 	})
 	//	@IsNotEmpty() đc dùng để bắt người dùng không được để trống
 	@IsNotEmpty()
-	@Matches(/^(0|84|\+84)(3|5|7|8|9)[0-9]{8}$/)
+	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
+		message:
+			'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số'
+	})
 	public phone: string
 }

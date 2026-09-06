@@ -8,17 +8,13 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger'
-import { lastValueFrom } from 'rxjs'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { GetMeResponse, PatchUserRequest } from './dto'
 import { UsersClientGrpc } from './users.grpc'
 
 @Controller('users')
 export class UsersControler {
-	public constructor(
-		private readonly client: UsersClientGrpc,
-		private readonly configService: ConfigService
-	) {}
+	public constructor(private readonly client: UsersClientGrpc) {}
 
 	@ApiOperation({
 		summary: 'Lấy thông tin hiện tại của user',

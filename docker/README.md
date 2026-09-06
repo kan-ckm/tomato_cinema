@@ -18,8 +18,13 @@ docker/
 │       └── 01-init-databases.sh    #    Script tự động tạo DB auth + users khi khởi tạo lần đầu
 ├── apps/                           # 🚀 Microservices Backend
 │   ├── docker-compose.yml          #    Điều phối 5 microservices
+├── apps/                           # 🚀 Microservices Backend & Reverse Proxy
+│   ├── docker-compose.yml          #    Điều phối 5 microservices + Nginx
 │   ├── .env                        #    Biến môi trường app (ĐÃ .gitignore)
 │   └── .env.example                #    Mẫu biến môi trường app
+├── nginx/                          # 🛡️ Reverse Proxy & Edge Rate Limiter (Nginx)
+│   ├── nginx.conf                  #    Cấu hình Nginx gốc & khai báo rate limit zones
+│   └── conf.d/default.conf         #    Định tuyến upstream Gateway và áp dụng rules rate limit
 ├── Dockerfile                      # Dockerfile Multi-Stage đa năng dùng chung cho mọi service
 ├── docker-compose.yml              # File tổng hợp (include cả infra/ & apps/)
 ├── .env                            # Biến môi trường master (ĐÃ .gitignore)

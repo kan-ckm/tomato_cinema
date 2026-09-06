@@ -36,18 +36,23 @@ export class TemplateService {
 			const candidatePaths = [
 				path.join(
 					process.cwd(),
-					'apps/notification-service/src/infrastucture/mail/templates',
+					'apps/notification-service/src/infrastructure/mail/templates',
 					`${templateName}.hbs`
 				),
 				path.join(
 					process.cwd(),
-					'src/infrastucture/mail/templates',
+					'src/infrastructure/mail/templates',
 					`${templateName}.hbs`
 				),
 				path.join(__dirname, 'templates', `${templateName}.hbs`),
 				path.join(
 					__dirname,
-					'../../../src/infrastucture/mail/templates',
+					'../../../src/infrastructure/mail/templates',
+					`${templateName}.hbs`
+				),
+				path.join(
+					__dirname,
+					'../../infrastructure/mail/templates',
 					`${templateName}.hbs`
 				)
 			]

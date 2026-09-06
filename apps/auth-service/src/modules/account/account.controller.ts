@@ -3,12 +3,16 @@ import { GrpcMethod } from '@nestjs/microservices'
 import type {
 	ConfirmEmailChangeRequest,
 	ConfirmEmailChangeResponse,
+	ConfirmPasswordChangeRequest,
+	ConfirmPasswordChangeResponse,
 	ConfirmPhoneChangeRequest,
 	ConfirmPhoneChangeResponse,
 	GetAccountRequest,
 	GetAccountResponse,
 	InitEmailChangeRequest,
 	InitEmailChangeResponse,
+	InitPasswordChangeRequest,
+	InitPasswordChangeResponse,
 	InitPhoneChangeRequest,
 	InitPhoneChangeResponse
 } from '@tomatocinema/contracts/gen/account'
@@ -56,5 +60,20 @@ export class AccountController {
 		data: ConfirmPhoneChangeRequest
 	): Promise<ConfirmPhoneChangeResponse> {
 		return await this.accountService.confirmPhoneChange(data)
+	}
+	// Lắng nghe gRPC: Yêu cầu bắt đầu đổi Số điện thoại
+	@GrpcMethod('AccountService', 'InitPasswordChange')
+	public async initPasswordChange(
+		data: InitPasswordChangeRequest
+	): Promise<InitPasswordChangeResponse> {
+		return await this.accountService.initChangePassword(data)
+	}
+
+	// Lắng nghe gRPC: Xác nhận mã OTP để chính thức đổi Số điện thoại
+	@GrpcMethod('AccountService', 'ConfirmPasswordChange')
+	public async confirmPasswordChange(
+		data: ConfirmPasswordChangeRequest
+	): Promise<ConfirmPasswordChangeResponse> {
+		return await this.accountService.confirmPasswordChange(data)
 	}
 }

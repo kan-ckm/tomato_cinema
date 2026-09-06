@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common'
 import { RedisService } from '@/infrastructure/redis/redis.service'
-import { UserRepository } from '@/shared/repository'
+import { HashPasswordService } from '@/shared/hash-password'
 import { OtpService } from '../otp/otp.service'
 import { AccountController } from './account.controller'
-import { AccountRepository } from './account.repository'
 import { AccountService } from './account.service'
+import { AccountRepository } from './repositories'
 
 @Module({
 	imports: [],
@@ -12,9 +12,10 @@ import { AccountService } from './account.service'
 	providers: [
 		AccountService,
 		AccountRepository,
-		UserRepository,
 		OtpService,
-		RedisService
-	]
+		RedisService,
+		HashPasswordService
+	],
+	exports: [AccountRepository, AccountService]
 })
 export class AccountModule {}
