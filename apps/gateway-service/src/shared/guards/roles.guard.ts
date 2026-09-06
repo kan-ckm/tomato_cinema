@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { RoleUser } from '@tomatocinema/contracts/gen/account'
-import { lastValueFrom, Observable } from 'rxjs'
 import { AccountClientGrpc } from '../../modules/account/account.grpc'
 import { ROLES_KEY } from '../decorators'
 

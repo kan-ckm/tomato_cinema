@@ -1,21 +1,20 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { CurrentUser, Protected } from '../../shared/decorators'
+import { ThrottleAuth, ThrottleOtp } from '../../shared/rate-limit'
 import { AccountClientGrpc } from './account.grpc'
 import {
 	ConfirmEmailChangeRequest,
+	ConfirmPasswordChangeRequest,
 	ConfirmPhoneChangeRequest,
 	InitEmailChangeRequest,
+	InitPasswordChangeRequest,
 	InitPhoneChangeRequest
 } from './dto'
 
 @Controller('account')
 export class AccountControler {
-	public constructor(
-		private readonly client: AccountClientGrpc,
-		private readonly configService: ConfigService
-	) {}
+	public constructor(private readonly client: AccountClientGrpc) {}
 
 	// API: Yêu cầu bắt đầu đổi Email
 	@ApiOperation({
@@ -92,4 +91,67 @@ export class AccountControler {
 			userId
 		})
 	}
+	@ApiOperation({
+		summary: 'Yêu cầu đổi mật khẩu',
+		description: 'Kiểm tra mật khẩu cũ và gửi mã OTP về email'
+	})
+	@ApiBearerAuth()
+	@Protected()
+	@ThrottleOtp()
+	@Post('password/init')
+	@HttpCode(HttpStatus.OK)
+	public async initPasswordChange(
+		@Body() dto: InitPasswordChangeRequest,
+		@CurrentUser() userId: string
+	) {
+		return this.client.call('initPasswordChange', {
+			...dto,
+			userId
+		})
+	}
+	@ApiOperation({
+		summary: 'Xác nhận đổi mật khẩu',
+		description: 'Xác thực mã OTP và cập nhật mật khẩu mới'
+	})
+	@ApiBearerAuth()
+	@Protected()
+	@ThrottleAuth()
+	@Post('password/confirm')
+	@HttpCode(HttpStatus.OK)
+	public async confirmPasswordChange(
+		@Body() dto: ConfirmPasswordChangeRequest,
+		@CurrentUser() userId: string
+	) {
+		return (
+			this,
+			this.client.call('confirmPasswordChange', {
+				...dto,
+				userId
+			})
+		)
+	}
+	// ==========================================
+	// 8. ĐỔI MẬT KHẨU (KHI ĐÃ ĐĂNG NHẬP)
+	// ==========================================
+
+	// @ApiBearerAuth()
+	// @Protected()
+	// @ApiOperation({
+	// 	summary: 'Đổi mật khẩu',
+	// 	description:
+	// 		'Đổi mật khẩu khi người dùng đã đăng nhập (cần mật khẩu hiện tại)'
+	// })
+	// @ApiOkResponse({
+	// 	type: SuccessResponse,
+	// 	description: 'Đổi mật khẩu thành công'
+	// })
+	// @ThrottleAuth()
+	// @Post('change-password')
+	// @HttpCode(HttpStatus.OK)
+	// public async changePassword(
+	// 	@CurrentUser() userId: string,
+	// 	@Body() dto: ChangePasswordRequest
+	// ) {
+	// 	return await this.client.call('changePassword', { ...dto, userId })
+	// }
 }

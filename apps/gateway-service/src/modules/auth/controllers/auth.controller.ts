@@ -19,6 +19,10 @@ import {
 import { RoleUser } from '@tomatocinema/contracts/gen/account'
 import type { Request, Response } from 'express'
 import { CurrentUser, Protected } from '../../../shared/decorators'
+import {
+	ThrottleAuth,
+	ThrottleOtp
+} from '../../../shared/rate-limit/decorators'
 import { AuthClientGrpc } from '../auth.grpc'
 import {
 	AuthResponse,
@@ -53,6 +57,7 @@ export class AuthController {
 		description:
 			'Đăng ký thành công, trả về Access Token và gán Refresh Token vào cookie'
 	})
+	@ThrottleAuth()
 	@Post('register')
 	@HttpCode(HttpStatus.CREATED)
 	public async register(
@@ -82,6 +87,7 @@ export class AuthController {
 		description:
 			'Đăng nhập thành công, trả về Access Token và gán Refresh Token vào cookie'
 	})
+	@ThrottleAuth()
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
 	public async login(
@@ -179,6 +185,7 @@ export class AuthController {
 		type: SuccessResponse,
 		description: 'Đã gửi mã xác nhận qua email nếu email tồn tại'
 	})
+	@ThrottleOtp()
 	@Post('forgot-password')
 	@HttpCode(HttpStatus.OK)
 	public async forgotPassword(@Body() dto: ForgotPasswordRequest) {
@@ -198,36 +205,12 @@ export class AuthController {
 		type: SuccessResponse,
 		description: 'Đặt lại mật khẩu thành công'
 	})
+	@ThrottleAuth()
 	@Post('reset-password')
 	@HttpCode(HttpStatus.OK)
 	public async resetPassword(@Body() dto: ResetPasswordRequest) {
 		return await this.client.call('resetPassword', dto)
 	}
-
-	// ==========================================
-	// 8. ĐỔI MẬT KHẨU (KHI ĐÃ ĐĂNG NHẬP)
-	// ==========================================
-
-	@ApiBearerAuth()
-	@Protected()
-	@ApiOperation({
-		summary: 'Đổi mật khẩu',
-		description:
-			'Đổi mật khẩu khi người dùng đã đăng nhập (cần mật khẩu hiện tại)'
-	})
-	@ApiOkResponse({
-		type: SuccessResponse,
-		description: 'Đổi mật khẩu thành công'
-	})
-	@Post('change-password')
-	@HttpCode(HttpStatus.OK)
-	public async changePassword(
-		@CurrentUser() userId: string,
-		@Body() dto: ChangePasswordRequest
-	) {
-		return await this.client.call('changePassword', { ...dto, userId })
-	}
-
 	// ==========================================
 	// 9. ĐĂNG NHẬP TELEGRAM (SSO)
 	// ==========================================
