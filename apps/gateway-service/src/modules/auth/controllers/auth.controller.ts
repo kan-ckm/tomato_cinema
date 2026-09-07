@@ -26,7 +26,6 @@ import {
 import { AuthClientGrpc } from '../auth.grpc'
 import {
 	AuthResponse,
-	ChangePasswordRequest,
 	ForgotPasswordRequest,
 	LoginRequest,
 	RegisterRequest,

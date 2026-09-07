@@ -13,7 +13,6 @@ export class OtpService {
 	public async send(identifier: string, type: 'phone' | 'email') {
 		const { code, hash } = this.generateCode()
 
-		console.debug('CODE', code)
 		// lưu mã vafo redis Cache
 		await this.redisService.set(
 			`otp:${type}:${identifier}`,
