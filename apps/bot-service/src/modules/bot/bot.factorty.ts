@@ -1,6 +1,6 @@
 import { session, Telegraf } from 'telegraf'
-import { CONFIG } from '@/config'
-import { Session, TelegrafContext } from '@/shared'
+import { CONFIG } from '../../config'
+import { Session, TelegrafContext } from '../../shared'
 import { registerBothandlers } from './handlers'
 
 export function createBot() {

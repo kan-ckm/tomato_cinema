@@ -160,8 +160,14 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV:-development}
+      # Ưu tiên phân giải IPv4 trước IPv6:
+      # api.telegram.org trả về cả IPv4 và IPv6. Mặc định Node.js 22 thử kết nối IPv6 trước,
+      # nhưng Docker bridge network không định tuyến IPv6 ra ngoài nên gây lỗi timeout (ETIMEDOUT).
+      - NODE_OPTIONS=--dns-result-order=ipv4first
       - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
-      - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      # Token bot Telegram hoàn chỉnh bắt buộc phải có dạng "<BOT_ID>:<SECRET_TOKEN>".
+      # Do trong .env tách thành TELEGRAM_BOT_ID và TELEGRAM_BOT_TOKEN nên cần ghép lại ở đây.
+      - BOT_TOKEN=${TELEGRAM_BOT_ID}:${TELEGRAM_BOT_TOKEN}
     depends_on:
       - auth-service
     networks:
@@ -172,7 +178,7 @@ services:
     container_name: reverse_proxy_tomato_cinema
     restart: unless-stopped
     ports:
-      - "${NGINX_HTTP_PORT:-8080}:80"
+      - "${NGINX_HTTP_PORT}:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../nginx/conf.d:/etc/nginx/conf.d:ro
