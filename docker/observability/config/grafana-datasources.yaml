@@ -4,6 +4,12 @@
 
 apiVersion: 1
 
+deleteDatasources:
+  - name: Prometheus_tomatocinema
+    orgId: 1
+  - name: Loki_tomato_cinema
+    orgId: 1
+
 datasources:
   # 1. Prometheus (Metrics)
   - name: Prometheus
