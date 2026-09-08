@@ -54,3 +54,11 @@ datasources:
           matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)'
           name: TraceID
           url: "$${__value.raw}"
+
+  # 4. Jaeger (Traces)
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
