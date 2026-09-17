@@ -106,6 +106,25 @@ services:
       - tomatocinema
 
   # ----------------------------------------------------------------------------
+  # 4.1 PROMTAIL: Log Shipper thu thập logs từ Docker containers gửi sang Loki
+  # ----------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail_tomato_cinema
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    volumes:
+      - ./config/promtail-config.yaml:/etc/promtail/promtail.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "${PROMTAIL_PORT:-9080}:9080"
+    depends_on:
+      - loki
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
   # 5. GRAFANA: Dashboard trực quan hóa trung tâm
   # ----------------------------------------------------------------------------
   grafana:

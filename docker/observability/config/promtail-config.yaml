@@ -1,0 +1,49 @@
+# ==============================================================================
+# 📦 CẤU HÌNH PROMTAIL (LOG SHIPPER CHO GRAFANA LOKI)
+# ==============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+# Vị trí lưu offset đọc file để khi restart không bị đọc lại log cũ
+positions:
+  filename: /tmp/positions.yaml
+
+# Địa chỉ đẩy logs về Loki
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Thu thập log từ toàn bộ Docker Containers trên Host
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Lấy tên container (bỏ ký tự / ở đầu)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      # Lấy tên service từ docker-compose (ví dụ: gateway-service, auth-service, etc.)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      # Lấy tên project compose (tomato-cinema)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      # Phân loại luồng stdout hoặc stderr
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      # Docker log mặc định dạng JSON {"log":"...","stream":"stdout","time":"..."}
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            timestamp: time
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      - output:
+          source: output
+
