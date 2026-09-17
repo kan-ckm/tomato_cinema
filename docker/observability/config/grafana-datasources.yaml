@@ -4,6 +4,12 @@
 
 apiVersion: 1
 
+deleteDatasources:
+  - name: Prometheus_tomatocinema
+    orgId: 1
+  - name: Loki_tomato_cinema
+    orgId: 1
+
 datasources:
   # 1. Prometheus (Metrics)
   - name: Prometheus
@@ -48,3 +54,11 @@ datasources:
           matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)'
           name: TraceID
           url: "$${__value.raw}"
+
+  # 4. Jaeger (Traces)
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true

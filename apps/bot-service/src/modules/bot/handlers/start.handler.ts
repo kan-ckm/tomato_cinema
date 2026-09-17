@@ -1,5 +1,5 @@
 import { Markup, Telegraf } from 'telegraf'
-import { TelegrafContext } from '@/shared'
+import { TelegrafContext } from '../../../shared'
 
 // Hàm đăng ký xử lý khi người dùng bắt đầu chat với Bot (lệnh /start)
 export function registerStartHandler(bot: Telegraf<TelegrafContext>) {

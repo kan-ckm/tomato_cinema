@@ -56,6 +56,21 @@ services:
       - tomatocinema
 
   # ----------------------------------------------------------------------------
+  # 2.1 JAEGER: Distributed Tracing backend & Web UI (All-in-One)
+  # ----------------------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: jaeger_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"     # Jaeger Web UI: http://localhost:16686
+    networks:
+      - tomatocinema
+
+
+  # ----------------------------------------------------------------------------
   # 3. PROMETHEUS: Metrics Storage & Querying
   # ----------------------------------------------------------------------------
   prometheus:
@@ -87,6 +102,25 @@ services:
       - loki_data:/loki
     ports:
       - "${LOKI_PORT:-3100}:3100"           # Loki API
+    networks:
+      - tomatocinema
+
+  # ----------------------------------------------------------------------------
+  # 4.1 PROMTAIL: Log Shipper thu thập logs từ Docker containers gửi sang Loki
+  # ----------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail_tomato_cinema
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    volumes:
+      - ./config/promtail-config.yaml:/etc/promtail/promtail.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "${PROMTAIL_PORT:-9080}:9080"
+    depends_on:
+      - loki
     networks:
       - tomatocinema
 

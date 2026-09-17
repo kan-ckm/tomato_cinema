@@ -30,6 +30,12 @@ exporters:
     tls:
       insecure: true
 
+  # 1.1 Chuyển tiếp Traces sang Jaeger qua gRPC OTLP
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
   # 2. Xuất Metrics ra endpoint để Prometheus cào (pull)
   prometheus:
     endpoint: 0.0.0.0:8889
@@ -50,7 +56,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp/tempo]
+      exporters: [otlp/tempo, otlp/jaeger]
 
     metrics:
       receivers: [otlp]

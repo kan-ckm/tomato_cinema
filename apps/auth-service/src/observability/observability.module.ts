@@ -12,7 +12,6 @@ import { MetricsModule } from './metrics/metrics.module'
  *   thay vì import rời rạc từng module con.
  */
 @Module({
-	imports: [MetricsModule],
-	exports: [MetricsModule]
+	imports: [MetricsModule]
 })
 export class ObservabilityModule {}

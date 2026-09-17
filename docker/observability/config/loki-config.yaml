@@ -40,7 +40,8 @@ schema_config:
 ruler:
   alertmanager_url: http://localhost:9093
 
-# Hỗ trợ nhận log qua chuẩn OpenTelemetry OTLP
+# Hỗ trợ nhận log qua chuẩn OpenTelemetry OTLP & Promtail
 limits_config:
   allow_structured_metadata: true
   volume_enabled: true
+  reject_old_samples: false
