@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common'
 import { MetricsModule } from './metrics/metrics.module'
-import { TrackingModule } from './tracking/tracking.module'
 
 /**
  * 📦 ObservabilityModule: Module tổng hợp toàn bộ các tính năng giám sát (Observability) của Gateway Service.
@@ -13,6 +12,6 @@ import { TrackingModule } from './tracking/tracking.module'
  *   thay vì import rời rạc từng module con.
  */
 @Module({
-	imports: [MetricsModule, TrackingModule]
+	imports: [MetricsModule]
 })
 export class ObservabilityModule {}

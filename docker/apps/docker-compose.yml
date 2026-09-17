@@ -55,6 +55,7 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
       - TELEGRAM_REDIRECT_ORIGIN=${TELEGRAM_REDIRECT_ORIGIN}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     ports:
       - "${AUTH_GRPC_PORT}:${AUTH_GRPC_PORT}"
     expose:
@@ -113,6 +114,7 @@ services:
       - ACCOUNT_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
       - USERS_GRPC_URL=user-service:${USER_GRPC_PORT}
       - PASSPORT_SECRET_KEY=${PASSPORT_SECRET_KEY}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     ports:
       - "${GATEWAY_HTTP_PORT}:${GATEWAY_HTTP_PORT}"
     depends_on:
@@ -143,6 +145,7 @@ services:
       - SMTP_SECURE=${SMTP_SECURE}
       - EXOLVE_API_KEY=${EXOLVE_API_KEY}
       - EXOLVE_SENDER=${EXOLVE_SENDER}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     expose:
       - '9102'
     networks:
