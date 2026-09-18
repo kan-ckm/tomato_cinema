@@ -1,4 +1,3 @@
-import './observability/tracking'
 import { Logger, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
@@ -6,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import cookieParser from 'cookie-parser'
 import { AppModule } from './core/app.module'
 import { getCorsconfig, getValidationPipeConfig } from './core/config'
+import './observability/tracking'
 import { GrpcExceptionFilter } from './shared/filters'
 
 async function bootstrap() {
