@@ -9,12 +9,14 @@ import type { Params } from 'nestjs-pino'
  * - Bỏ qua log từ endpoint /metrics để tránh spam định kỳ
  */
 export function getLoggerConfig(): Params {
-	const isProd = process.env.NODE_ENV === 'production'
+	// Chỉ bật pino-pretty khi người dùng chủ động chỉ định LOG_PRETTY=true (khi chạy debug local)
+	// Mặc định xuất JSON thuần để Promtail thu thập và Grafana Loki parse được các trường
+	const isPretty = process.env.LOG_PRETTY === 'true'
 
 	return {
 		pinoHttp: {
 			level: process.env.LOG_LEVEL || 'info',
-			transport: !isProd
+			transport: isPretty
 				? {
 						target: 'pino-pretty',
 						options: {
@@ -25,11 +27,13 @@ export function getLoggerConfig(): Params {
 					}
 				: undefined,
 			messageKey: 'msg',
-			customProps: () => {
+			// mixin được Pino gọi trên TẤT CẢ các câu lệnh log (bao gồm this.logger trong gRPC/Service)
+			mixin: () => {
 				const span = trace.getSpan(context.active())
+				const traceId = span?.spanContext().traceId
 				return {
 					service: 'auth-service',
-					...(span ? { trace_id: span.spanContext().traceId } : {})
+					...(traceId ? { trace_id: traceId } : {})
 				}
 			},
 			autoLogging: {
