@@ -2,46 +2,56 @@
 # 📜 CẤU HÌNH GRAFANA LOKI (CENTRALIZED LOGGING BACKEND)
 # ==============================================================================
 
+# 1. Xác thực & Phân quyền:
+# Tắt chế độ multi-tenancy (nhiều tổ chức). Khi chạy nội bộ/dev, không cần gửi header X-Scope-OrgID.
 auth_enabled: false
 
+# 2. Cổng mạng (Network Ports):
 server:
-  http_listen_port: 3100
-  grpc_listen_port: 9096
+  http_listen_port: 3100   # Cổng HTTP nhận API log (từ Promtail, OTel) và cho Grafana truy vấn
+  grpc_listen_port: 9096   # Cổng gRPC phục vụ giao tiếp nội bộ giữa các tiến trình Loki
 
+# 3. Cấu hình dùng chung & Nơi lưu trữ (Storage):
 common:
   instance_addr: 127.0.0.1
-  path_prefix: /loki
+  path_prefix: /loki       # Thư mục gốc lưu trữ dữ liệu bên trong container
+
   storage:
     filesystem:
-      chunks_directory: /loki/chunks
-      rules_directory: /loki/rules
-  replication_factor: 1
+      chunks_directory: /loki/chunks  # Nơi lưu các block dữ liệu log nén thực tế
+      rules_directory: /loki/rules    # Nơi lưu trữ các quy tắc cảnh báo (alerting rules)
+
+  replication_factor: 1    # Số bản sao lưu dữ liệu (chạy 1 node đơn lẻ nên đặt là 1)
+
   ring:
     kvstore:
-      store: inmemory
+      store: inmemory      # Lưu trạng thái cluster vào RAM (không cần Consul/Etcd khi chạy 1 node)
 
+# 4. Tối ưu truy vấn & Bộ nhớ đệm (Query Cache):
 query_range:
   results_cache:
     cache:
       embedded_cache:
-        enabled: true
-        max_size_mb: 100
+        enabled: true      # Bật cache kết quả truy vấn giúp xem log trên Grafana nhanh hơn
+        max_size_mb: 100   # Giới hạn dung lượng cache trong RAM (tối đa 100MB)
 
+# 5. Cấu trúc lưu trữ & Đánh chỉ mục log (Schema & Index):
 schema_config:
   configs:
     - from: 2020-10-24
-      store: tsdb
-      object_store: filesystem
-      schema: v13
+      store: tsdb                    # Dùng engine TSDB (chuẩn mới nhất giúp tìm kiếm siêu nhanh)
+      object_store: filesystem       # Lưu trữ trực tiếp trên ổ đĩa local (không cần S3/MinIO)
+      schema: v13                    # Phiên bản schema khuyến nghị cho Loki 3.x
       index:
-        prefix: index_
-        period: 24h
+        prefix: index_               # Tiền tố tên file index
+        period: 24h                  # Gom và xoay vòng index định kỳ mỗi 24 giờ
 
+# 6. Quản lý cảnh báo (Alerting Ruler):
 ruler:
-  alertmanager_url: http://localhost:9093
+  alertmanager_url: http://localhost:9093  # Địa chỉ gửi thông báo khi có log thỏa điều kiện cảnh báo
 
-# Hỗ trợ nhận log qua chuẩn OpenTelemetry OTLP & Promtail
+# 7. Giới hạn & Tính năng nâng cao (Limits & Features):
 limits_config:
-  allow_structured_metadata: true
-  volume_enabled: true
-  reject_old_samples: false
+  allow_structured_metadata: true  # Bắt buộc bật để hỗ trợ nhận log theo chuẩn OpenTelemetry (OTLP)
+  volume_enabled: true             # Bật tính năng đo lường dung lượng log (vẽ biểu đồ volume log trên Grafana)
+  reject_old_samples: false        # Không từ chối log cũ (tránh lỗi khi Promtail cào log lịch sử của container)

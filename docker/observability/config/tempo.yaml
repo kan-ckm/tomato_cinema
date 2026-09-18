@@ -1,29 +1,45 @@
 # ==============================================================================
 # ⏱️ CẤU HÌNH GRAFANA TEMPO (DISTRIBUTED TRACING BACKEND)
+# Mục đích: Lưu trữ tập trung các vết thực thi (Traces/Spans) của request khi đi qua
+#           nhiều microservices, giúp theo dõi luồng gọi và tìm điểm nghẽn (bottleneck).
 # ==============================================================================
 
+# Bật tính năng stream dữ liệu trace qua giao thức HTTP để Grafana hiển thị mượt mà hơn
 stream_over_http_enabled: true
 
+# ------------------------------------------------------------------------------
+# 1. CỔNG MẠNG (SERVER PORTS)
+# ------------------------------------------------------------------------------
 server:
-  http_listen_port: 3200
+  http_listen_port: 3200       # Cổng HTTP API phục vụ Grafana kết nối vào truy vấn Trace
 
+# ------------------------------------------------------------------------------
+# 2. BỘ TIẾP NHẬN TRACES (DISTRIBUTOR RECEIVERS)
+# ------------------------------------------------------------------------------
 distributor:
   receivers:
+    # Tiếp nhận traces theo chuẩn OpenTelemetry (OTLP) từ otel-collector chuyển sang
     otlp:
       protocols:
         grpc:
-          endpoint: 0.0.0.0:4317
+          endpoint: 0.0.0.0:4317 # Cổng gRPC nhận traces
         http:
-          endpoint: 0.0.0.0:4318
+          endpoint: 0.0.0.0:4318 # Cổng HTTP nhận traces
 
+# ------------------------------------------------------------------------------
+# 3. CƠ CHẾ LƯU TRỮ TRACES (STORAGE CONFIGURATION)
+# ------------------------------------------------------------------------------
 storage:
   trace:
-    backend: local
+    backend: local             # Lưu trữ trên ổ đĩa local của container (không cần S3/MinIO)
     wal:
-      path: /var/tempo/wal
+      path: /var/tempo/wal     # Write-Ahead Log: Ghi log tạm để đảm bảo an toàn dữ liệu trước khi nén
     local:
-      path: /var/tempo/blocks
+      path: /var/tempo/blocks  # Nơi lưu trữ các khối (blocks) dữ liệu trace đã hoàn thiện
 
+# ------------------------------------------------------------------------------
+# 4. NÉN & DỌN DẸP DỮ LIỆU ĐỊNH KỲ (COMPACTOR & RETENTION)
+# ------------------------------------------------------------------------------
 compactor:
   compaction:
-    block_retention: 48h
+    block_retention: 48h       # Thời gian lưu giữ traces (tự động xóa dọn đĩa sau 48 giờ)

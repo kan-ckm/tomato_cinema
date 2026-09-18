@@ -1,49 +1,72 @@
 # ==============================================================================
 # 📦 CẤU HÌNH PROMTAIL (LOG SHIPPER CHO GRAFANA LOKI)
+# Mục đích: Đọc file log stdout/stderr từ toàn bộ các container Docker trên máy chủ,
+#           gắn nhãn (labels) tương ứng và đẩy về Grafana Loki.
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# 1. CỔNG MẠNG (SERVER PORTS)
+# ------------------------------------------------------------------------------
 server:
-  http_listen_port: 9080
+  http_listen_port: 9080       # Cổng HTTP hiển thị giao diện web và metrics của Promtail
   grpc_listen_port: 0
 
-# Vị trí lưu offset đọc file để khi restart không bị đọc lại log cũ
+# ------------------------------------------------------------------------------
+# 2. VỊ TRÍ LƯU OFFSET ĐỌC FILE (POSITIONS)
+# ------------------------------------------------------------------------------
+# Ghi nhớ vị trí (dòng log) đã đọc để khi container restart sẽ tiếp tục đọc tiếp, không bị lặp log cũ
 positions:
   filename: /tmp/positions.yaml
 
-# Địa chỉ đẩy logs về Loki
+# ------------------------------------------------------------------------------
+# 3. ĐỊA CHỈ ĐẨY LOGS (CLIENTS)
+# ------------------------------------------------------------------------------
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  - url: http://loki:3100/loki/api/v1/push  # Endpoint nhận log chuẩn của Loki
 
+# ------------------------------------------------------------------------------
+# 4. CẤU HÌNH CÀO LOG CONTAINER (SCRAPE CONFIGS)
+# ------------------------------------------------------------------------------
 scrape_configs:
-  # Thu thập log từ toàn bộ Docker Containers trên Host
+  # Thu thập log từ toàn bộ Docker Containers trên Host thông qua Docker Socket
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
+        refresh_interval: 5s   # Kiểm tra và phát hiện container mới khởi chạy mỗi 5 giây
+
+    # Gắn nhãn (Labels) để phục vụ tìm kiếm và lọc trên giao diện Grafana (LogQL)
     relabel_configs:
-      # Lấy tên container (bỏ ký tự / ở đầu)
+      # Lấy tên container (bỏ dấu gạch chéo '/' ở đầu tên)
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: 'container'
-      # Lấy tên service từ docker-compose (ví dụ: gateway-service, auth-service, etc.)
+
+      # Lấy tên service từ nhãn docker-compose (ví dụ: gateway-service, auth-service, postgres...)
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
-      # Lấy tên project compose (tomato-cinema)
+
+      # Lấy tên dự án Docker Compose (tomato-cinema)
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: 'project'
-      # Phân loại luồng stdout hoặc stderr
+
+      # Phân loại luồng xuất log (stdout hoặc stderr)
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'stream'
+
+    # Xử lý nội dung log theo chuỗi công đoạn (Pipeline Stages)
     pipeline_stages:
-      # Docker log mặc định dạng JSON {"log":"...","stream":"stdout","time":"..."}
+      # Docker log mặc định lưu ở dạng JSON {"log":"...","stream":"stdout","time":"..."}
       - json:
           expressions:
-            output: log
-            stream: stream
-            timestamp: time
+            output: log        # Trích xuất nội dung log thực tế
+            stream: stream     # Trích xuất luồng log
+            timestamp: time    # Trích xuất thời gian log được tạo
+
+      # Đặt timestamp của log theo đúng thời điểm ứng dụng ghi log
       - timestamp:
           source: timestamp
           format: RFC3339Nano
+
+      # Đặt nội dung log hiển thị trên Loki chỉ là nội dung thông điệp thuần (không còn chuỗi JSON bao ngoài)
       - output:
           source: output
-

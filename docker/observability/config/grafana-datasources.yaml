@@ -1,9 +1,12 @@
 # ==============================================================================
 # 📊 PROVISIONING GRAFANA DATA SOURCES TỰ ĐỘNG
+# Mục đích: Tự động khai báo và kết nối các nguồn dữ liệu vào Grafana khi khởi động,
+#           không cần thao tác thủ công bằng tay trên giao diện web.
 # ==============================================================================
 
 apiVersion: 1
 
+# Dọn dẹp datasource cũ/trùng tên trước khi nạp mới để tránh xung đột UID
 deleteDatasources:
   - name: Prometheus_tomatocinema
     orgId: 1
@@ -11,54 +14,63 @@ deleteDatasources:
     orgId: 1
 
 datasources:
-  # 1. Prometheus (Metrics)
+  # ----------------------------------------------------------------------------
+  # 1. PROMETHEUS (Nguồn dữ liệu Metrics)
+  # ----------------------------------------------------------------------------
   - name: Prometheus
     type: prometheus
     uid: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
+    access: proxy               # Grafana server đứng ra gọi proxy sang Prometheus
+    url: http://prometheus:9090 
+    isDefault: true             # Đặt làm nguồn dữ liệu mặc định khi tạo Dashboard mới
     editable: true
 
-  # 2. Tempo (Traces)
+  # ----------------------------------------------------------------------------
+  # 2. TEMPO (Nguồn dữ liệu Distributed Tracing)
+  # ----------------------------------------------------------------------------
   - name: Tempo
     type: tempo
     uid: tempo
     access: proxy
-    url: http://tempo:3200
+    url: http://tempo:3200      # Cổng HTTP API của container Tempo
     editable: true
     jsonData:
       httpMethod: GET
+      # Tính năng liên kết ngược Traces -> Logs: Nhấp vào một span trace để nhảy sang xem Log tương ứng trên Loki
       tracesToLogsV2:
-        datasourceUid: loki
+        datasourceUid: loki     # UID của datasource Loki bên dưới
         spanStartTimeShift: "-1h"
         spanEndTimeShift: "1h"
-        filterByTraceID: true
-        filterBySpanID: true
+        filterByTraceID: true   # Tự động lọc log theo TraceID
+        filterBySpanID: true    # Tự động lọc log theo SpanID
         customTags:
           - key: service.name
             value: service_name
 
-  # 3. Loki (Logs)
+  # ----------------------------------------------------------------------------
+  # 3. LOKI (Nguồn dữ liệu Logs tập trung)
+  # ----------------------------------------------------------------------------
   - name: Loki
     type: loki
     uid: loki
     access: proxy
-    url: http://loki:3100
+    url: http://loki:3100       # Cổng HTTP API của container Loki
     editable: true
     jsonData:
-      maxLines: 1000
+      maxLines: 1000            # Số dòng log tối đa trả về mỗi lần truy vấn
+      # Tính năng liên kết Logs -> Traces: Tìm trace_id trong log và tạo link bấm trực tiếp sang xem Trace trên Tempo
       derivedFields:
-        # Nhấp chuột trực tiếp vào trace_id trong log để nhảy sang xem Trace trên Tempo
         - datasourceUid: tempo
-          matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)'
+          matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)' # Regex bắt trace_id dạng JSON hoặc text
           name: TraceID
           url: "$${__value.raw}"
 
-  # 4. Jaeger (Traces)
+  # ----------------------------------------------------------------------------
+  # 4. JAEGER (Giao diện xem Distributed Tracing dự phòng)
+  # ----------------------------------------------------------------------------
   - name: Jaeger
     type: jaeger
     uid: jaeger
     access: proxy
-    url: http://jaeger:16686
+    url: http://jaeger:16686    # Cổng web API của Jaeger All-In-One
     editable: true

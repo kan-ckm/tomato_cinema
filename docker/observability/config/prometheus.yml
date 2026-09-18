@@ -1,56 +1,65 @@
 # ==============================================================================
-# 📈 CẤU HÌNH PROMETHEUS METRICS SCRAPING
+# 📈 CẤU HÌNH PROMETHEUS (METRICS STORAGE & SCRAPING ENGINE)
+# Mục đích: Định kỳ cào (scrape) các chỉ số đo lường (CPU, RAM, request count, latency)
+#           từ các microservices và hạ tầng cơ sở dữ liệu để lưu trữ và vẽ biểu đồ.
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# 1. CẤU HÌNH CHUNG TOÀN CỤC (GLOBAL SETTINGS)
+# ------------------------------------------------------------------------------
 global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
+  scrape_interval: 5s       # Tần suất Prometheus đi thu thập metrics từ các dịch vụ (5 giây/lần)
+  evaluation_interval: 5s   # Tần suất kiểm tra và đánh giá các điều kiện cảnh báo (rules)
 
+# ------------------------------------------------------------------------------
+# 2. DANH SÁCH MỤC TIÊU CÀO DỮ LIỆU (SCRAPE TARGETS)
+# ------------------------------------------------------------------------------
 scrape_configs:
-# cào metrics từ gateway
+  # 2.1 Cào metrics từ Gateway Service (HTTP traffic, response time, status code)
   - job_name: "gateway"
     metrics_path: "/metrics"
     static_configs:
       - targets: ["gateway-service:4000"]
 
-#cào metrics từ auth
+  # 2.2 Cào metrics từ Auth Service (gRPC calls, xác thực, đăng nhập/đăng ký)
   - job_name: "auth"
     metrics_path: "/metrics"
     static_configs:
       - targets: ["auth-service:9101"]
 
-#cào metrics từ auth
+  # 2.3 Cào metrics từ Notification Service (số email/SMS gửi thành công, thất bại)
   - job_name: "notification"
     metrics_path: "/metrics"
     static_configs:
       - targets: ["notification-service:9102"]
 
-  # Cào metrics từ chính Prometheus
+  # 2.4 Tự theo dõi sức khỏe và tài nguyên của chính server Prometheus
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
 
+  # 2.5 Cào metrics phần cứng máy chủ từ Node Exporter (CPU %, RAM, Dung lượng ổ đĩa, Network)
   - job_name: "node"
     static_configs:
       - targets:
           - 'node-exporter:9100'
 
-  # Cào metrics từ OpenTelemetry Collector (chứa metrics của các apps NestJS)
+  # 2.6 Cào metrics do OpenTelemetry Collector trung chuyển từ các thư viện OTel
   - job_name: "otel-collector"
     static_configs:
       - targets: ["otel-collector:8889"]
 
-  # Cào metrics từ PostgreSQL Exporter
+  # 2.7 Cào metrics cơ sở dữ liệu PostgreSQL (số lượng connection, query latency, lock)
   - job_name: "postgres"
     static_configs:
       - targets: ["postgres-exporter:9187"]
 
-  # Cào metrics từ Redis Exporter
+  # 2.8 Cào metrics bộ nhớ đệm Redis (hit rate, bộ nhớ chiếm dụng, số keys)
   - job_name: "redis"
     static_configs:
       - targets: ["redis-exporter:9121"]
 
-  # Cào metrics từ RabbitMQ Prometheus plugin tích hợp sẵn
+  # 2.9 Cào metrics hàng đợi RabbitMQ (số message đang chờ trong queue, tốc độ tiêu thụ tin)
   - job_name: "rabbitmq"
     static_configs:
       - targets: ["rabbitmq:15692"]

@@ -1,73 +1,92 @@
 # ==============================================================================
 # 🛰️ CẤU HÌNH OPENTELEMETRY COLLECTOR (CONTRIB)
+# Mục đích: Đóng vai trò là "Trạm trung chuyển dữ liệu giám sát trung tâm".
+#           Nhận Traces, Metrics, Logs từ các microservices và phân phối đến đúng nơi
+#           (Tempo, Jaeger, Prometheus, Loki).
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# 1. RECEIVERS: Cổng tiếp nhận dữ liệu telemetry từ bên ngoài
+# ------------------------------------------------------------------------------
 receivers:
-  # Cổng tiếp nhận chuẩn OTLP từ các microservice (NestJS)
+  # Chuẩn OpenTelemetry Protocol (OTLP) được các microservice NestJS sử dụng
   otlp:
     protocols:
       grpc:
-        endpoint: 0.0.0.0:4317
+        endpoint: 0.0.0.0:4317 # Cổng gRPC nhận telemetry (NestJS gửi vào cổng này)
       http:
-        endpoint: 0.0.0.0:4318
+        endpoint: 0.0.0.0:4318 # Cổng HTTP nhận telemetry (cho frontend hoặc ứng dụng HTTP)
 
+# ------------------------------------------------------------------------------
+# 2. PROCESSORS: Bộ xử lý, biến đổi và tối ưu dữ liệu trước khi chuyển tiếp
+# ------------------------------------------------------------------------------
 processors:
-  # Gom batch để tối ưu hiệu năng truyền tin qua mạng
+  # Gom nhóm dữ liệu gửi theo đợt (batch) để giảm thiểu số lượng request qua mạng
   batch:
-    timeout: 1s
-    send_batch_size: 1024
+    timeout: 1s               # Gửi đi sau mỗi 1 giây
+    send_batch_size: 1024     # Hoặc gửi ngay khi gom đủ 1024 bản ghi
 
-  # Bộ đệm bộ nhớ tránh OOM khi tải cao
+  # Giám sát và giới hạn dung lượng RAM để ngăn container bị tràn bộ nhớ (OOM)
   memory_limiter:
-    check_interval: 1s
-    limit_percentage: 75
+    check_interval: 1s        # Kiểm tra mức chiếm dụng RAM mỗi 1 giây
+    limit_percentage: 75      # Giới hạn tối đa không vượt quá 75% RAM được cấp
     spike_limit_percentage: 20
 
+# ------------------------------------------------------------------------------
+# 3. EXPORTERS: Nơi chuyển tiếp dữ liệu sau khi đã gom và xử lý
+# ------------------------------------------------------------------------------
 exporters:
-  # 1. Chuyển tiếp Traces sang Grafana Tempo qua gRPC
+  # 3.1 Chuyển tiếp Traces sang Grafana Tempo qua gRPC OTLP
   otlp/tempo:
     endpoint: tempo:4317
     tls:
-      insecure: true
+      insecure: true          # Tắt mã hóa TLS vì chạy trong mạng nội bộ docker
 
-  # 1.1 Chuyển tiếp Traces sang Jaeger qua gRPC OTLP
+  # 3.2 Chuyển tiếp Traces sang Jaeger qua gRPC OTLP
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
 
-  # 2. Xuất Metrics ra endpoint để Prometheus cào (pull)
+  # 3.3 Mở endpoint metrics để server Prometheus đến kéo (scrape) về định kỳ
   prometheus:
     endpoint: 0.0.0.0:8889
-    namespace: tomatocinema
+    namespace: tomatocinema   # Tiền tố gắn vào tên các metrics (vd: tomatocinema_...)
 
-  # 3. Chuyển tiếp Logs sang Grafana Loki qua OTLP HTTP
+  # 3.4 Chuyển tiếp Logs sang Grafana Loki qua giao thức HTTP
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
     tls:
       insecure: true
 
-  # 4. Ghi log debug ra console (hữu ích khi debug trace/metric mới)
+  # 3.5 In dữ liệu telemetry ra console màn hình (dùng khi cần debug)
   debug:
     verbosity: basic
 
+# ------------------------------------------------------------------------------
+# 4. SERVICE PIPELINES: Ráp nối Receivers -> Processors -> Exporters
+# ------------------------------------------------------------------------------
 service:
   pipelines:
+    # Tuyến xử lý Traces (Truy vết phân tán)
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlp/tempo, otlp/jaeger]
 
+    # Tuyến xử lý Metrics (Chỉ số hoạt động hệ thống)
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [prometheus]
 
+    # Tuyến xử lý Logs (Nhật ký hoạt động)
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlphttp/loki]
 
+  # Cấu hình log hoạt động của chính OpenTelemetry Collector
   telemetry:
     logs:
-      level: info
+      level: info             # Mức độ log: info, debug, warn, error
