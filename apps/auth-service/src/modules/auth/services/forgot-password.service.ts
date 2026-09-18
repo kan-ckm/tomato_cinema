@@ -7,24 +7,26 @@ import {
 	ResetPasswordRequest,
 	ResetPasswordResponse
 } from '@tomatocinema/contracts/gen/auth'
+import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
 import { AccountRepository } from '@/modules/account/repositories'
 import { TokenService } from '@/modules/token/token.service'
-import { UsersClientGrpc } from '@/modules/users/users.grpc'
 import { HashPasswordService } from '@/shared/hash-password'
 
 @Injectable()
 export class ForgotPasswordService {
 	//QUÊN MẬT KHẨU (GỬI MÃ QUA EMAIL)
 	public constructor(
+		private readonly logger: PinoLogger,
 		private readonly accountRepository: AccountRepository,
 		private readonly hashPasswordService: HashPasswordService,
 		private readonly tokenService: TokenService,
 		private readonly redisService: RedisService,
-		private readonly messagingService: MessagingService,
-		private readonly usersClient: UsersClientGrpc
-	) {}
+		private readonly messagingService: MessagingService
+	) {
+		this.logger.setContext(ForgotPasswordService.name)
+	}
 	/**
 	 * Tiếp nhận yêu cầu quên mật khẩu, sinh mã xác thực và gửi qua RabbitMQ đến notification-service
 	 */
@@ -41,6 +43,10 @@ export class ForgotPasswordService {
 		}
 
 		const normalizedEmail = email.trim().toLowerCase()
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Tiếp nhận yêu cầu quên mật khẩu'
+		)
 		const account =
 			await this.accountRepository.findByEmail(normalizedEmail)
 
@@ -64,6 +70,15 @@ export class ForgotPasswordService {
 				code,
 				expiresInMinutes: 15
 			})
+			this.logger.info(
+				{ email: normalizedEmail },
+				'Đã sinh mã reset và phát sự kiện gửi email'
+			)
+		} else {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Yêu cầu quên mật khẩu cho email không tồn tại (giả lập thành công)'
+			)
 		}
 
 		return { ok: true }
@@ -78,7 +93,7 @@ export class ForgotPasswordService {
 		data: ResetPasswordRequest
 	): Promise<ResetPasswordResponse> {
 		const { email, code, newPassword } = data
-
+		this.logger.info('Tiếp nhận yêu cầu xác thực đặt lại mật khẩu')
 		if (!email || !code || !newPassword) {
 			throw new RpcException({
 				code: RpcStatus.INVALID_ARGUMENT,
@@ -95,6 +110,10 @@ export class ForgotPasswordService {
 		}
 
 		const normalizedEmail = email.trim().toLowerCase()
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Xử lý yêu cầu đặt lại mật khẩu'
+		)
 
 		//Kiểm tra mã xác thực từ Redis
 		const storedCode = await this.redisService.get(
@@ -102,6 +121,10 @@ export class ForgotPasswordService {
 		)
 
 		if (!storedCode || storedCode !== code.trim()) {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Đặt lại mật khẩu thất bại: Mã xác thực không chính xác hoặc đã hết hạn'
+			)
 			throw new RpcException({
 				code: RpcStatus.INVALID_ARGUMENT,
 				details: 'Mã xác thực không chính xác hoặc đã hết hạn'
@@ -112,6 +135,10 @@ export class ForgotPasswordService {
 		const account =
 			await this.accountRepository.findByEmail(normalizedEmail)
 		if (!account) {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Đặt lại mật khẩu thất bại: Tài khoản không tồn tại'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Tài khoản không tồn tại'
@@ -134,69 +161,11 @@ export class ForgotPasswordService {
 			email: normalizedEmail
 		})
 
+		this.logger.info(
+			{ accountId: account.id, email: normalizedEmail },
+			'Đặt lại mật khẩu thành công và phát sự kiện thông báo'
+		)
+
 		return { ok: true }
 	}
-
-	//ĐỔI MẬT KHẨU KHI ĐÃ ĐĂNG NHẬP
-
-	// /**
-	//  * Đổi mật khẩu chủ động cho người dùng đã đăng nhập
-	//  */
-	// public async changePassword(
-	// 	data: ChangePasswordRequest
-	// ): Promise<ChangePasswordResponse> {
-	// 	const { userId, currentPassword, newPassword } = data
-
-	// 	if (!userId || !currentPassword || !newPassword) {
-	// 		throw new RpcException({
-	// 			code: RpcStatus.INVALID_ARGUMENT,
-	// 			details: 'Vui lòng cung cấp đầy đủ thông tin'
-	// 		})
-	// 	}
-
-	// 	if (newPassword.length < 6) {
-	// 		throw new RpcException({
-	// 			code: RpcStatus.INVALID_ARGUMENT,
-	// 			details: 'Mật khẩu mới phải có ít nhất 6 ký tự'
-	// 		})
-	// 	}
-
-	// 	const account = await this.accountRepository.findById(userId)
-	// 	if (!account || !account.passwordHash) {
-	// 		throw new RpcException({
-	// 			code: RpcStatus.NOT_FOUND,
-	// 			details: 'Tài khoản không tồn tại'
-	// 		})
-	// 	}
-
-	// 	//Kiểm tra mật khẩu hiện tại
-	// 	const isCurrentValid = await this.passwordService.compare(
-	// 		currentPassword,
-	// 		account.passwordHash
-	// 	)
-
-	// 	if (!isCurrentValid) {
-	// 		throw new RpcException({
-	// 			code: RpcStatus.UNAUTHENTICATED,
-	// 			details: 'Mật khẩu hiện tại không chính xác'
-	// 		})
-	// 	}
-
-	// 	//Băm mật khẩu mới bằng Argon2id
-	// 	const passwordHash = await this.passwordService.hash(newPassword)
-
-	// 	//Cập nhật DB
-	// 	await this.accountRepository.update(account.id, {
-	// 		passwordHash
-	// 	})
-
-	// 	//Gửi email thông báo nếu tài khoản có email
-	// 	if (account.email) {
-	// 		await this.messagingService.passwordChanged({
-	// 			email: account.email
-	// 		})
-	// 	}
-
-	// 	return { ok: true }
-	// }
 }

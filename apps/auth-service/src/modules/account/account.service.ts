@@ -11,6 +11,7 @@ import {
 	InitPhoneChangeRequest,
 	RoleUser
 } from '@tomatocinema/contracts/gen/account'
+import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { HashPasswordService } from '../../shared/hash-password/hash-password.service'
 import { OtpService } from '../otp/otp.service'
@@ -19,11 +20,14 @@ import { AccountRepository } from './repositories'
 @Injectable()
 export class AccountService {
 	public constructor(
+		private readonly logger: PinoLogger,
 		private readonly messagingService: MessagingService,
 		private readonly accountRepository: AccountRepository,
 		private readonly otpService: OtpService,
 		private readonly hashPasswordService: HashPasswordService
-	) {}
+	) {
+		this.logger.setContext(AccountService.name)
+	}
 
 	// Lấy thông tin chi tiết của tài khoản dựa vào ID
 	public async getAccount(data: GetAccountRequest) {
@@ -51,15 +55,19 @@ export class AccountService {
 		const { email, userId } = data
 		const existing = await this.accountRepository.findByEmail(email)
 
-		if (existing)
+		if (existing) {
+			this.logger.warn(
+				{ email, userId },
+				'Yêu cầu đổi email thất bại: Email đã được sử dụng'
+			)
 			throw new RpcException({
 				code: RpcStatus.ALREADY_EXISTS,
 				details: 'email đã được sử dụng'
 			})
+		}
 
 		// Tạo và gửi mã OTP đến email mới
 		const { code, hash } = await this.otpService.send(email, 'email')
-		console.log('code email:', code)
 		await this.messagingService.emailChanged({
 			email,
 			code
@@ -72,6 +80,10 @@ export class AccountService {
 			codeHash: hash,
 			expiresAt: new Date(Date.now() + 5 * 60 * 1000)
 		})
+		this.logger.info(
+			{ email, userId },
+			'Khởi tạo yêu cầu thay đổi email thành công'
+		)
 		return { ok: true }
 	}
 
@@ -85,23 +97,38 @@ export class AccountService {
 			'email'
 		)
 
-		if (!pending)
+		if (!pending) {
+			this.logger.warn(
+				{ userId },
+				'Xác nhận đổi email thất bại: Không có yêu cầu đang chờ'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Không có yêu cầu nào đang chờ xử lý'
 			})
+		}
 
-		if (pending.value !== email)
+		if (pending.value !== email) {
+			this.logger.warn(
+				{ userId, expected: pending.value, received: email },
+				'Xác nhận đổi email thất bại: Sai email'
+			)
 			throw new RpcException({
 				code: RpcStatus.INVALID_ARGUMENT,
 				details: 'Lỗi email'
 			})
+		}
 
-		if (pending.expiresAt < new Date())
+		if (pending.expiresAt < new Date()) {
+			this.logger.warn(
+				{ userId },
+				'Xác nhận đổi email thất bại: Yêu cầu đã hết hạn'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Code hết hạn'
 			})
+		}
 
 		await this.otpService.verify(pending.value, code, 'email')
 
@@ -111,6 +138,10 @@ export class AccountService {
 			isEmailVerified: true
 		})
 		await this.accountRepository.deletePendingChange(userId, 'email')
+		this.logger.info(
+			{ email, userId },
+			'Xác nhận và cập nhật email mới thành công'
+		)
 		return { ok: true }
 	}
 
@@ -119,13 +150,17 @@ export class AccountService {
 		const { phone, userId } = data
 		const existing = await this.accountRepository.findByPhone(phone)
 
-		if (existing)
+		if (existing) {
+			this.logger.warn(
+				{ phone, userId },
+				'Yêu cầu đổi SĐT thất bại: Số điện thoại đã được sử dụng'
+			)
 			throw new RpcException({
 				code: RpcStatus.ALREADY_EXISTS,
 				details: 'số điện thoại đã được sử dụng'
 			})
+		}
 		const { code, hash } = await this.otpService.send(phone, 'phone')
-		console.log('code phone:', code)
 		await this.messagingService.phoneChanged({
 			phone,
 			code
@@ -137,6 +172,10 @@ export class AccountService {
 			codeHash: hash,
 			expiresAt: new Date(Date.now() + 5 * 60 * 1000)
 		})
+		this.logger.info(
+			{ phone, userId },
+			'Khởi tạo yêu cầu thay đổi SĐT thành công'
+		)
 		return { ok: true }
 	}
 
@@ -148,23 +187,38 @@ export class AccountService {
 			'phone'
 		)
 
-		if (!pending)
+		if (!pending) {
+			this.logger.warn(
+				{ userId },
+				'Xác nhận đổi SĐT thất bại: Không có yêu cầu đang chờ'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Không có yêu cầu nào đang chờ xử lý'
 			})
+		}
 
-		if (pending.value !== phone)
+		if (pending.value !== phone) {
+			this.logger.warn(
+				{ userId, expected: pending.value, received: phone },
+				'Xác nhận đổi SĐT thất bại: Sai số điện thoại'
+			)
 			throw new RpcException({
 				code: RpcStatus.INVALID_ARGUMENT,
 				details: 'Lỗi số điện thoại'
 			})
+		}
 
-		if (pending.expiresAt < new Date())
+		if (pending.expiresAt < new Date()) {
+			this.logger.warn(
+				{ userId },
+				'Xác nhận đổi SĐT thất bại: Yêu cầu đã hết hạn'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Code hết hạn'
 			})
+		}
 
 		await this.otpService.verify(pending.value, code, 'phone')
 
@@ -173,6 +227,10 @@ export class AccountService {
 			isPhoneVerified: true
 		})
 		await this.accountRepository.deletePendingChange(userId, 'phone')
+		this.logger.info(
+			{ phone, userId },
+			'Xác nhận và cập nhật SĐT mới thành công'
+		)
 		return { ok: true }
 	}
 
@@ -180,13 +238,22 @@ export class AccountService {
 		const { currentPassword, userId } = data
 		const account = await this.accountRepository.findById(userId)
 
-		if (!account)
+		if (!account) {
+			this.logger.warn(
+				{ userId },
+				'Yêu cầu đổi mật khẩu thất bại: Tài khoản không tồn tại'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'người dùng không tồn tại'
 			})
+		}
 
 		if (!account.email) {
+			this.logger.warn(
+				{ userId },
+				'Yêu cầu đổi mật khẩu thất bại: Thiếu email nhận mã'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Thiếu thông tin email để nhận mã xác nhận'
@@ -197,6 +264,10 @@ export class AccountService {
 			account.passwordHash
 		)
 		if (!isPaswordValid) {
+			this.logger.warn(
+				{ userId },
+				'Yêu cầu đổi mật khẩu thất bại: Mật khẩu hiện tại không khớp'
+			)
 			throw new RpcException({
 				code: RpcStatus.INVALID_ARGUMENT,
 				details: 'Mật khẩu hiện tại không chính xác'
@@ -210,6 +281,10 @@ export class AccountService {
 			code,
 			expiresInMinutes: 5
 		})
+		this.logger.info(
+			{ userId },
+			'Khởi tạo yêu cầu đổi mật khẩu và phát sự kiện gửi OTP'
+		)
 		return { ok: true }
 	}
 
@@ -225,6 +300,10 @@ export class AccountService {
 
 		const account = await this.accountRepository.findById(userId)
 		if (!account || !account.email) {
+			this.logger.warn(
+				{ userId },
+				'Xác nhận đổi mật khẩu thất bại: Tài khoản không hợp lệ'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Tài khoản không hợp lệ'
@@ -238,6 +317,7 @@ export class AccountService {
 		await this.accountRepository.update(userId, {
 			passwordHash: newPasswodHash
 		})
+		this.logger.info({ userId }, 'Xác nhận đổi mật khẩu thành công')
 		return { ok: true }
 	}
 }

@@ -8,6 +8,7 @@ import {
 	TelegramVerifyRequest
 } from '@tomatocinema/contracts/gen/auth'
 import { createHash, createHmac, randomBytes } from 'crypto'
+import { PinoLogger } from 'nestjs-pino'
 import { AllConfigs } from '@/config'
 import { RedisService } from '@/infrastructure/redis/redis.service'
 import { AccountRepository } from '../account/repositories'
@@ -26,6 +27,7 @@ export class TelegramService {
 	private readonly REDIRECT_ORIGIN: string
 
 	public constructor(
+		private readonly logger: PinoLogger,
 		private readonly redisService: RedisService,
 		private readonly configService: ConfigService<AllConfigs>,
 		private readonly telegramRepository: TelegramRepository,
@@ -33,6 +35,7 @@ export class TelegramService {
 		private readonly tokenService: TokenService,
 		private readonly usersClient: UsersClientGrpc
 	) {
+		this.logger.setContext(TelegramService.name)
 		this.BOT_ID = this.configService.get('telegram.botId', { infer: true })
 		this.BOT_TOKEN = this.configService.get('telegram.botToken', {
 			infer: true
@@ -69,19 +72,27 @@ export class TelegramService {
 		// 2.1 Kiểm tra chữ ký tính toàn vẹn
 		const isValid = this.checkTelegramAuth(data.query)
 
-		if (!isValid)
+		if (!isValid) {
+			this.logger.warn(
+				{ telegramId: data.query?.id },
+				'Xác thực Telegram thất bại: Chữ ký không hợp lệ'
+			)
 			throw new RpcException({
 				code: RpcStatus.UNAUTHENTICATED,
 				details: 'Chữ ký telegram không hợp lệ'
 			})
+		}
 
 		const telegramId = data.query.id
 		const exists =
 			await this.telegramRepository.findByTelegramId(telegramId)
-		await this.accountRepository.findByTelegramId(telegramId)
 
 		// 2.2 Nếu tài khoản đã có và đã có số điện thoại -> Cấp token ngay
 		if (exists && exists.phone) {
+			this.logger.info(
+				{ telegramId, userId: exists.id },
+				'Đăng nhập Telegram thành công cho tài khoản đã có SĐT'
+			)
 			return this.tokenService.generate(exists.id)
 		}
 
@@ -95,6 +106,10 @@ export class TelegramService {
 			300
 		)
 
+		this.logger.info(
+			{ telegramId, sessionId },
+			'Tạo session tạm và tạo URL chuyển hướng sang Bot Telegram'
+		)
 		// 2.4 Trả về link chuyển hướng user mở app Telegram chat với Bot kèm theo sessionId
 		return { url: `https://t.me/${this.BOT_USERNAME}?start=${sessionId}` }
 	}
@@ -110,11 +125,16 @@ export class TelegramService {
 		const { sessionId, phone } = data
 		const raw = await this.redisService.get(`telegram_session:${sessionId}`)
 
-		if (!raw)
+		if (!raw) {
+			this.logger.warn(
+				{ sessionId },
+				'Hoàn tất Telegram thất bại: Phiên truy cập không tồn tại hoặc đã hết hạn'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Phiên truy cập không tồn tại'
 			})
+		}
 
 		const { telegramId } = JSON.parse(raw)
 
@@ -151,6 +171,10 @@ export class TelegramService {
 		// 3.5 Xóa session tạm
 		await this.redisService.del(`telegram_session:${sessionId}`)
 
+		this.logger.info(
+			{ userId: user.id, telegramId, isNew },
+			'Hoàn tất liên kết Telegram và sinh token chờ Frontend lấy'
+		)
 		return { sessionId }
 	}
 
@@ -162,17 +186,26 @@ export class TelegramService {
 
 		const raw = await this.redisService.get(`telegram_tokens:${sessionId}`)
 
-		if (!raw)
+		if (!raw) {
+			this.logger.warn(
+				{ sessionId },
+				'Lấy token Telegram thất bại: Phiên không tồn tại hoặc đã hết hạn'
+			)
 			throw new RpcException({
 				code: RpcStatus.NOT_FOUND,
 				details: 'Phiên không tồn tại hoặc đã hết hạn'
 			})
+		}
 
 		const tokens = JSON.parse(raw)
 
 		// Sử dụng 1 lần: Xóa token khỏi Redis ngay sau khi lấy
 		await this.redisService.del(`telegram_tokens:${sessionId}`)
 
+		this.logger.info(
+			{ sessionId },
+			'Frontend đã lấy token Telegram thành công (phiên đã đóng)'
+		)
 		return tokens
 	}
 

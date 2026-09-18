@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { LoggerModule } from 'nestjs-pino'
 import {
 	databaseEnv,
+	getLoggerConfig,
 	grpcAuthEnv,
 	grpcUserEnv,
 	passportEnv,
@@ -34,6 +36,7 @@ import { ObservabilityModule } from './observability/observability.module'
 				grpcUserEnv
 			]
 		}),
+		LoggerModule.forRoot(getLoggerConfig()),
 		AuthModule,
 		PrismaModule,
 		RedisModule,

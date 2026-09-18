@@ -9,6 +9,7 @@ import {
 	RegisterRequest
 } from '@tomatocinema/contracts/gen/auth'
 import type { Account } from 'generated/client'
+import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
 import { AccountRepository } from '@/modules/account/repositories'
@@ -23,13 +24,16 @@ import { UsersClientGrpc } from '../../users/users.grpc'
 @Injectable()
 export class AuthService {
 	public constructor(
+		private readonly logger: PinoLogger,
 		private readonly accountRepository: AccountRepository,
 		private readonly hashPasswordService: HashPasswordService,
 		private readonly tokenService: TokenService,
 		private readonly redisService: RedisService,
 		private readonly messagingService: MessagingService,
 		private readonly usersClient: UsersClientGrpc
-	) {}
+	) {
+		this.logger.setContext(AuthService.name)
+	}
 
 	//ĐĂNG KÝ BẰNG EMAIL VÀ MẬT KHẨU
 
@@ -55,11 +59,19 @@ export class AuthService {
 		}
 
 		const normalizedEmail = email.trim().toLowerCase()
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Bắt đầu xử lý đăng ký tài khoản'
+		)
 
 		//Kiểm tra email đã tồn tại trong hệ thống chưa
 		const existingAccount =
 			await this.accountRepository.findByEmail(normalizedEmail)
 		if (existingAccount) {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Đăng ký thất bại: Email đã tồn tại'
+			)
 			throw new RpcException({
 				code: RpcStatus.ALREADY_EXISTS,
 				details: 'Email này đã được sử dụng'
@@ -78,18 +90,30 @@ export class AuthService {
 			})
 		} catch (error: unknown) {
 			if ((error as { code?: string })?.code === 'P2002') {
+				this.logger.warn(
+					{ email: normalizedEmail },
+					'Đăng ký thất bại: Xung đột tài khoản (P2002)'
+				)
 				throw new RpcException({
 					code: RpcStatus.ALREADY_EXISTS,
 					details: 'Email này đã được sử dụng'
 				})
 			}
+			this.logger.error(
+				{ error, email: normalizedEmail },
+				'Lỗi khi lưu tài khoản vào database'
+			)
 			throw error
 		}
 
 		//Đồng bộ tạo Profile sang user-service
 		try {
 			await this.usersClient.create({ id: account.id })
-		} catch {
+		} catch (error: unknown) {
+			this.logger.error(
+				{ error, accountId: account.id, email: normalizedEmail },
+				'Khởi tạo profile user-service thất bại, thực hiện rollback xóa account'
+			)
 			// Rollback: Xóa bản ghi account vừa tạo nếu user-service gặp lỗi
 			await this.accountRepository.delete(account.id)
 			throw new RpcException({
@@ -97,6 +121,11 @@ export class AuthService {
 				details: 'Khởi tạo hồ sơ người dùng thất bại. Vui lòng thử lại.'
 			})
 		}
+
+		this.logger.info(
+			{ accountId: account.id, email: normalizedEmail },
+			'Đăng ký tài khoản và khởi tạo profile thành công'
+		)
 
 		//Sinh cặp Access Token và Refresh Token
 		return this.tokenService.generate(account.id)
@@ -119,11 +148,19 @@ export class AuthService {
 		}
 
 		const normalizedEmail = email.trim().toLowerCase()
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Yêu cầu đăng nhập tài khoản'
+		)
 
 		//Tìm tài khoản theo Email
 		const account =
 			await this.accountRepository.findByEmail(normalizedEmail)
 		if (!account || !account.passwordHash) {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Đăng nhập thất bại: Tài khoản không tồn tại'
+			)
 			throw new RpcException({
 				code: RpcStatus.UNAUTHENTICATED,
 				details: 'Email hoặc mật khẩu không chính xác'
@@ -136,11 +173,20 @@ export class AuthService {
 			account.passwordHash
 		)
 		if (!isPasswordValid) {
+			this.logger.warn(
+				{ accountId: account.id, email: normalizedEmail },
+				'Đăng nhập thất bại: Mật khẩu không chính xác'
+			)
 			throw new RpcException({
 				code: RpcStatus.UNAUTHENTICATED,
 				details: 'Email hoặc mật khẩu không chính xác'
 			})
 		}
+
+		this.logger.info(
+			{ accountId: account.id, email: normalizedEmail },
+			'Đăng nhập thành công, cấp phát token'
+		)
 
 		//Cấp Access Token và Refresh Token
 		return this.tokenService.generate(account.id)
@@ -156,12 +202,17 @@ export class AuthService {
 		const result = this.tokenService.verify(refreshToken)
 
 		if (!result.valid) {
+			this.logger.warn(
+				{ reason: result.reason },
+				'Làm mới token thất bại'
+			)
 			throw new RpcException({
 				code: RpcStatus.UNAUTHENTICATED,
 				details: result.reason
 			})
 		}
 
+		this.logger.info({ userId: result.userId }, 'Làm mới token thành công')
 		return await Promise.resolve(this.tokenService.generate(result.userId))
 	}
 }
