@@ -1,0 +1,36 @@
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test binaries
+*.test
+
+# Go coverage output
+*.out
+
+# Vendor (если не используешь vendoring)
+vendor/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+
+# Build artifacts
+bin/
+dist/
+
+# Temporary files
+tmp/

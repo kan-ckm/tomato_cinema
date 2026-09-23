@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/cmd.exe ./cmd"
+bin = "./tmp/cmd.exe"
+delay = 500
+exclude_dir = ["tmp", "vendor"]
+include_ext = ["go"]
+exclude_file = ["*.md"]
+
+[log]
+time = true
+
+[env]
+APP_ENV="development"
