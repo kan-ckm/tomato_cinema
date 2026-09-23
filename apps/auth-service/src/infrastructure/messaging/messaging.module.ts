@@ -9,7 +9,7 @@ import { MessagingService } from './messaging.service'
 	imports: [
 		ClientsModule.registerAsync([
 			{
-				name: 'NOTIFICATIONS_CLIENT',
+				name: 'NOTIFICATIONS_CLIENT_RMQ',
 				inject: [ConfigService],
 				useFactory: (configService: ConfigService<AllConfigs>) => ({
 					transport: Transport.RMQ,

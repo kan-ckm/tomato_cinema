@@ -14,7 +14,7 @@ import { PinoLogger } from 'nestjs-pino'
 export class MessagingService {
 	public constructor(
 		private readonly logger: PinoLogger,
-		@Inject('NOTIFICATIONS_CLIENT')
+		@Inject('NOTIFICATIONS_CLIENT_RMQ')
 		private readonly notificationsClient: ClientProxy,
 		@Inject('USERS_CLIENT_RMQ') private readonly usersClientRmq: ClientProxy
 	) {
