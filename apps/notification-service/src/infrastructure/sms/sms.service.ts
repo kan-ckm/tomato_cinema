@@ -77,7 +77,7 @@ export class SmsService {
 					),
 					catchError(error => {
 						const details =
-							error.response.data ?? error.message ?? error
+							error.response?.data ?? error.message ?? error
 
 						this.logger.error(
 							`Exolve sms api error (${method} ${path})\n${JSON.stringify(details)}`

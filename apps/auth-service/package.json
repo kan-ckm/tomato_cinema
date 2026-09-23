@@ -41,6 +41,8 @@
     "@tomatocinema/core": "workspace:*",
     "@tomatocinema/passport": "workspace:*",
     "@willsoto/nestjs-prometheus": "^6.1.0",
+    "amqp-connection-manager": "^5.0.0",
+    "amqplib": "^2.0.1",
     "argon2": "^0.45.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

@@ -8,8 +8,12 @@ import type {
 	RefreshRequest,
 	RefreshResponse,
 	RegisterRequest,
+	RegisterResponse,
+	ResendVerificationRequest,
+	ResendVerificationResponse,
 	ResetPasswordRequest,
-	ResetPasswordResponse
+	ResetPasswordResponse,
+	VerifyEmailRequest
 } from '@tomatocinema/contracts/gen/auth'
 import { AuthService } from '../services/auth.service'
 import { ForgotPasswordService } from '../services/forgot-password.service'
@@ -25,8 +29,20 @@ export class AuthController {
 	) {}
 
 	@GrpcMethod('AuthService', 'Register')
-	public async register(data: RegisterRequest): Promise<AuthResponse> {
+	public async register(data: RegisterRequest): Promise<RegisterResponse> {
 		return await this.authService.register(data)
+	}
+
+	@GrpcMethod('AuthService', 'VerifyEmail')
+	public async verifyEmail(data: VerifyEmailRequest): Promise<AuthResponse> {
+		return await this.authService.verifyEmail(data)
+	}
+
+	@GrpcMethod('AuthService', 'ResendVerification')
+	public async resendVerification(
+		data: ResendVerificationRequest
+	): Promise<ResendVerificationResponse> {
+		return await this.authService.resendVerification(data)
 	}
 
 	@GrpcMethod('AuthService', 'Login')
@@ -52,11 +68,4 @@ export class AuthController {
 	): Promise<ResetPasswordResponse> {
 		return await this.forgotPasswordService.resetPassword(data)
 	}
-
-	// @GrpcMethod('AuthService', 'ChangePassword')
-	// public async changePassword(
-	// 	data: ChangePasswordRequest
-	// ): Promise<ChangePasswordResponse> {
-	// 	return await this.forgotPasswordService.changePassword(data)
-	// }
 }

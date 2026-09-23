@@ -6,9 +6,9 @@ import { grpcLoader, grpcPackages, grpcProtoPaths } from './grpc-options'
 
 export function createGrpcServer(
 	app: INestApplication,
-	config: ConfigService<AllConfigs>
+	config: ConfigService<AllConfigs, true>
 ) {
-	const url = config.get('grpc_user.url', { infer: true })
+	const url = config.getOrThrow<string>('grpc_user.url', { infer: true })
 	//khai báo cổng máy chủ Grpc auth và thiết lập sử dụng đúng bản hợp đồng auth.proto
 	app.connectMicroservice<MicroserviceOptions>({
 		transport: Transport.GRPC,

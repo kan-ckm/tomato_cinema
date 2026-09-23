@@ -7,6 +7,7 @@ import {
 	ResetPasswordRequest,
 	ResetPasswordResponse
 } from '@tomatocinema/contracts/gen/auth'
+import { randomInt } from 'crypto'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
@@ -53,8 +54,8 @@ export class ForgotPasswordService {
 		// Để bảo mật chống dò email (User Enumeration Attack):
 		// Nếu tài khoản không tồn tại, vẫn trả về ok = true giả lập như đã gửi mail
 		if (account) {
-			// Sinh mã xác thực 6 chữ số ngẫu nhiên
-			const code = Math.floor(100000 + Math.random() * 900000).toString()
+			// Sinh mã xác thực 6 chữ số ngẫu nhiên an toàn
+			const code = randomInt(100000, 1000000).toString()
 
 			// Lưu mã vào Redis trong 15 phút (900 giây)
 			await this.redisService.set(

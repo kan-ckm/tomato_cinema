@@ -29,10 +29,13 @@ import {
 	ForgotPasswordRequest,
 	LoginRequest,
 	RegisterRequest,
+	RegisterResponse,
+	ResendVerificationRequest,
 	ResetPasswordRequest,
 	SuccessResponse,
 	TelegramFinalizeRequest,
-	TelegramVerifyRequest
+	TelegramVerifyRequest,
+	VerifyEmailRequest
 } from '../dto'
 
 @ApiTags('Auth')
@@ -44,33 +47,74 @@ export class AuthController {
 	) {}
 
 	// ==========================================
-	// 1. ĐĂNG KÝ BẰNG EMAIL VÀ MẬT KHẨU
+	// 1. ĐĂNG KÝ BẰNG EMAIL VÀ MẬT KHẨU (GỬI MÃ OTP)
 	// ==========================================
 
 	@ApiOperation({
 		summary: 'Đăng ký tài khoản',
-		description: 'Đăng ký tài khoản mới bằng Email và Mật khẩu'
+		description:
+			'Đăng ký tài khoản mới bằng Email và Mật khẩu (gửi mã OTP xác thực)'
 	})
 	@ApiOkResponse({
-		type: AuthResponse,
-		description:
-			'Đăng ký thành công, trả về Access Token và gán Refresh Token vào cookie'
+		type: RegisterResponse,
+		description: 'Đã gửi mã xác thực OTP về email của người dùng'
 	})
 	@ThrottleAuth()
 	@Post('register')
 	@HttpCode(HttpStatus.CREATED)
 	public async register(
-		@Body() dto: RegisterRequest,
+		@Body() dto: RegisterRequest
+	): Promise<RegisterResponse> {
+		return await this.client.call('register', dto)
+	}
+
+	// ==========================================
+	// 1.1. XÁC THỰC EMAIL BẰNG MÃ OTP
+	// ==========================================
+
+	@ApiOperation({
+		summary: 'Xác thực Email đăng ký',
+		description: 'Xác thực tài khoản bằng mã OTP 6 chữ số gửi qua Email'
+	})
+	@ApiOkResponse({
+		type: AuthResponse,
+		description:
+			'Xác thực thành công, trả về Access Token và gán Refresh Token vào cookie'
+	})
+	@ThrottleOtp()
+	@Post('verify-email')
+	@HttpCode(HttpStatus.OK)
+	public async verifyEmail(
+		@Body() dto: VerifyEmailRequest,
 		@Res({ passthrough: true }) res: Response
 	) {
 		const { accessToken, refreshToken } = await this.client.call(
-			'register',
+			'verifyEmail',
 			dto
 		)
 
 		this.setRefreshTokenCookie(res, refreshToken)
 
 		return { accessToken }
+	}
+
+	// ==========================================
+	// 1.2. GỬI LẠI MÃ XÁC THỰC EMAIL
+	// ==========================================
+
+	@ApiOperation({
+		summary: 'Gửi lại mã xác thực Email',
+		description: 'Gửi lại mã OTP xác thực email nếu mã cũ hết hạn'
+	})
+	@ApiOkResponse({
+		type: SuccessResponse,
+		description: 'Đã gửi lại mã xác thực thành công'
+	})
+	@ThrottleOtp()
+	@Post('resend-verification')
+	@HttpCode(HttpStatus.OK)
+	public async resendVerification(@Body() dto: ResendVerificationRequest) {
+		return await this.client.call('resendVerification', dto)
 	}
 
 	// ==========================================

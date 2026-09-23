@@ -25,6 +25,24 @@ import { MessagingService } from './messaging.service'
 						}
 					}
 				})
+			},
+			{
+				name: 'USERS_CLIENT_RMQ',
+				inject: [ConfigService],
+				useFactory: (configService: ConfigService<AllConfigs>) => ({
+					transport: Transport.RMQ,
+					options: {
+						urls: [
+							configService.getOrThrow<string>('rmq.url', {
+								infer: true
+							})
+						],
+						queue: 'users_queue',
+						queueOptions: {
+							durable: true
+						}
+					}
+				})
 			}
 		])
 	],

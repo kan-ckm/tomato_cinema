@@ -6,14 +6,13 @@ import {
 	HttpStatus,
 	Patch
 } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger'
 import { CurrentUser, Protected } from '../../shared/decorators'
 import { GetMeResponse, PatchUserRequest } from './dto'
 import { UsersClientGrpc } from './users.grpc'
 
 @Controller('users')
-export class UsersControler {
+export class UsersController {
 	public constructor(private readonly client: UsersClientGrpc) {}
 
 	@ApiOperation({

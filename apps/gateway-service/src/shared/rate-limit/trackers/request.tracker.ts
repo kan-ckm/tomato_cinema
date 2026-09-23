@@ -2,9 +2,18 @@ import { Request } from 'express'
 
 export class RequestTracker {
 	public static resolveKey(req: Request): string {
-		//Luồng gửi OTP: Khóa theo chính Email / SĐT nhận mã trong body
-		if (req.path.includes('/otp/send') && req.body?.identifier) {
-			return `otp:${req.body.identifier}`
+		// Luồng gửi OTP: Khóa theo chính Email / SĐT nhận mã trong body
+		const identifier =
+			req.body?.identifier || req.body?.email || req.body?.phone
+		if (
+			identifier &&
+			(req.path.includes('/otp') ||
+				req.path.includes('/verification') ||
+				req.path.includes('/forgot-password') ||
+				req.path.includes('/init') ||
+				req.path.includes('verify'))
+		) {
+			return `otp:${identifier}`
 		}
 
 		//Đã đăng nhập: Khóa theo User ID (tránh việc đổi IP/4G để bypass)

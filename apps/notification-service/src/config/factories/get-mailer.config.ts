@@ -13,7 +13,7 @@ export function getMailerConfig(configService: ConfigService): MailerOptions {
 			secure: configService.get('smtp.secure')
 		},
 		defaults: {
-			from: `TomatoCinema ${configService.get('smtp.fromAddress')}`
+			from: `TomatoCinema <${configService.get('smtp.fromAddress')}>`
 		}
 	}
 }

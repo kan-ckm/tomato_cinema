@@ -13,7 +13,7 @@ import {
 } from './dto'
 
 @Controller('account')
-export class AccountControler {
+export class AccountController {
 	public constructor(private readonly client: AccountClientGrpc) {}
 
 	// API: Yêu cầu bắt đầu đổi Email
@@ -122,13 +122,10 @@ export class AccountControler {
 		@Body() dto: ConfirmPasswordChangeRequest,
 		@CurrentUser() userId: string
 	) {
-		return (
-			this,
-			this.client.call('confirmPasswordChange', {
-				...dto,
-				userId
-			})
-		)
+		return this.client.call('confirmPasswordChange', {
+			...dto,
+			userId
+		})
 	}
 	// ==========================================
 	// 8. ĐỔI MẬT KHẨU (KHI ĐÃ ĐĂNG NHẬP)

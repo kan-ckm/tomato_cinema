@@ -24,7 +24,7 @@ export class NotificationsController {
 		@InjectMetric('rmq_event_processing_duration_seconds')
 		private readonly processingDuration: Histogram<string>,
 		@InjectMetric('rmq_events_total')
-		private readonly eventToal: Counter<string>
+		private readonly eventTotal: Counter<string>
 	) {
 		this.SERVICE_NAME = 'notification-service'
 	}
@@ -43,7 +43,7 @@ export class NotificationsController {
 		try {
 			await this.notificationsService.sendPasswordReset(data)
 
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'success'
@@ -51,7 +51,7 @@ export class NotificationsController {
 
 			this.rmqService.ack(ctx, event)
 		} catch (error: any) {
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'error'
@@ -81,7 +81,7 @@ export class NotificationsController {
 		try {
 			await this.notificationsService.sendPasswordChanged(data)
 
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'success'
@@ -89,7 +89,7 @@ export class NotificationsController {
 
 			this.rmqService.ack(ctx, event)
 		} catch (error: any) {
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'error'
@@ -119,14 +119,14 @@ export class NotificationsController {
 
 		try {
 			await this.notificationsService.sendEmailChange(data)
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'success'
 			})
 			this.rmqService.ack(ctx, event)
 		} catch (error: any) {
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'error'
@@ -154,14 +154,14 @@ export class NotificationsController {
 		try {
 			await this.notificationsService.sendPhoneChange(data)
 
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'success'
 			})
 			this.rmqService.ack(ctx, event)
 		} catch (error: any) {
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'error'
@@ -189,7 +189,7 @@ export class NotificationsController {
 		})
 		try {
 			await this.notificationsService.sendOtp(data)
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'success'
@@ -197,7 +197,7 @@ export class NotificationsController {
 
 			this.rmqService.ack(ctx, event)
 		} catch (error: any) {
-			this.eventToal.inc({
+			this.eventTotal.inc({
 				service: this.SERVICE_NAME,
 				event,
 				status: 'error'

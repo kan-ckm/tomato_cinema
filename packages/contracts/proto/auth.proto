@@ -7,7 +7,9 @@ import "google/protobuf/empty.proto";
 
 service AuthService {
     // Nhóm tính năng Xác thực bằng Email & Mật khẩu
-    rpc Register(RegisterRequest) returns (AuthResponse);
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc VerifyEmail(VerifyEmailRequest) returns (AuthResponse);
+    rpc ResendVerification(ResendVerificationRequest) returns (ResendVerificationResponse);
     rpc Login(LoginRequest) returns (AuthResponse);
     rpc Refresh(RefreshRequest) returns (RefreshResponse);
 
@@ -26,6 +28,26 @@ service AuthService {
 message RegisterRequest {
     string email = 1;
     string password = 2;
+}
+
+message RegisterResponse {
+    bool ok = 1;
+    string message = 2;
+    string email = 3;
+}
+
+message VerifyEmailRequest {
+    string email = 1;
+    string code = 2;
+}
+
+message ResendVerificationRequest {
+    string email = 1;
+}
+
+message ResendVerificationResponse {
+    bool ok = 1;
+    string message = 2;
 }
 
 message LoginRequest {

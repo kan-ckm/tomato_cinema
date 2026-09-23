@@ -1,5 +1,7 @@
 export * from './register.request'
 export * from './login.request'
+export * from './verify-email.request'
+export * from './resend-verification.request'
 export * from './forgot-password.request'
 export * from './reset-password.request'
 export * from './change-password.request'

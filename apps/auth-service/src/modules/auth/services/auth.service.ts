@@ -6,20 +6,24 @@ import {
 	LoginRequest,
 	RefreshRequest,
 	RefreshResponse,
-	RegisterRequest
+	RegisterRequest,
+	RegisterResponse,
+	ResendVerificationRequest,
+	ResendVerificationResponse,
+	VerifyEmailRequest
 } from '@tomatocinema/contracts/gen/auth'
 import type { Account } from 'generated/client'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
 import { AccountRepository } from '@/modules/account/repositories'
+import { OtpService } from '@/modules/otp/otp.service'
 import { HashPasswordService } from '@/shared/hash-password'
 import { TokenService } from '../../token/token.service'
-import { UsersClientGrpc } from '../../users/users.grpc'
 
 /**
  * Service trung tâm xử lý nghiệp vụ Xác thực (Authentication).
- * Điều phối giữa AccountRepository, PasswordService, TokenService, RedisService và User-Service gRPC.
+ * Điều phối giữa AccountRepository, PasswordService, TokenService, RedisService, OtpService và RabbitMQ.
  */
 @Injectable()
 export class AuthService {
@@ -30,18 +34,20 @@ export class AuthService {
 		private readonly tokenService: TokenService,
 		private readonly redisService: RedisService,
 		private readonly messagingService: MessagingService,
-		private readonly usersClient: UsersClientGrpc
+		private readonly otpService: OtpService
 	) {
 		this.logger.setContext(AuthService.name)
 	}
 
-	//ĐĂNG KÝ BẰNG EMAIL VÀ MẬT KHẨU
+	// ==========================================
+	// 1. ĐĂNG KÝ BẰNG EMAIL VÀ MẬT KHẨU (GỬI OTP)
+	// ==========================================
 
 	/**
-	 * Đăng ký tài khoản mới bằng Email và Mật khẩu.
-	 * Băm mật khẩu qua Argon2id, tạo tài khoản trong DB, đồng bộ sang user-service và cấp phát token.
+	 * Tiếp nhận thông tin đăng ký, tạo tài khoản tạm thời với isEmailVerified = false,
+	 * sinh mã OTP và phát sự kiện gửi email qua RabbitMQ.
 	 */
-	public async register(data: RegisterRequest): Promise<AuthResponse> {
+	public async register(data: RegisterRequest): Promise<RegisterResponse> {
 		const { email, password } = data
 
 		if (!email || !password) {
@@ -61,81 +67,221 @@ export class AuthService {
 		const normalizedEmail = email.trim().toLowerCase()
 		this.logger.info(
 			{ email: normalizedEmail },
-			'Bắt đầu xử lý đăng ký tài khoản'
+			'Bắt đầu xử lý đăng ký tài khoản mới'
 		)
 
-		//Kiểm tra email đã tồn tại trong hệ thống chưa
+		// Kiểm tra email đã tồn tại trong hệ thống chưa
 		const existingAccount =
 			await this.accountRepository.findByEmail(normalizedEmail)
-		if (existingAccount) {
-			this.logger.warn(
-				{ email: normalizedEmail },
-				'Đăng ký thất bại: Email đã tồn tại'
-			)
-			throw new RpcException({
-				code: RpcStatus.ALREADY_EXISTS,
-				details: 'Email này đã được sử dụng'
-			})
-		}
 
 		const passwordHash = await this.hashPasswordService.hash(password)
 
-		//Tạo tài khoản trong PostgreSQL
-		let account: Account
-		try {
-			account = await this.accountRepository.create({
-				email: normalizedEmail,
-				passwordHash,
-				isEmailVerified: true
-			})
-		} catch (error: unknown) {
-			if ((error as { code?: string })?.code === 'P2002') {
+		if (existingAccount) {
+			if (existingAccount.isEmailVerified) {
 				this.logger.warn(
 					{ email: normalizedEmail },
-					'Đăng ký thất bại: Xung đột tài khoản (P2002)'
+					'Đăng ký thất bại: Email đã được xác thực trước đó'
 				)
 				throw new RpcException({
 					code: RpcStatus.ALREADY_EXISTS,
 					details: 'Email này đã được sử dụng'
 				})
 			}
-			this.logger.error(
-				{ error, email: normalizedEmail },
-				'Lỗi khi lưu tài khoản vào database'
+
+			// Nếu tài khoản đã tạo nhưng chưa xác thực email, cho phép cập nhật lại mật khẩu mới
+			await this.accountRepository.update(existingAccount.id, {
+				passwordHash
+			})
+			this.logger.info(
+				{ accountId: existingAccount.id, email: normalizedEmail },
+				'Tài khoản chưa xác thực tồn tại, cập nhật lại mật khẩu mới'
 			)
-			throw error
+		} else {
+			// Tạo tài khoản mới với isEmailVerified = false
+			try {
+				await this.accountRepository.create({
+					email: normalizedEmail,
+					passwordHash,
+					isEmailVerified: false
+				})
+			} catch (error: unknown) {
+				if ((error as { code?: string })?.code === 'P2002') {
+					this.logger.warn(
+						{ email: normalizedEmail },
+						'Đăng ký thất bại: Xung đột tài khoản (P2002)'
+					)
+					throw new RpcException({
+						code: RpcStatus.ALREADY_EXISTS,
+						details: 'Email này đã được sử dụng'
+					})
+				}
+				this.logger.error(
+					{ error, email: normalizedEmail },
+					'Lỗi khi lưu tài khoản vào database'
+				)
+				throw error
+			}
 		}
 
-		//Đồng bộ tạo Profile sang user-service
-		try {
-			await this.usersClient.create({ id: account.id })
-		} catch (error: unknown) {
-			this.logger.error(
-				{ error, accountId: account.id, email: normalizedEmail },
-				'Khởi tạo profile user-service thất bại, thực hiện rollback xóa account'
-			)
-			// Rollback: Xóa bản ghi account vừa tạo nếu user-service gặp lỗi
-			await this.accountRepository.delete(account.id)
+		// Sinh mã OTP và lưu vào Redis cache với TTL 5 phút
+		const { code } = await this.otpService.send(normalizedEmail, 'email')
+
+		// Phát sự kiện RabbitMQ để notification-service gửi email xác thực
+		await this.messagingService.otpRequested({
+			identifier: normalizedEmail,
+			type: 'email',
+			code
+		})
+
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Đã sinh mã OTP và phát sự kiện gửi email xác thực'
+		)
+
+		return {
+			ok: true,
+			message:
+				'Mã xác thực đã được gửi tới email của bạn. Vui lòng xác thực để kích hoạt tài khoản.',
+			email: normalizedEmail
+		}
+	}
+
+	// ==========================================
+	// 2. XÁC THỰC EMAIL BẰNG MÃ OTP & ĐỒNG BỘ PROFILE
+	// ==========================================
+
+	/**
+	 * Kiểm tra mã OTP. Nếu hợp lệ:
+	 * - Kích hoạt tài khoản (isEmailVerified = true)
+	 * - Phát sự kiện RabbitMQ auth.account.registered để user-service tạo profile
+	 * - Cấp phát bộ JWT token (Access Token & Refresh Token)
+	 */
+	public async verifyEmail(data: VerifyEmailRequest): Promise<AuthResponse> {
+		const { email, code } = data
+
+		if (!email || !code) {
 			throw new RpcException({
-				code: RpcStatus.INTERNAL,
-				details: 'Khởi tạo hồ sơ người dùng thất bại. Vui lòng thử lại.'
+				code: RpcStatus.INVALID_ARGUMENT,
+				details: 'Email và mã xác thực không được để trống'
 			})
 		}
 
+		const normalizedEmail = email.trim().toLowerCase()
 		this.logger.info(
-			{ accountId: account.id, email: normalizedEmail },
-			'Đăng ký tài khoản và khởi tạo profile thành công'
+			{ email: normalizedEmail },
+			'Bắt đầu xử lý xác thực email qua OTP'
 		)
 
-		//Sinh cặp Access Token và Refresh Token
+		const account =
+			await this.accountRepository.findByEmail(normalizedEmail)
+
+		if (!account) {
+			this.logger.warn(
+				{ email: normalizedEmail },
+				'Xác thực thất bại: Không tìm thấy tài khoản'
+			)
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Tài khoản không tồn tại'
+			})
+		}
+
+		if (account.isEmailVerified) {
+			this.logger.warn(
+				{ accountId: account.id, email: normalizedEmail },
+				'Email này đã được xác thực trước đó'
+			)
+			throw new RpcException({
+				code: RpcStatus.ALREADY_EXISTS,
+				details: 'Email này đã được xác thực trước đó'
+			})
+		}
+
+		// Kiểm tra mã OTP từ Redis (ném ngoại lệ RpcException nếu không khớp/hết hạn)
+		await this.otpService.verify(normalizedEmail, code, 'email')
+
+		// Cập nhật trạng thái tài khoản thành đã xác thực
+		await this.accountRepository.update(account.id, {
+			isEmailVerified: true
+		})
+
+		// Phát sự kiện RabbitMQ bất đồng bộ sang user-service
+		await this.messagingService.accountRegistered({
+			accountId: account.id,
+			email: normalizedEmail
+		})
+
+		this.logger.info(
+			{ accountId: account.id, email: normalizedEmail },
+			'Xác thực email thành công, đã phát sự kiện auth.account.registered'
+		)
+
+		// Cấp phát token cho người dùng đăng nhập ngay
 		return this.tokenService.generate(account.id)
 	}
 
-	//ĐĂNG NHẬP BẰNG EMAIL VÀ MẬT KHẨU
+	// ==========================================
+	// 3. GỬI LẠI MÃ XÁC THỰC EMAIL (RESEND OTP)
+	// ==========================================
+
+	/**
+	 * Gửi lại mã OTP xác thực email nếu mã cũ hết hạn
+	 */
+	public async resendVerification(
+		data: ResendVerificationRequest
+	): Promise<ResendVerificationResponse> {
+		const { email } = data
+
+		if (!email) {
+			throw new RpcException({
+				code: RpcStatus.INVALID_ARGUMENT,
+				details: 'Email không được để trống'
+			})
+		}
+
+		const normalizedEmail = email.trim().toLowerCase()
+		const account =
+			await this.accountRepository.findByEmail(normalizedEmail)
+
+		if (!account) {
+			throw new RpcException({
+				code: RpcStatus.NOT_FOUND,
+				details: 'Tài khoản không tồn tại'
+			})
+		}
+
+		if (account.isEmailVerified) {
+			throw new RpcException({
+				code: RpcStatus.ALREADY_EXISTS,
+				details: 'Email này đã được xác thực'
+			})
+		}
+
+		const { code } = await this.otpService.send(normalizedEmail, 'email')
+		await this.messagingService.otpRequested({
+			identifier: normalizedEmail,
+			type: 'email',
+			code
+		})
+
+		this.logger.info(
+			{ email: normalizedEmail },
+			'Đã gửi lại mã OTP xác thực email'
+		)
+
+		return {
+			ok: true,
+			message: 'Mã xác thực mới đã được gửi tới email của bạn.'
+		}
+	}
+
+	// ==========================================
+	// 4. ĐĂNG NHẬP BẰNG EMAIL VÀ MẬT KHẨU
+	// ==========================================
 
 	/**
 	 * Đăng nhập bằng Email và Mật khẩu.
-	 * Đối chiếu thông tin với DB và kiểm tra chữ ký băm mật khẩu qua Argon2id.
+	 * Bắt buộc tài khoản đã được xác thực Email (isEmailVerified = true).
 	 */
 	public async login(data: LoginRequest): Promise<AuthResponse> {
 		const { email, password } = data
@@ -153,7 +299,7 @@ export class AuthService {
 			'Yêu cầu đăng nhập tài khoản'
 		)
 
-		//Tìm tài khoản theo Email
+		// Tìm tài khoản theo Email
 		const account =
 			await this.accountRepository.findByEmail(normalizedEmail)
 		if (!account || !account.passwordHash) {
@@ -167,7 +313,20 @@ export class AuthService {
 			})
 		}
 
-		//Kiểm tra mật khẩu khớp với hash Argon2id
+		// Kiểm tra tài khoản đã xác thực Email chưa
+		if (!account.isEmailVerified) {
+			this.logger.warn(
+				{ accountId: account.id, email: normalizedEmail },
+				'Đăng nhập thất bại: Email chưa được xác thực'
+			)
+			throw new RpcException({
+				code: RpcStatus.UNAUTHENTICATED,
+				details:
+					'Email chưa được xác thực. Vui lòng xác thực email trước khi đăng nhập.'
+			})
+		}
+
+		// Kiểm tra mật khẩu khớp với hash Argon2id
 		const isPasswordValid = await this.hashPasswordService.compare(
 			password,
 			account.passwordHash
@@ -188,11 +347,13 @@ export class AuthService {
 			'Đăng nhập thành công, cấp phát token'
 		)
 
-		//Cấp Access Token và Refresh Token
+		// Cấp Access Token và Refresh Token
 		return this.tokenService.generate(account.id)
 	}
 
-	//LÀM MỚI TOKEN (REFRESH TOKEN)
+	// ==========================================
+	// 5. LÀM MỚI TOKEN (REFRESH TOKEN)
+	// ==========================================
 
 	/**
 	 * Cấp lại cặp Token mới khi Access Token hết hạn

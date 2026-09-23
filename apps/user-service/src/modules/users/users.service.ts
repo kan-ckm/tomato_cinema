@@ -48,8 +48,18 @@ export class UsersService {
 	public async createUser(
 		data: CreateUserRequest
 	): Promise<CreateUserResponse> {
-		await this.userRepository.create({ id: data.id })
+		await this.createIfNotExists(data.id)
 		return { ok: true }
+	}
+
+	/**
+	 * Khởi tạo Profile người dùng mới từ sự kiện RabbitMQ (Đảm bảo Idempotency)
+	 */
+	public async createIfNotExists(id: string): Promise<void> {
+		const existing = await this.userRepository.findById(id)
+		if (!existing) {
+			await this.userRepository.create({ id })
+		}
 	}
 
 	public async updateUser(data: PatchUserRequest) {

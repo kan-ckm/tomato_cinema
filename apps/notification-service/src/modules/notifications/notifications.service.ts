@@ -49,7 +49,7 @@ export class NotificationsService {
 		if (data.type === 'email') {
 			await this.mailService.sendOtp(identifier, code)
 		} else {
-			this.smsService.sendOtp(identifier, code)
+			await this.smsService.sendOtp(identifier, code)
 		}
 	}
 }
