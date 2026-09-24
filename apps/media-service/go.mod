@@ -1,4 +1,4 @@
-module github.com/teacinema/media-service
+module github.com/tomatocinema/media-service
 
 go 1.24.0
 
@@ -15,7 +15,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/kolesa-team/go-webp v1.0.5
-	github.com/teacinema/contracts v1.0.2
+	github.com/tomatocinema/contracts v1.0.2
 	google.golang.org/grpc v1.77.0
 )
 

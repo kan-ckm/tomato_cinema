@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 
-	pb "github.com/teacinema/contracts/gen/go/media"
-	"github.com/teacinema/media-service/internal/application/dto"
-	"github.com/teacinema/media-service/internal/application/usecases"
+	pb "github.com/tomatocinema/contracts/gen/go/media"
+	"github.com/tomatocinema/media-service/internal/application/dto"
+	"github.com/tomatocinema/media-service/internal/application/usecases"
 )
 
 // MediaHandler triển khai các phương thức định nghĩa trong protobuf MediaServiceServer:

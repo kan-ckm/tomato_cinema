@@ -30,7 +30,7 @@ Tài liệu này được biên soạn nhằm giúp các thành viên mới gia 
 ### Các công nghệ cốt lõi:
 
 - **Ngôn ngữ:** Go (Golang) phiên bản 1.24+.
-- **Giao tiếp nội bộ:** gRPC (`google.golang.org/grpc`) dựa trên protobuf `github.com/teacinema/contracts`.
+- **Giao tiếp nội bộ:** gRPC (`google.golang.org/grpc`) dựa trên protobuf `github.com/tomatocinema/contracts`.
 - **Phục vụ người dùng:** Gin Web Framework (`github.com/gin-gonic/gin`).
 - **Lưu trữ Object Storage:** AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`), tương thích hoàn toàn với AWS S3, MinIO và Cloudflare R2.
 - **Xử lý luồng:** Cơ chế Non-buffering Streaming (`io.Reader` / `io.ReadCloser`) giúp tiết kiệm bộ nhớ RAM.
@@ -125,7 +125,7 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 - **Vị trí file:** [`internal/interfaces/grpc/media_handler.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go)
 - **Nhiệm vụ:**
-  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `teacinema/contracts/gen/go/media`.
+  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `tomatocinema/contracts/gen/go/media`.
   - Phương thức [`Upload`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L38): Nhận `req.Data` ([]byte), đóng gói thành `bytes.NewReader(req.Data)` để thành `io.Reader`, sau đó chuyển giao cho [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13).
 
 ---

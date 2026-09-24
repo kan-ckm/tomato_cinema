@@ -8,10 +8,10 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"
-	"github.com/teacinema/media-service/internal/config"
-	"github.com/teacinema/media-service/internal/infrastructure/images"
-	"github.com/teacinema/media-service/internal/infrastructure/storage"
-	"github.com/teacinema/media-service/pkg/logger"
+	"github.com/tomatocinema/media-service/internal/config"
+	"github.com/tomatocinema/media-service/internal/infrastructure/images"
+	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
+	"github.com/tomatocinema/media-service/pkg/logger"
 )
 
 // Server quản lý HTTP Server (Gin framework) phục vụ truy xuất tệp tin công khai

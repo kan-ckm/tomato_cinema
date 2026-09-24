@@ -13,8 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/teacinema/media-service/internal/config"
-	"github.com/teacinema/media-service/pkg/logger"
+	"github.com/tomatocinema/media-service/internal/config"
+	"github.com/tomatocinema/media-service/pkg/logger"
 )
 
 // S3Storage triển khai giao diện Storage dựa trên AWS S3 SDK v2:

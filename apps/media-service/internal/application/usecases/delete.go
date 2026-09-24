@@ -3,8 +3,8 @@ package usecases
 import (
 	"context"
 
-	"github.com/teacinema/media-service/internal/application/dto"
-	"github.com/teacinema/media-service/internal/infrastructure/storage"
+	"github.com/tomatocinema/media-service/internal/application/dto"
+	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
 )
 
 // DeleteUseCase thực hiện nghiệp vụ xóa tệp tin khỏi Storage bằng khóa định danh

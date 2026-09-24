@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net"
 
-	pb "github.com/teacinema/contracts/gen/go/media"
-	"github.com/teacinema/media-service/internal/application/usecases"
-	"github.com/teacinema/media-service/internal/config"
-	"github.com/teacinema/media-service/internal/infrastructure/images"
-	"github.com/teacinema/media-service/internal/infrastructure/storage"
-	handler "github.com/teacinema/media-service/internal/interfaces/grpc"
-	"github.com/teacinema/media-service/pkg/logger"
+	pb "github.com/tomatocinema/contracts/gen/go/media"
+	"github.com/tomatocinema/media-service/internal/application/usecases"
+	"github.com/tomatocinema/media-service/internal/config"
+	"github.com/tomatocinema/media-service/internal/infrastructure/images"
+	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
+	handler "github.com/tomatocinema/media-service/internal/interfaces/grpc"
+	"github.com/tomatocinema/media-service/pkg/logger"
 	"google.golang.org/grpc"
 )
 

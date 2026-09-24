@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/teacinema/media-service/internal/config"
-	"github.com/teacinema/media-service/internal/infrastructure/grpc"
-	httpserver "github.com/teacinema/media-service/internal/infrastructure/http"
-	"github.com/teacinema/media-service/internal/infrastructure/storage"
-	"github.com/teacinema/media-service/pkg/logger"
+	"github.com/tomatocinema/media-service/internal/config"
+	"github.com/tomatocinema/media-service/internal/infrastructure/grpc"
+	httpserver "github.com/tomatocinema/media-service/internal/infrastructure/http"
+	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
+	"github.com/tomatocinema/media-service/pkg/logger"
 )
 
 // Điểm khởi chạy chính của media-service:

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/teacinema/media-service/internal/application/dto"
-	"github.com/teacinema/media-service/internal/infrastructure/images"
-	"github.com/teacinema/media-service/internal/infrastructure/storage"
+	"github.com/tomatocinema/media-service/internal/application/dto"
+	"github.com/tomatocinema/media-service/internal/infrastructure/images"
+	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
 )
 
 // UploadUseCase thực hiện nghiệp vụ tải lên tệp tin và lưu trữ vào Storage (S3/MinIO)
