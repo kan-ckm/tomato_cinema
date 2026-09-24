@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { GrpcModule } from '@tomatocinema/common'
-import { AuthController } from './auth.controller'
 import { AuthClientGrpc } from './auth.grpc'
+import { AuthController } from './controllers/auth.controller'
 
 @Module({
 	imports: [GrpcModule.register(['AUTH_PACKAGE'])],
