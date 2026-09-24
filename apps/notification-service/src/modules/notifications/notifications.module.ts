@@ -3,8 +3,11 @@ import { ConfigService } from '@nestjs/config'
 import { getExolveConfig } from 'src/config/factories'
 import { MailModule } from 'src/infrastructure/mail/mail.module'
 import { SmsModule } from 'src/infrastructure/sms/sms.module'
-import { NotificationsController } from './notifications.controller'
-import { NotificationsService } from './notifications.service'
+import { AccountNotificationsController } from './controllers/account-notifications.controller'
+import { AuthNotificationsController } from './controllers/auth-notifications.controller'
+import { RmqMetricsAckInterceptor } from './interceptors/rmq-metrics-ack.interceptor'
+import { AccountNotificationsService } from './services/account-notifications.service'
+import { AuthNotificationsService } from './services/auth-notifications.service'
 
 @Module({
 	imports: [
@@ -14,7 +17,12 @@ import { NotificationsService } from './notifications.service'
 			inject: [ConfigService]
 		})
 	],
-	controllers: [NotificationsController],
-	providers: [NotificationsService]
+	controllers: [AuthNotificationsController, AccountNotificationsController],
+	providers: [
+		AuthNotificationsService,
+		AccountNotificationsService,
+		RmqMetricsAckInterceptor
+	],
+	exports: [AuthNotificationsService, AccountNotificationsService]
 })
 export class NotificationsModule {}
