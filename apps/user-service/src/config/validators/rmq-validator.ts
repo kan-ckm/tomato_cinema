@@ -6,9 +6,10 @@ export class RmqValidator {
 		require_tld: false,
 		require_protocol: true
 	})
+	@IsString()
 	public RMQ_URL: string
 
 	@IsOptional()
 	@IsString()
-	public RMQ_QUEUE?: string
+	public RMQ_QUEUE: string
 }

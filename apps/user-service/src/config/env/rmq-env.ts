@@ -8,6 +8,6 @@ export const rmqEnv = registerAs<RmqConfig>('rmq', () => {
 
 	return {
 		url: validatedConfig.RMQ_URL,
-		queue: validatedConfig.RMQ_QUEUE || 'users_queue'
+		queue: validatedConfig.RMQ_QUEUE
 	}
 })
