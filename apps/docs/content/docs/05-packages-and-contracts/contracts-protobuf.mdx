@@ -1,0 +1,158 @@
+---
+title: Hợp đồng Protocol Buffers (gRPC Contracts)
+description: Đặc tả chi tiết các tệp định nghĩa dịch vụ .proto (auth, users, media, account) và cơ chế đảm bảo Type Safety giữa các microservices.
+---
+
+Gói `@tomatocinema/contracts` đóng vai trò là xương sống kết nối giao tiếp RPC nội bộ giữa các microservices trong Tomato Cinema. Toàn bộ giao diện dịch vụ (Service Interface) và cấu trúc thông điệp (Messages/DTOs) đều được khai báo bằng **Protocol Buffers v3 (proto3)**.
+
+---
+
+## 1. Cấu trúc Thư mục Hợp đồng Protobuf
+
+```
+packages/contracts/
+├── proto/
+│   ├── auth.proto       # Xác thực, đăng ký, đăng nhập và Telegram SSO
+│   ├── account.proto    # Quản lý tài khoản, phân quyền RoleUser và đổi thông tin
+│   ├── users.proto      # Quản lý hồ sơ người dùng (User Profile)
+│   └── media.proto      # Xử lý tệp nhị phân tải lên và quản lý S3 bucket
+├── gen/
+│   ├── ts/              # TypeScript stubs sinh tự động cho NestJS Microservices
+│   └── go/              # Go stubs sinh tự động cho Media Service (Golang)
+└── src/scripts/
+    └── generate_go.sh   # Script tự động hóa sinh mã Go gRPC
+```
+
+---
+
+## 2. Chi tiết các Tệp Hợp đồng Proto
+
+### 2.1. `auth.proto` — Xác thực & Phân quyền
+Xác định hợp đồng giao tiếp cho `AuthService`:
+
+```protobuf
+syntax = "proto3";
+package auth.v1;
+
+import "google/protobuf/empty.proto"; 
+
+service AuthService {
+    // Luồng Xác thực Email & Mật khẩu
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc VerifyEmail(VerifyEmailRequest) returns (AuthResponse);
+    rpc ResendVerification(ResendVerificationRequest) returns (ResendVerificationResponse);
+    rpc Login(LoginRequest) returns (AuthResponse);
+    rpc Refresh(RefreshRequest) returns (RefreshResponse);
+    rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+    // Luồng Quản lý mật khẩu qua Email
+    rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
+    rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+    
+    // Luồng Đăng nhập Telegram SSO
+    rpc TelegramInit(google.protobuf.Empty) returns (TelegramInitResponse);
+    rpc TelegramVerify(TelegramVerifyRequest) returns (TelegramVerifyResponse);
+    rpc TelegramComplete(TelegramCompleteRequest) returns (TelegramCompleteResponse);
+    rpc TelegramConsume(TelegramConsumeRequest) returns (TelegramConsumeResponse);
+}
+
+message AuthResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+```
+
+### 2.2. `account.proto` — Quản trị Tài khoản & Phân quyền
+Định nghĩa thực thể Account và luồng xác minh 2 bước khi cập nhật Email, Số điện thoại hoặc Mật khẩu:
+
+```protobuf
+syntax = "proto3";
+package account.v1;
+
+service AccountService {
+    rpc GetAccount (GetAccountRequest) returns (GetAccountResponse);
+    rpc InitEmailChange (InitEmailChangeRequest) returns (InitEmailChangeResponse);
+    rpc ConfirmEmailChange (ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse);
+    rpc InitPhoneChange (InitPhoneChangeRequest) returns (InitPhoneChangeResponse);
+    rpc ConfirmPhoneChange (ConfirmPhoneChangeRequest) returns (ConfirmPhoneChangeResponse);
+    rpc InitPasswordChange (InitPasswordChangeRequest) returns (InitPasswordChangeResponse);
+    rpc ConfirmPasswordChange (ConfirmPasswordChangeRequest) returns (ConfirmPasswordChangeResponse);
+}
+
+enum RoleUser {
+    USER = 0;
+    ADMIN = 1;
+}
+
+message GetAccountResponse {
+    string id = 1;
+    string phone = 2;
+    string email = 3;
+    bool is_phone_verified = 4;
+    bool is_email_verified = 5;
+    RoleUser role = 6;
+}
+```
+
+### 2.3. `users.proto` — Quản lý Hồ sơ Người dùng (Profile)
+Được triển khai bởi `user-service` nhằm tách biệt thông tin đăng nhập nhạy cảm (Account) khỏi thông tin hồ sơ hiển thị (Profile):
+
+```protobuf
+syntax = "proto3";
+package users.v1;
+
+service UsersService {
+    rpc GetMe(GetMeRequest) returns (GetMeResponse);
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+    rpc PatchUser (PatchUserRequest) returns (PatchUserResponse);
+}
+
+message User {
+    string id = 1;
+    optional string name = 2;
+    optional string phone = 3;      
+    optional string email = 4;
+    optional string avatar = 5;
+}
+```
+
+### 2.4. `media.proto` — Giao tiếp Đa phương tiện AWS S3
+Được triển khai bởi `media-service` (viết bằng Golang) và được gọi bởi `gateway-service` (Node.js):
+
+```protobuf
+syntax = "proto3";
+package media.v1;
+
+option go_package = "github.com/tomatocinema/contracts/media/v1;mediav1";
+option java_multiple_files = true;
+
+service MediaService {
+    rpc Upload (UploadRequest) returns (UploadResponse);
+    rpc Get (GetRequest) returns (GetResponse);
+    rpc Delete (DeleteRequest) returns (DeleteResponse);
+}
+
+message UploadRequest {
+  string file_name = 1;
+  string folder = 2;
+  string content_type = 3;
+  bytes data = 4;
+  optional int32 resize_width = 5;
+  optional int32 resize_height = 6;
+}
+
+message UploadResponse {
+  string key = 1; // S3 Object Key (vd: "movies/posters/uuid.webp")
+}
+```
+
+---
+
+## 3. Lợi ích Kỹ thuật của Protocol Buffers
+
+1. **Hiệu năng Nhị phân (Binary Serialization)**:
+   - Dữ liệu gRPC được nén thành dạng nhị phân nhỏ gọn hơn JSON từ **60% đến 80%**, giảm tiêu hao băng thông mạng nội bộ giữa các container Docker.
+2. **Khả năng Tương thích Đa ngôn ngữ (Polyglot)**:
+   - File `.proto` đóng vai trò là một hợp đồng chung duy nhất. Node.js và Go có thể tự do trao đổi dữ liệu với độ tương thích hoàn hảo.
+3. **An toàn Kiểu Tuyệt đối (End-to-End Type Safety)**:
+   - Bất kỳ sự thay đổi trường dữ liệu hoặc tên RPC method nào trong file `.proto` sẽ lập tức báo lỗi tại thời điểm biên dịch TypeScript / Go (Compile Time), triệt tiêu các lỗi ẩn ở môi trường Production.

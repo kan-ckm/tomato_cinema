@@ -1,0 +1,85 @@
+---
+title: Nền tảng Dùng chung (@tomatocinema/common)
+description: Chuẩn mã lỗi gRPC RpcStatus, interceptor RabbitMQ Telemetry & Manual ACK và các tiện ích dùng chung giữa các microservices.
+---
+
+`@tomatocinema/common` cung cấp các lớp trừu tượng, mã trạng thái gRPC thống nhất và các interceptor xử lý hàng đợi sự kiện dùng chung cho toàn bộ hệ sinh thái backend NestJS.
+
+---
+
+## 1. Mã Trạng thái gRPC Chuẩn (`RpcStatus`)
+
+Thay vì dùng mã HTTP Status (như 400, 401, 404) trong tầng RPC nội bộ, hệ thống chuẩn hóa theo mã lỗi chính thức của chuẩn Google gRPC:
+
+```typescript
+export enum RpcStatus {
+  OK = 0,
+  CANCELLED = 1,
+  UNKNOWN = 2,
+  INVALID_ARGUMENT = 3,  // Tham số request không hợp lệ
+  DEADLINE_EXCEEDED = 4,
+  NOT_FOUND = 5,          // Không tìm thấy bản ghi trong database
+  ALREADY_EXISTS = 6,     // Trùng lặp dữ liệu (Unique constraint vi phạm)
+  PERMISSION_DENIED = 7,
+  RESOURCE_EXHAUSTED = 8,
+  FAILED_PRECONDITION = 9,
+  ABORTED = 10,
+  OUT_OF_RANGE = 11,
+  UNIMPLEMENTED = 12,
+  INTERNAL = 13,          // Lỗi hệ thống nội bộ
+  UNAVAILABLE = 14,
+  DATA_LOSS = 15,
+  UNAUTHENTICATED = 16    // Sai mật khẩu, token hết hạn hoặc chưa đăng nhập
+}
+```
+
+### Sử dụng ném ngoại lệ trong Service:
+```typescript
+import { RpcException } from '@nestjs/microservices';
+import { RpcStatus } from '@tomatocinema/common';
+
+throw new RpcException({
+  code: RpcStatus.INVALID_ARGUMENT,
+  details: 'Email và mật khẩu không được để trống'
+});
+```
+
+API Gateway tự động lắng nghe các `RpcException` này và chuyển đổi thành mã HTTP tương ứng (vd: `INVALID_ARGUMENT` $\rightarrow$ `400 Bad Request`, `UNAUTHENTICATED` $\rightarrow$ `401 Unauthorized`, `ALREADY_EXISTS` $\rightarrow$ `409 Conflict`).
+
+---
+
+## 2. RabbitMQ Interceptor (`RMQMetricsAckInterceptor`)
+
+Xử lý sự kiện tin nhắn trong hàng đợi RabbitMQ đòi hỏi cơ chế xác nhận thủ công (**Manual ACK**) chặt chẽ nhằm tránh mất tin nhắn khi worker gặp sự cố bất ngờ:
+
+```typescript
+// apps/notification-service/.../rmq-metrics-ack.interceptor.ts
+@Injectable()
+export class RMQMetricsAckInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const rmqContext = context.switchToRpc().getContext<RmqContext>();
+    const channel = rmqContext.getChannelRef();
+    const originalMessage = rmqContext.getMessage();
+
+    return next.handle().pipe(
+      tap(() => {
+        // Xử lý thành công -> Gửi ACK về RabbitMQ để xóa tin nhắn khỏi hàng đợi
+        channel.ack(originalMessage);
+      }),
+      catchError((error) => {
+        // Xử lý thất bại -> Từ chối và requeue hoặc chuyển sang Dead Letter Queue (DLQ)
+        channel.nack(originalMessage, false, false);
+        return throwError(() => error);
+      })
+    );
+  }
+}
+```
+
+---
+
+## 3. Quản lý Môi trường & Tiện ích Khác
+
+Gói `@tomatocinema/common` còn chuẩn hóa:
+- **Cấu hình Redis Client**: Tự động kết nối lại khi rớt mạng (Exponential Backoff reconnect).
+- **Format Log chuẩn Pino**: Ghi nhận `traceId` và `spanId` đồng bộ giúp truy vết lỗi phân tán (Distributed Tracing).

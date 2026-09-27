@@ -1,0 +1,124 @@
+---
+title: Quy trình Biên dịch & Sinh mã Tự động (Codegen Workflow)
+description: Hướng dẫn cách thức tự động hóa quá trình sinh mã nguồn TypeScript và Golang từ các tệp .proto bằng Turborepo, ts-proto và protoc-gen-go.
+---
+
+Để duy trì tính toàn vẹn và loại bỏ việc viết code thủ công lặp đi lặp lại, Tomato Cinema thiết lập một quy trình tự động hóa sinh mã nguồn (Code Generation Pipeline) tại gói `@tomatocinema/contracts`.
+
+---
+
+## 1. Cơ chế Biên dịch Đa ngôn ngữ (Polyglot Codegen)
+
+Mỗi khi lập trình viên cập nhật hoặc thêm mới một tệp `.proto` trong thư mục `proto/`, trình biên dịch sẽ tạo ra stubs cho hai ngôn ngữ khác nhau:
+
+```
+                      [packages/contracts/proto/*.proto]
+                                      |
+                     +----------------+----------------+
+                     |                                 |
+              (ts-proto compiler)             (protoc-gen-go compiler)
+                     |                                 |
+                     v                                 v
+          [packages/contracts/gen/ts]       [packages/contracts/gen/go]
+                     |                                 |
+                     v                                 v
+         Dùng cho NestJS Microservices       Dùng cho Media Service (Go)
+```
+
+---
+
+## 2. Biên dịch TypeScript cho NestJS (`ts-proto`)
+
+Lệnh thực thi trong `packages/contracts/package.json`:
+
+```bash
+protoc -I ./proto ./proto/*.proto \
+  --ts_proto_out=./gen/ts \
+  --ts_proto_opt=nestJs=true,package=omit
+```
+
+### Các tùy chọn quan trọng:
+- `nestJs=true`: Tự động tạo ra các Interface phù hợp với kiến trúc NestJS Microservices:
+  - Sinh Interface cho Service: `AuthServiceController`, `UsersServiceController`.
+  - Sinh Method Decorators: `@GrpcMethod('AuthService', 'Login')`.
+  - Sinh kiểu Client Observable: `client.getService<AuthServiceClient>('AuthService')`.
+- `package=omit`: Lược bỏ các tiền tố package lồng nhau không cần thiết trong tên TypeScript Interface.
+
+---
+
+## 3. Biên dịch Golang cho Media Service (`protoc-gen-go`)
+
+Kịch bản bash script tại `packages/contracts/src/scripts/generate_go.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "Tạo protobuf Go (media)..."
+
+protoc -I ./proto \
+    --go_out=./gen/go \
+    --go_opt=module=github.com/tomatocinema/contracts \
+    --go-grpc_out=./gen/go \
+    --go-grpc_opt=module=github.com/tomatocinema/contracts \
+    ./proto/media.proto
+
+echo "Go đã tạo xong!"
+```
+
+Tạo ra 2 tệp Go chính:
+1. `media.pb.go`: Chứa struct dữ liệu, hàm serialize/deserialize nhị phân.
+2. `media_grpc.pb.go`: Chứa interface gRPC server và client stubs cho Golang.
+
+---
+
+## 4. Các Lệnh Điều khiển trong Monorepo
+
+Bạn có thể chạy các lệnh này từ thư mục gốc của dự án:
+
+<Steps>
+### Bước 1: Sinh mã nguồn Protobuf
+Chỉ chạy lệnh sinh stubs TypeScript và Go:
+```bash
+pnpm --filter @tomatocinema/contracts generate
+```
+
+### Bước 2: Đóng gói bản build
+Sinh stubs và biên dịch TypeScript sang thư mục `dist/`:
+```bash
+pnpm --filter @tomatocinema/contracts build
+```
+
+### Bước 3: Sử dụng trong Microservices
+Trong bất kỳ service NestJS nào:
+```typescript
+import type { 
+  AuthServiceController, 
+  LoginRequest, 
+  AuthResponse 
+} from '@tomatocinema/contracts/gen/auth';
+```
+</Steps>
+
+---
+
+## 5. Cấu hình Xuất khẩu Package (`package.json`)
+
+Để TypeScript và Node.js nhận diện đúng các file stubs sinh ra mà không cần trỏ đường dẫn tương đối dài dòng, `packages/contracts/package.json` định nghĩa trường `exports` thông minh:
+
+```json
+{
+  "name": "@tomatocinema/contracts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./gen/*": {
+      "types": "./dist/gen/ts/*.d.ts",
+      "default": "./dist/gen/ts/*.js"
+    }
+  }
+}
+```
+Nhờ đó, lập trình viên chỉ cần viết `import { ... } from '@tomatocinema/contracts/gen/auth'` rất gọn gàng và chuẩn mực.

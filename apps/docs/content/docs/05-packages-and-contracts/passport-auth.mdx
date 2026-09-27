@@ -1,0 +1,115 @@
+---
+title: Thư viện Xác thực (@tomatocinema/passport)
+description: Engine tạo và xác thực Token 5 phần hiệu năng cao, cơ chế HMAC Domain Separation và chống tấn công Timing Attack.
+---
+
+`@tomatocinema/passport` là thư viện xác thực nội bộ của Tomato Cinema (`packages/passport`), được tạo ra nhằm thay thế việc dùng các thư viện JWT nặng nề, loại bỏ các lỗ hổng tiềm ẩn như `alg: none` và cung cấp cơ chế bảo vệ phân tách miền (**Domain Separation**) ngăn chặn hoàn toàn tấn công tráo đổi loại token (*Token Type Confusion*).
+
+---
+
+## 1. Cấu trúc Token 5 Thành phần
+
+Mỗi token do `PassportService` tạo ra có định dạng:
+
+```
+[typePart].[userPart].[iatPart].[expPart].[mac]
+```
+
+```typescript
+// packages/passport/lib/passport.service.ts
+public generate(userId: string, ttl: number, type: TokenType): string {
+    const issuedAt = this.now();
+    const expiresAt = issuedAt + ttl;
+    const nonce = randomBytes(6).toString('hex'); // 12 ký tự hex ngẫu nhiên
+
+    const typePart = base64UrlEncode(type);
+    const userPart = base64UrlEncode(userId);
+    const iatPart = base64UrlEncode(`${issuedAt}:${nonce}`);
+    const expPart = base64UrlEncode(String(expiresAt));
+
+    const serialized = this.serialize(type, userPart, iatPart, expPart);
+    const mac = this.computeHmac(this.SECRET_KEY, serialized);
+
+    return `${typePart}.${userPart}.${iatPart}.${expPart}.${mac}`;
+}
+```
+
+---
+
+## 2. Các Tính năng Bảo mật Cốt lõi
+
+### 2.1. HMAC Domain Separation
+Để tránh việc kẻ tấn công lấy Refresh Token gửi vào header `Authorization` làm Access Token:
+
+```typescript
+private static readonly HMAC_DOMAINS: Record<TokenType, string> = {
+    access: 'PassportAccessToken/v1',
+    refresh: 'PassportRefreshToken/v1'
+};
+```
+
+Chuỗi ký trước khi đưa vào HMAC-SHA256:
+- **Access Token**: `PassportAccessToken/v1|dXNlcjE|MTcw...|MTcz...`
+- **Refresh Token**: `PassportRefreshToken/v1|dXNlcjE|MTcw...|MTcz...`
+
+Do Domain khác nhau, chữ ký MAC của hai loại token sẽ hoàn toàn khác biệt dù chúng có chung `userId` và cùng một mốc thời gian.
+
+### 2.2. Kháng Tấn công Timing Attack
+Thuật toán so khớp chữ ký sử dụng hàm so sánh hằng số thời gian (`timingSafeEqual`):
+
+```typescript
+// packages/passport/lib/utils/crypto.ts
+export function constantTimeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+```
+Ngăn chặn kẻ tấn công đo đạc thời gian tính toán của CPU để suy đoán ra từng byte của chữ ký điện tử.
+
+### 2.3. Mã Nonce ngẫu nhiên chống Replay
+Trong trường hợp cùng một người dùng nhấn đăng nhập hai lần trong cùng một giây, trường `iatPart` chứa thêm **6 bytes nonce ngẫu nhiên** (`randomBytes(6)`), tạo ra 2 token hoàn toàn khác nhau, tránh hiện tượng va chạm hash.
+
+---
+
+## 3. Cách Tích hợp vào Microservices
+
+### Cấu hình trong NestJS Module:
+```typescript
+import { PassportModule } from '@tomatocinema/passport';
+
+@Module({
+  imports: [
+    PassportModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secretKey: config.getOrThrow<string>('PASSPORT_SECRET_KEY')
+      })
+    })
+  ]
+})
+export class AuthModule {}
+```
+
+### Sử dụng trong Service hoặc Guard:
+```typescript
+import { PassportService } from '@tomatocinema/passport';
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(private readonly passportService: PassportService) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const token = this.extractToken(context.switchToHttp().getRequest());
+    
+    // Thẩm định token loại 'access'
+    const result = this.passportService.verify(token, 'access');
+    if (!result.valid) {
+      throw new UnauthorizedException(result.reason);
+    }
+
+    request.user = { id: result.userId };
+    return true;
+  }
+}
+```

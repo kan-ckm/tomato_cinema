@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Kiến trúc Gói Thư viện & Pipeline Sinh mã Protobuf",
+    "output": "apps/docs/public/diagrams/packages-pipeline.html",
+    "viewBox": [1080, 600],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-pipeline",
+        "label": "Pipeline Protobuf & Packages toàn diện",
+        "focus": ["proto_files", "protoc_engine", "gen_ts_go", "shared_pkgs", "microservices"],
+        "note": "Từ định nghĩa Protocol Buffers v3 đến biên dịch sinh mã TypeScript/Go và phân phối vào Microservices."
+      }
+    ]
+  },
+  "stages": [
+    { "label": "Định nghĩa Proto" },
+    { "label": "Trình biên dịch" },
+    { "label": "Mã nguồn sinh ra" },
+    { "label": "Gói thư viện" },
+    { "label": "Dịch vụ tiêu thụ" }
+  ],
+  "nodes": [
+    { "id": "proto_files", "type": "messagebus", "label": "Định nghĩa Protobuf", "sublabel": "contracts/proto", "stage": 0, "row": 1, "tag": "proto3 IDL" },
+    { "id": "protoc_engine", "type": "backend", "label": "Protoc Compiler", "sublabel": "ts-proto & Go", "stage": 1, "row": 1, "tag": "Code Generator" },
+    { "id": "gen_ts_go", "type": "cloud", "label": "Artifacts Đa ngữ", "sublabel": "gen/ts & gen/go", "stage": 2, "row": 1, "tag": "Type-Safe Stubs" },
+    { "id": "shared_pkgs", "type": "security", "label": "Shared Packages", "sublabel": "@tomatocinema/*", "stage": 3, "row": 1, "tag": "NPM Workspace" },
+    { "id": "microservices", "type": "frontend", "label": "Microservices", "sublabel": "Gateway & Services", "stage": 4, "row": 1, "tag": "Consumers" }
+  ],
+  "flows": [
+    { "from": "proto_files", "to": "protoc_engine", "label": "đọc định nghĩa", "classification": "IDL Spec", "variant": "emphasis", "route": "straight" },
+    { "from": "protoc_engine", "to": "gen_ts_go", "label": "biên dịch đồng bộ", "classification": "TS & Go", "variant": "emphasis", "route": "straight" },
+    { "from": "gen_ts_go", "to": "shared_pkgs", "label": "đóng gói package", "classification": "NPM Workspace", "variant": "emphasis", "route": "straight" },
+    { "from": "shared_pkgs", "to": "microservices", "label": "import gRPC stub", "classification": "Type-Safe", "variant": "emphasis", "route": "straight" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Nguồn Chân lý Duy nhất (SSOT)",
+      "items": [
+        "Mọi hợp đồng RPC và thông điệp DTO được quản lý tập trung tại thư mục proto",
+        "Đảm bảo API giữa các microservices luôn đồng bộ và nhất quán 100%"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Đa ngôn ngữ & Type Safety",
+      "items": [
+        "Tự động sinh mã Type-safe cho cả NestJS (TypeScript) và Media Service (Golang)",
+        "Loại bỏ nguy cơ lỗi thời gian chạy do sai lệch schema giữa các nhóm phát triển"
+      ]
+    }
+  ]
+}

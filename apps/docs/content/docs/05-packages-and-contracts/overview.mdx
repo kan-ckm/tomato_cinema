@@ -1,0 +1,48 @@
+---
+title: Tổng quan Packages & Protocol Buffers
+description: Kiến trúc quản lý gói chia sẻ trong Monorepo, biên dịch hợp đồng gRPC và phân phối phụ thuộc giữa các microservices.
+---
+
+Trong kiến trúc Monorepo của **Tomato Cinema**, thư mục `packages/` chứa toàn bộ các thư viện nền tảng, hợp đồng giao tiếp RPC và tiện ích dùng chung. Thay vì sao chép code hoặc định nghĩa trùng lặp giữa các microservices, hệ thống tuân thủ nguyên tắc **Single Source of Truth (Nguồn chân lý duy nhất)**.
+
+---
+
+## 1. Sơ đồ Pipeline Protobuf & Packages (Archify Dataflow)
+
+<DiagramViewer
+  src="/diagrams/packages-pipeline.html"
+  title="Kiến trúc Gói Thư viện & Pipeline Sinh mã Protobuf (Archify Dataflow)"
+  description="Quy trình chuyển hóa từ các tệp định nghĩa proto3 sang mã nguồn TypeScript/Go và phân phối vào các Microservices."
+  height="600px"
+/>
+
+---
+
+## 2. Danh mục Gói dùng chung trong Monorepo
+
+Tất cả các gói được đặt tên dưới scope `@tomatocinema/*` và quản lý thông qua cơ chế **pnpm workspace**:
+
+| Tên Package | Đường dẫn | Công nghệ | Mục đích & Trách nhiệm |
+| :--- | :--- | :---: | :--- |
+| **`@tomatocinema/contracts`** | `packages/contracts` | Protobuf v3, ts-proto, Go | Quản lý toàn bộ tệp `.proto`, sinh mã Type-safe cho TypeScript và Golang. |
+| **`@tomatocinema/passport`** | `packages/passport` | TypeScript, Crypto | Engine xác thực token 5 phần, HMAC Domain Separation chống Token Type Confusion. |
+| **`@tomatocinema/common`** | `packages/common` | NestJS, TypeScript | Cung cấp mã lỗi chuẩn `RpcStatus`, RabbitMQ interceptors và tiện ích dùng chung. |
+| **`@tomatocinema/ui`** | `packages/ui` | React 19, Tailwind CSS | Thư viện UI component dùng chung cho Web Client và ứng dụng quản trị. |
+| **`@tomatocinema/core`** | `packages/core` | TypeScript | Các định nghĩa kiểu thực thể và logic cơ bản nhất của hệ thống. |
+| **`@tomatocinema/typescript-config`** | `packages/typescript-config` | JSON | Cấu hình TypeScript compiler (`tsconfig.base.json`, `nest.json`, `nextjs.json`). |
+| **`@tomatocinema/eslint-config`** | `packages/eslint-config` | ESLint | Cấu hình chuẩn hóa code style trên toàn bộ Monorepo. |
+
+---
+
+## 3. Nguyên tắc Thiết kế & Phân tách Ranh giới
+
+1. **Cô lập Độc lập (Loose Coupling)**: Các service (`auth-service`, `gateway-service`, `media-service`,...) không bao giờ import chéo trực tiếp mã nguồn của nhau mà chỉ phụ thuộc vào các gói trong `packages/*`.
+2. **Khai báo Phiên bản qua Workspace Protocol**: Trong file `package.json` của các app, phụ thuộc nội bộ được khai báo qua cú pháp:
+   ```json
+   "dependencies": {
+     "@tomatocinema/contracts": "workspace:*",
+     "@tomatocinema/passport": "workspace:*",
+     "@tomatocinema/common": "workspace:*"
+   }
+   ```
+3. **Bộ đệm Tăng tốc với Turborepo**: Turborepo tự động phân tích cây phụ thuộc (Dependency Graph). Nếu mã nguồn của `packages/contracts` không thay đổi, các bản build của các microservices phụ thuộc sẽ được lấy tức thì từ cache (`>>> FULL TURBO`).

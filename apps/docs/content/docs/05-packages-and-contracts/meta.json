@@ -1,0 +1,10 @@
+{
+  "title": "Gói dùng chung & Protobuf",
+  "pages": [
+    "overview",
+    "contracts-protobuf",
+    "passport-auth",
+    "common-foundation",
+    "code-generation"
+  ]
+}
