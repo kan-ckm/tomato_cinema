@@ -56,6 +56,14 @@ export interface RefreshResponse {
   refreshToken: string;
 }
 
+export interface LogoutRequest {
+  refreshToken: string;
+}
+
+export interface LogoutResponse {
+  ok: boolean;
+}
+
 export interface ForgotPasswordRequest {
   email: string;
 }
@@ -136,6 +144,8 @@ export interface AuthServiceClient {
 
   refresh(request: RefreshRequest): Observable<RefreshResponse>;
 
+  logout(request: LogoutRequest): Observable<LogoutResponse>;
+
   /** Nhóm tính năng Quản lý mật khẩu qua Email (Mở rộng) */
 
   forgotPassword(request: ForgotPasswordRequest): Observable<ForgotPasswordResponse>;
@@ -167,6 +177,8 @@ export interface AuthServiceController {
   login(request: LoginRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
   refresh(request: RefreshRequest): Promise<RefreshResponse> | Observable<RefreshResponse> | RefreshResponse;
+
+  logout(request: LogoutRequest): Promise<LogoutResponse> | Observable<LogoutResponse> | LogoutResponse;
 
   /** Nhóm tính năng Quản lý mật khẩu qua Email (Mở rộng) */
 
@@ -203,6 +215,7 @@ export function AuthServiceControllerMethods() {
       "resendVerification",
       "login",
       "refresh",
+      "logout",
       "forgotPassword",
       "resetPassword",
       "telegramInit",

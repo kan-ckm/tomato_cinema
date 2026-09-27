@@ -4,6 +4,8 @@ import { RpcStatus } from '@tomatocinema/common'
 import {
 	AuthResponse,
 	LoginRequest,
+	LogoutRequest,
+	LogoutResponse,
 	RefreshRequest,
 	RefreshResponse,
 	RegisterRequest,
@@ -217,7 +219,7 @@ export class AuthService {
 		)
 
 		// Cấp phát token cho người dùng đăng nhập ngay
-		return this.tokenService.generate(account.id)
+		return await this.tokenService.generate(account.id)
 	}
 
 	// ==========================================
@@ -347,20 +349,21 @@ export class AuthService {
 			'Đăng nhập thành công, cấp phát token'
 		)
 
-		// Cấp Access Token và Refresh Token
-		return this.tokenService.generate(account.id)
+		// Cấp Access Token và Refresh Token (lưu phiên vào Redis)
+		return await this.tokenService.generate(account.id)
 	}
 
 	// ==========================================
-	// 5. LÀM MỚI TOKEN (REFRESH TOKEN)
+	// 5. LÀM MỚI TOKEN (REFRESH TOKEN ROTATION)
 	// ==========================================
 
 	/**
-	 * Cấp lại cặp Token mới khi Access Token hết hạn
+	 * Cấp lại cặp Token mới khi Access Token hết hạn.
+	 * Thực hiện Refresh Token Rotation: thu hồi token cũ, cấp token mới.
 	 */
 	public async refresh(data: RefreshRequest): Promise<RefreshResponse> {
 		const { refreshToken } = data
-		const result = this.tokenService.verify(refreshToken)
+		const result = await this.tokenService.verifyRefreshToken(refreshToken)
 
 		if (!result.valid) {
 			this.logger.warn(
@@ -373,7 +376,47 @@ export class AuthService {
 			})
 		}
 
-		this.logger.info({ userId: result.userId }, 'Làm mới token thành công')
-		return await Promise.resolve(this.tokenService.generate(result.userId))
+		// REFRESH TOKEN ROTATION: Thu hồi Refresh Token cũ trước khi cấp token mới
+		await this.tokenService.revokeRefreshToken(
+			result.userId,
+			result.fingerprint
+		)
+
+		this.logger.info(
+			{ userId: result.userId },
+			'Làm mới token thành công (Rotation)'
+		)
+		return await this.tokenService.generate(result.userId)
+	}
+
+	// ==========================================
+	// 6. ĐĂNG XUẤT (LOGOUT - THU HỒI REFRESH TOKEN)
+	// ==========================================
+
+	/**
+	 * Đăng xuất: Thu hồi Refresh Token khỏi Redis để vô hiệu hóa phiên đăng nhập.
+	 * Khác với logout client-side (chỉ xóa cookie), đây là thu hồi thật sự ở server.
+	 */
+	public async logout(data: LogoutRequest): Promise<LogoutResponse> {
+		const { refreshToken } = data
+
+		if (!refreshToken) {
+			return { ok: true }
+		}
+
+		const result = await this.tokenService.verifyRefreshToken(refreshToken)
+
+		if (result.valid) {
+			await this.tokenService.revokeRefreshToken(
+				result.userId,
+				result.fingerprint
+			)
+			this.logger.info(
+				{ userId: result.userId },
+				'Đăng xuất thành công, đã thu hồi Refresh Token'
+			)
+		}
+
+		return { ok: true }
 	}
 }

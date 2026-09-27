@@ -182,16 +182,26 @@ export class AuthController {
 	}
 
 	// ==========================================
-	// 4. ĐĂNG XUẤT (LOGOUT)
+	// 4. ĐĂNG XUẤT (LOGOUT - THU HỒI TOKEN PHÍA SERVER)
 	// ==========================================
 
 	@ApiOperation({
 		summary: 'Đăng xuất',
-		description: 'Xóa Refresh Token trong Cookie'
+		description:
+			'Thu hồi Refresh Token phía server và xóa Cookie phía client'
 	})
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
-	public async logout(@Res({ passthrough: true }) res: Response) {
+	public async logout(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response
+	) {
+		const refreshToken = req.cookies?.refreshToken || ''
+
+		// Gọi Auth Service thu hồi Refresh Token khỏi Redis (server-side revocation)
+		await this.client.call('logout', { refreshToken })
+
+		// Xóa cookie phía client
 		res.cookie('refreshToken', '', {
 			httpOnly: true,
 			secure:

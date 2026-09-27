@@ -29,6 +29,7 @@ export interface CreateUserResponse {
 export interface PatchUserRequest {
   userId: string;
   name?: string | undefined;
+  avatar?: string | undefined;
 }
 
 export interface PatchUserResponse {

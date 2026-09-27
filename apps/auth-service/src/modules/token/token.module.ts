@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportModule } from '@tomatocinema/passport'
 import { getPassportConfig } from '@/config'
+import { RedisModule } from '@/infrastructure/redis/redis.module'
 import { TokenService } from './token.service'
 
 @Module({
@@ -10,7 +11,8 @@ import { TokenService } from './token.service'
 		PassportModule.registerAsync({
 			useFactory: getPassportConfig,
 			inject: [ConfigService]
-		})
+		}),
+		RedisModule
 	],
 	providers: [TokenService],
 	exports: [TokenService]

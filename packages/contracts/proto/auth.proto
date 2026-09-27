@@ -12,6 +12,7 @@ service AuthService {
     rpc ResendVerification(ResendVerificationRequest) returns (ResendVerificationResponse);
     rpc Login(LoginRequest) returns (AuthResponse);
     rpc Refresh(RefreshRequest) returns (RefreshResponse);
+    rpc Logout(LogoutRequest) returns (LogoutResponse);
 
     // Nhóm tính năng Quản lý mật khẩu qua Email (Mở rộng)
     rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
@@ -67,6 +68,14 @@ message RefreshRequest {
 message RefreshResponse {
     string access_token = 1;
     string refresh_token = 2;
+}
+
+message LogoutRequest {
+    string refresh_token = 1;
+}
+
+message LogoutResponse {
+    bool ok = 1;
 }
 
 message ForgotPasswordRequest {

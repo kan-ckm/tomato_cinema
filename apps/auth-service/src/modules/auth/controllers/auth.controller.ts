@@ -5,6 +5,8 @@ import type {
 	ForgotPasswordRequest,
 	ForgotPasswordResponse,
 	LoginRequest,
+	LogoutRequest,
+	LogoutResponse,
 	RefreshRequest,
 	RefreshResponse,
 	RegisterRequest,
@@ -53,6 +55,11 @@ export class AuthController {
 	@GrpcMethod('AuthService', 'Refresh')
 	public async refresh(data: RefreshRequest): Promise<RefreshResponse> {
 		return await this.authService.refresh(data)
+	}
+
+	@GrpcMethod('AuthService', 'Logout')
+	public async logout(data: LogoutRequest): Promise<LogoutResponse> {
+		return await this.authService.logout(data)
 	}
 
 	@GrpcMethod('AuthService', 'ForgotPassword')

@@ -19,8 +19,9 @@ export class AuthGuard implements CanActivate {
 		const token = this.extractToken(request)
 		if (!token) throw new UnauthorizedException('Token chưa được cấp')
 
-		// giải mã và kiểm tra token
-		const result = this.passportService.verify(token)
+		// Giải mã và kiểm tra token, bắt buộc phải là loại 'access'.
+		// Ngăn chặn tấn công Token Type Confusion: dùng Refresh Token thay cho Access Token.
+		const result = this.passportService.verify(token, 'access')
 
 		if (!result.valid) {
 			throw new UnauthorizedException(result.reason)

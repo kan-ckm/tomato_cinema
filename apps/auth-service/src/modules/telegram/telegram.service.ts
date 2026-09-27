@@ -93,7 +93,7 @@ export class TelegramService {
 				{ telegramId, userId: exists.id },
 				'Đăng nhập Telegram thành công cho tài khoản đã có SĐT'
 			)
-			return this.tokenService.generate(exists.id)
+			return await this.tokenService.generate(exists.id)
 		}
 
 		// 2.3 Chưa có số điện thoại -> Tạo session tạm lưu vào Redis trong 5 phút
@@ -159,7 +159,7 @@ export class TelegramService {
 		}
 
 		// 3.4 Tạo cặp token và cất vào Redis trong 2 phút chờ Frontend lấy
-		const tokens = this.tokenService.generate(user.id)
+		const tokens = await this.tokenService.generate(user.id)
 
 		await this.redisService.set(
 			`telegram_tokens:${sessionId}`,
