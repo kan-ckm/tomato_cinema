@@ -1,0 +1,75 @@
+---
+title: Giao diện dùng chung (@tomatocinema/ui)
+description: Thư viện thành phần giao diện React & Tailwind CSS dùng chung cho Web Client và các cổng thông tin của Tomato Cinema.
+---
+
+`@tomatocinema/ui` là gói thư viện component chia sẻ giữa các ứng dụng frontend trong Monorepo (chẳng hạn như `apps/web` và các trang quản trị), đảm bảo tính nhất quán về mặt hình ảnh, thiết kế chuẩn rạp chiếu phim (Cinema Design System) và khả năng tái sử dụng tối đa.
+
+---
+
+## 1. Cấu trúc Gói Thư viện
+
+```
+packages/ui/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── button.tsx       # Nút bấm tương tác đa dạng biến thể (Primary, Ghost, Outline)
+    ├── card.tsx         # Khung hiển thị thẻ (Card, CardHeader, CardContent)
+    └── code.tsx         # Khung hiển thị khối mã lệnh (Code snippet)
+```
+
+---
+
+## 2. Các Thành phần Cốt lõi
+
+### 2.1. Nút bấm (`Button`)
+Hỗ trợ các trạng thái hover, focus ring, loading spinner và tích hợp mượt mà với Tailwind CSS:
+
+```tsx
+import { Button } from '@tomatocinema/ui';
+
+export function ActionExample() {
+  return (
+    <div className="flex gap-3">
+      <Button className="bg-rose-600 hover:bg-rose-700 text-white">
+        Đặt vé ngay
+      </Button>
+      <Button variant="outline">
+        Xem Trailer
+      </Button>
+    </div>
+  );
+}
+```
+
+### 2.2. Khung thẻ hiển thị (`Card`)
+Dùng để đóng khung danh sách suất chiếu, thông tin phim và chi tiết phòng vé:
+
+```tsx
+import { Card } from '@tomatocinema/ui';
+
+export function MovieCard({ title, duration }: { title: string; duration: string }) {
+  return (
+    <Card className="p-4 rounded-xl border border-border bg-card">
+      <h3 className="text-lg font-bold">{title}</h3>
+      <p className="text-sm text-muted-foreground">{duration}</p>
+    </Card>
+  );
+}
+```
+
+---
+
+## 3. Cách Sử dụng trong Ứng dụng Frontend
+
+Trong `package.json` của `apps/web`:
+```json
+{
+  "dependencies": {
+    "@tomatocinema/ui": "workspace:*"
+  }
+}
+```
+
+Nhờ cấu hình `transpilePackages` hoặc TypeScript Project References trong Turborepo, các component trong `@tomatocinema/ui` được biên dịch trực tiếp mà không cần bước build trung gian, hỗ trợ Hot Module Replacement (HMR) tức thì trong quá trình phát triển.

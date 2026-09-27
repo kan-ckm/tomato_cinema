@@ -1,0 +1,7 @@
+{
+  "title": "Protocol Buffers",
+  "pages": [
+    "contracts",
+    "codegen"
+  ]
+}
