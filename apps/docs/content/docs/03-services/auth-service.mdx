@@ -1,14 +1,70 @@
 ---
-title: Auth Service
-description: Dịch vụ xác thực danh tính, quản lý mật khẩu, cấp phát JWT và OAuth 2.0.
+title: Auth Service (Dịch vụ Xác thực Danh tính)
+description: Vi dịch vụ cốt lõi chịu trách nhiệm quản lý tài khoản, mã hóa Argon2id, xác thực OTP và cấp phát Dual-Token qua gRPC.
 ---
 
-`auth-service` chịu trách nhiệm bảo vệ an toàn danh tính và phiên đăng nhập của người dùng.
+`auth-service` là vi dịch vụ chịu trách nhiệm đảm bảo toàn vẹn danh tính và phiên người dùng trên toàn hệ thống Tomato Cinema. Service hoạt động độc lập và chỉ giao tiếp với API Gateway hoặc các service nội bộ khác thông qua giao thức **gRPC / Protocol Buffers**.
 
-## Tính năng hỗ trợ
+---
 
-- **Local Authentication**: Đăng ký, đăng nhập bằng Email/Password (Mã hóa Argon2id / Bcrypt).
-- **OAuth 2.0**: Đăng nhập bằng Google, Facebook, Apple ID.
-- **Token Management**: Phát hành cặp Access Token (JWT) và Refresh Token.
-- **Phiên đăng nhập**: Lưu danh sách Refresh Token vào Redis để hỗ trợ Revocation (Thu hồi quyền truy cập).
-- **Password Reset**: Tạo token đặt lại mật khẩu với thời hạn 15 phút.
+## 1. Kiến trúc & Công nghệ Cốt lõi
+
+- **Framework**: NestJS Microservices (gRPC Server).
+- **Hợp đồng giao tiếp (Contract)**: `@tomatocinema/contracts/proto/auth.proto`.
+- **Mã hóa mật khẩu**: Thuật toán **Argon2id** (`argon2`) kháng GPU/ASIC brute-force.
+- **Cơ chế Token**: Engine độc quyền `@tomatocinema/passport` với HMAC Domain Separation (`PassportAccessToken/v1` & `PassportRefreshToken/v1`).
+- **Cache & Quản lý phiên**: Redis Cluster (Lưu mã xác thực OTP 5 phút và session Refresh Token 30 ngày).
+- **Message Broker**: RabbitMQ kết nối với `notification-service` và `user-service`.
+
+---
+
+## 2. Danh mục Giao diện gRPC (`AuthService`)
+
+Định nghĩa trong file hợp đồng `packages/contracts/proto/auth.proto`:
+
+| Tên RPC Method | Kiểu Request | Kiểu Response | Mô tả nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| `Register` | `RegisterRequest` | `RegisterResponse` | Tạo tài khoản tạm thời, sinh OTP và phát sự kiện gửi email. |
+| `VerifyEmail` | `VerifyEmailRequest` | `AuthResponse` | Kiểm tra mã OTP, kích hoạt tài khoản và cấp cặp token đầu tiên. |
+| `ResendVerification` | `ResendVerificationRequest` | `ResendVerificationResponse` | Sinh lại mã OTP mới nếu mã cũ hết hạn sau 5 phút. |
+| `Login` | `LoginRequest` | `AuthResponse` | Xác thực Email/Mật khẩu bằng Argon2id và cấp phát Dual-Token. |
+| `Refresh` | `RefreshRequest` | `RefreshResponse` | Xoay vòng Refresh Token (hủy token cũ, cấp token mới). |
+| `Logout` | `LogoutRequest` | `LogoutResponse` | Thu hồi Refresh Token khỏi Redis phía máy chủ. |
+| `ForgotPassword` | `ForgotPasswordRequest` | `ForgotPasswordResponse` | Yêu cầu gửi mã OTP đặt lại mật khẩu qua email. |
+| `ResetPassword` | `ResetPasswordRequest` | `ResetPasswordResponse` | Đặt lại mật khẩu mới và thu hồi tất cả phiên cũ của user. |
+
+---
+
+## 3. Cấu trúc Mô-đun Nội bộ
+
+```
+apps/auth-service/src/modules/
+├── account/             # Quản lý bản ghi Account trong cơ sở dữ liệu
+├── auth/                # Controller gRPC và Service điều phối quy trình đăng ký/đăng nhập
+├── forgot-password/     # Nghiệp vụ quên và đặt lại mật khẩu an toàn
+├── otp/                 # Sinh mã 6 số (patcode), băm SHA-256 và lưu Redis
+├── telegram/            # Xác thực SSO đăng nhập bằng Telegram Bot Widget
+└── token/               # TokenService điều phối PassportService và Redis Session
+```
+
+---
+
+## 4. Quản lý Khóa & Phiên tại Redis
+
+| Cấu trúc Khóa (Key Pattern) | Kiểu dữ liệu | Thời gian sống (TTL) | Mục đích sử dụng |
+| :--- | :---: | :---: | :--- |
+| `otp:email:{email}` | String (Hash SHA-256) | 300 giây (5 phút) | Lưu mã OTP xác thực email kích hoạt hoặc reset pass. |
+| `rt:{userId}:{fingerprint}` | String (JSON Session) | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động, phục vụ Rotation. |
+
+---
+
+## 5. Sự kiện Bất đồng bộ (RabbitMQ Domain Events)
+
+`auth-service` phát ra (Producer) các sự kiện domain quan trọng sau qua Topic Exchange:
+
+1. **`otp.requested`**:
+   - Gửi sang `notification-service` để kích hoạt gửi email chứa mã OTP kích hoạt tài khoản.
+   - Payload: `{ identifier: email, type: 'email', code: '123456' }`.
+2. **`auth.account.registered`**:
+   - Gửi sang `user-service` sau khi email được kích hoạt thành công để khởi tạo User Profile và cấp điểm thành viên mới.
+   - Payload: `{ accountId: string, email: string }`.

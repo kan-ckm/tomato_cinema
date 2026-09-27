@@ -1,27 +1,175 @@
 ---
-title: Vòng đời xác thực (Authentication Lifecycle)
-description: Luồng lớn thể hiện toàn bộ vòng đời xác thực từ Đăng nhập, Cấp phát Token, Chặn truy cập Gateway đến Xác thực Downstream.
+title: Vòng đời xác thực & Quản lý Token (Authentication & Token Lifecycle)
+description: Chi tiết toàn diện kiến trúc xác thực, đăng ký OTP, đăng nhập Dual-Token, đặc tả Passport Token 5 phần và cơ chế Refresh Token Rotation.
 ---
 
-Luồng xác thực của **Tomato Cinema** sử dụng chuẩn **Dual-Token Pattern (Access Token + Refresh Token)** kết hợp với cơ chế thẩm định tại `gateway-service`.
+Kiến trúc xác thực của **Tomato Cinema** được thiết kế dựa trên mô hình lai **Stateless Access Token + Stateful Refresh Token** với độ bảo mật cao, kết hợp giữa **API Gateway (HTTP / REST)** và **Auth Service (gRPC / Protobuf)**, lưu trữ dữ liệu tại **PostgreSQL & Redis**, giao tiếp bất đồng bộ qua **RabbitMQ**.
 
-## Sơ đồ Sequence Vòng đời Xác thực
+---
+
+## 1. Sơ đồ Trình tự Vòng đời Xác thực (Archify Sequence)
 
 <DiagramViewer
   src="/diagrams/auth-sequence.html"
   title="Trình tự Đăng nhập & Xác thực Truy cập (Archify Sequence)"
-  description="Trực quan hóa trình tự cấp phát JWT, lưu session Redis và xác thực không trạng thái tại API Gateway."
+  description="Trực quan hóa trình tự cấp phát Token, lưu session Redis và xác thực không trạng thái tại API Gateway."
   height="620px"
 />
 
-## Quy định bảo mật
+---
 
-1. **Access Token (JWT)**:
-   - Thời gian sống ngắn: 15 phút.
-   - Chứa thông tin tối thiểu: `sub` (userId), `email`, `roles`.
-   - Được Gateway giải mã và đính kèm vào header nội bộ: `X-User-Id`, `X-User-Role`.
+## 2. Quy trình Đăng ký & Kích hoạt qua OTP Email
 
-2. **Refresh Token**:
-   - Thời gian sống: 7 ngày.
-   - Được lưu trong Cookie dạng `HttpOnly`, `SameSite=Strict`, `Secure`.
-   - Có trạng thái lưu tại Redis để hỗ trợ chức năng **Đăng xuất khỏi tất cả thiết bị (Revocation)**.
+Hệ thống áp dụng cơ chế xác thực Email hai bước (Double Opt-in) nhằm triệt tiêu tài khoản ảo và spam.
+
+```
+[Client] ---> POST /auth/register ---> [Gateway] ---> gRPC Register ---> [Auth Service]
+                                                                               |
+                                    +------------------------------------------+
+                                    |-- 1. Hash mật khẩu (Argon2id)
+                                    |-- 2. Tạo tài khoản tạm thời (isEmailVerified = false)
+                                    |-- 3. Sinh OTP 6 số (patcode) & Hash SHA-256
+                                    |-- 4. Lưu Redis: otp:email:{email} (TTL 5m)
+                                    +-- 5. Bắn event RabbitMQ: otp.requested
+                                                                               |
+                                                                    [Notification Service]
+                                                                               |
+                                                                         Gửi Email OTP
+```
+
+### Chi tiết các bước thực thi:
+
+1. **Khách hàng gửi yêu cầu đăng ký**: Gọi `POST /auth/register` kèm email và mật khẩu (yêu cầu tối thiểu 6 ký tự). Gateway kiểm soát tần suất bằng `@ThrottleAuth()`.
+2. **Kiểm tra sự tồn tại**:
+   - Nếu email đã tồn tại và `isEmailVerified = true` $\rightarrow$ Từ chối với lỗi `409 ALREADY_EXISTS`.
+   - Nếu tài khoản đã tạo nhưng chưa kích hoạt email $\rightarrow$ Cho phép cập nhật lại mật khẩu mới.
+   - Nếu chưa tồn tại $\rightarrow$ Lưu bản ghi mới vào PostgreSQL với cờ `isEmailVerified = false`.
+3. **Mã hóa mật khẩu bằng Argon2id**: Sử dụng thuật toán băm mật khẩu hiện đại nhất theo tiêu chuẩn **OWASP Password Storage Cheat Sheet**, kháng tấn công brute-force bằng GPU và ASIC.
+4. **Sinh mã OTP & Lưu Cache**:
+   - Sinh chuỗi ngẫu nhiên 6 chữ số bằng thư viện `patcode`.
+   - Băm SHA-256 mã OTP để lưu vào Redis với key `otp:email:{normalizedEmail}`, thời gian sống **TTL = 300 giây (5 phút)**.
+5. **Gửi email bất đồng bộ qua RabbitMQ**: Phát sự kiện `messagingService.otpRequested` sang RabbitMQ để `notification-service` tiếp nhận và gửi email tới người dùng, giải phóng kết nối cho client trong vòng vài mili-giây.
+6. **Xác thực Email (`POST /auth/verify-email`)**:
+   - Khách hàng gửi email kèm mã OTP 6 số.
+   - `auth-service` tra cứu hash trong Redis, so khớp SHA-256 và **xóa ngay key OTP** khỏi Redis (chống tấn công thử lại Replay Attack).
+   - Đánh dấu tài khoản `isEmailVerified = true`.
+   - Phát sự kiện `auth.account.registered` để `user-service` tự động khởi tạo hồ sơ người dùng (User Profile).
+   - Tự động phát hành cặp Token để người dùng đăng nhập ngay lập tức.
+
+---
+
+## 3. Quy trình Đăng nhập & Dual-Token Pattern
+
+Khi người dùng đăng nhập bằng Email/Mật khẩu hoặc Telegram SSO:
+
+```
+[Client] ---> POST /auth/login ---> [Gateway] ---> gRPC Login ---> [Auth Service]
+                                                                        |
+                                  +-------------------------------------+
+                                  |-- 1. Tìm Account theo Email
+                                  |-- 2. Kiểm tra isEmailVerified == true
+                                  |-- 3. Đối chiếu Argon2id hash
+                                  |-- 4. Sinh Access Token (Stateless, 1h)
+                                  |-- 5. Sinh Refresh Token (Stateful, 30d)
+                                  +-- 6. Lưu Redis: rt:{userId}:{fingerprint}
+                                                                        |
+                                  +-------------------------------------+
+                                  |<-- Trả về { accessToken, refreshToken }
+                                  |
+               [Gateway] ---------+
+                  |
+                  |-- 1. Gán Set-Cookie: refreshToken=... (HttpOnly, SameSite=Lax)
+                  +-- 2. Response Body: { "accessToken": "..." }
+```
+
+### Tại sao response body chỉ trả về `accessToken`?
+- **Chống rò rỉ XSS**: `refreshToken` chứa quyền cấp phát lại phiên, do đó **tuyệt đối không trả về trong JSON body** để tránh việc Frontend lưu vào `localStorage` hay `sessionStorage`.
+- **HttpOnly Cookie**: `refreshToken` được Gateway tự động đóng gói vào Cookie với các cờ an toàn tối đa:
+  - `httpOnly: true` (JavaScript trình duyệt không thể đọc được).
+  - `sameSite: 'lax'` (Ngăn chặn tấn công CSRF).
+  - `secure: true` (Chỉ truyền qua giao thức HTTPS trên môi trường Production).
+  - `maxAge: 30 * 24 * 60 * 60 * 1000` (Hạn 30 ngày).
+
+---
+
+## 4. Đặc tả Cấu trúc Token Độc quyền (`@tomatocinema/passport`)
+
+Dự án không dùng JWT thư viện thông thường mà sử dụng engine **Passport** độc quyền (`packages/passport/lib/passport.service.ts`) với cấu trúc 5 thành phần tối ưu hoá:
+
+```
+[typePart].[userPart].[iatPart].[expPart].[mac]
+```
+
+Ví dụ một Access Token thực tế hệ thống sinh ra:
+```
+YWNjZXNz.ZWU4ZjVkY2MtNmY3My00MjU5LWJkMzktZWVkZjQ3NjU5OWE4.MTc5MDUyMTI5MDo5MThmZmYwMTMzMmE.MTc5MDUyNDg5MA.e55a9426ba5c53b478de85e6f61805cf18c03efff7affb3070a3feded6c0c3f4
+```
+
+### Bảng giải phẫu cấu trúc 5 thành phần:
+
+| Vị trí | Tên trường | Giá trị Base64URL | Dữ liệu gốc sau giải mã | Ý nghĩa kỹ thuật & Bảo mật |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | `typePart` | `YWNjZXNz` | `access` | Phân loại token (`access` hoặc `refresh`). Chống tấn công nhầm lẫn loại token. |
+| **2** | `userPart` | `ZWU4ZjVkY2Mt...` | `ee8f5dcc-6f73-4259-...` | `userId` (UUID định danh người dùng trong database). |
+| **3** | `iatPart` | `MTc5MDUyMTI5...` | `1790521290:918fff01332a` | `issuedAt` (UNIX epoch) kết hợp **6 bytes nonce ngẫu nhiên** (`918fff01332a`). Đảm bảo hai token sinh cùng một giây vẫn hoàn toàn khác biệt. |
+| **4** | `expPart` | `MTc5MDUyNDg5MA` | `1790524890` | `expiresAt` (Hạn sử dụng). Chênh lệch đúng **3600 giây** (1 giờ đối với Access Token). |
+| **5** | `mac` | *(Chuỗi Hex 64 ký tự)* | `e55a9426ba5c53b4...` | Chữ ký số **HMAC-SHA256** tạo từ Secret Key máy chủ kết hợp Domain Separation. |
+
+### Các cơ chế an ninh vượt trội:
+
+1. **HMAC Domain Separation (Ngăn chặn Token Type Confusion)**:
+   Mỗi loại token được ký với chuỗi định danh miền khác nhau:
+   - Access Token: `PassportAccessToken/v1|userPart|iatPart|expPart`
+   - Refresh Token: `PassportRefreshToken/v1|userPart|iatPart|expPart`
+   > Kẻ tấn công không thể dùng Refresh Token giả làm Access Token để gửi vào Authorization Header, vì chữ ký HMAC sẽ lập tức bị từ chối.
+2. **Kháng Timing Attack**:
+   Việc đối chiếu chữ ký thực hiện bằng thuật toán hằng số thời gian `timingSafeEqual` (`constantTimeEqual`), ngăn ngừa hacker đo thời gian phản hồi CPU để dò tìm từng byte chữ ký.
+
+---
+
+## 5. Xác thực Truy cập tại API Gateway (`AuthGuard`)
+
+Tất cả các route yêu cầu xác thực (`@Protected()`) trên `gateway-service` đều đi qua `AuthGuard`:
+
+1. **Bóc tách Header**: Trích xuất token từ header `Authorization: Bearer <token>`.
+2. **Xác thực Không Trạng Thái (Stateless)**:
+   - Gọi `passportService.verify(token, 'access')`.
+   - Tự đóng gói chuỗi serialize và kiểm tra chữ ký HMAC nội bộ trong bộ nhớ RAM máy chủ.
+   - Kiểm tra thời gian hết hạn (`exp`).
+   - **Tuyệt đối không cần truy vấn Database hay Redis**, giúp API Gateway xử lý hàng chục nghìn request mỗi giây với độ trễ cực thấp.
+3. **Tiếp nhận Context**: Gán thông tin người dùng vào request:
+   ```typescript
+   request.user = { id: result.userId };
+   ```
+
+---
+
+## 6. Cơ chế Làm mới Phiên (Refresh Token Rotation)
+
+Khi Access Token hết hạn (sau 1 giờ), Frontend gọi endpoint `POST /auth/refresh`:
+
+1. Gateway đọc `refreshToken` từ cookie gửi lên (nếu không có cookie $\rightarrow$ trả về `401 Unauthorized`).
+2. Gateway gọi gRPC sang `auth-service`:
+   - Kiểm tra tính hợp lệ và chữ ký của Refresh Token.
+   - Băm SHA-256 token lấy **32 ký tự Fingerprint**:
+     ```typescript
+     fingerprint = sha256(token).slice(0, 32);
+     ```
+   - Kiểm tra sự tồn tại của session trong Redis tại key `rt:{userId}:{fingerprint}`:
+     - Nếu **không tìm thấy** $\rightarrow$ Phiên đã bị thu hồi hoặc đã hết hạn.
+   - **Xoay vòng (Rotation)**:
+     - Xóa bỏ ngay lập tức token cũ khỏi Redis: `DEL rt:{userId}:{fingerprint}`.
+     - Tạo ra một cặp Access Token và Refresh Token hoàn toàn mới.
+     - Lưu Refresh Token mới vào Redis với fingerprint mới.
+3. Gateway nhận cặp token mới, ghi đè cookie `refreshToken` mới và trả `accessToken` mới về cho client.
+
+---
+
+## 7. Đăng xuất & Thu hồi Quyền Truy cập (Server-side Revocation)
+
+Khác với các hệ thống chỉ xóa token ở client (không an toàn), Tomato Cinema hỗ trợ thu hồi thực sự ở máy chủ:
+
+- **Đăng xuất đơn lẻ (`POST /auth/logout`)**:
+  Xóa phiên hiện tại trong Redis (`rt:{userId}:{fingerprint}`) và xóa cookie ở trình duyệt. Kể từ lúc này, Refresh Token đó không bao giờ có thể dùng để refresh được nữa.
+- **Thu hồi toàn bộ thiết bị (Global Revocation)**:
+  Khi người dùng đổi mật khẩu, bị khóa tài khoản hoặc chọn *“Đăng xuất khỏi tất cả thiết bị”*, hệ thống dùng lệnh `SCAN` quét pattern `rt:{userId}:*` không chặn thread của Redis và xóa sạch toàn bộ các phiên của tài khoản đó.
