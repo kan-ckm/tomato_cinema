@@ -1,0 +1,24 @@
+---
+title: Tải lên video phân đoạn (Chunked Upload & Resumption)
+description: Kỹ thuật upload tập tin lớn nhiều Gigabyte với khả năng tiếp tục khi gián đoạn mạng.
+---
+
+Khi Admin đăng tải trailer chất lượng 4K (kích thước hàng Gigabyte), việc upload qua một request HTTP thông thường dễ dẫn tới lỗi Timeout hoặc mất trắng tiến trình tải lên nếu kết nối mạng gặp sự cố.
+
+## Quy trình Upload phân đoạn (Multipart Chunking)
+
+1. Client chia file thành các mảnh cố định (mỗi phần 5MB - 10MB).
+2. Gọi API khởi tạo phiên tải lên (`Initiate Multipart Upload`) để nhận `uploadId`.
+3. Gửi song song các chunks kèm header thứ tự `partNumber`.
+4. Nếu một chunk bị đứt kết nối, client chỉ cần gửi lại riêng chunk đó mà không phải upload lại từ đầu.
+5. Sau khi đủ tất cả chunks, gọi API hoàn tất (`Complete Multipart`) để ghép file trên S3.
+
+## Sơ đồ Sequence
+
+<DiagramViewer
+  src="/diagrams/video-resumption.html"
+  title="Quy trình Tải lên Video Phân đoạn & Phục hồi Gián đoạn (Archify Sequence)"
+  description="Trình tự phân mảnh video 5MB, cấp quyền tải lên trực tiếp S3 Presigned URL và cơ chế gửi bù chỉ riêng phân đoạn bị lỗi mạng."
+  height="620px"
+/>
+

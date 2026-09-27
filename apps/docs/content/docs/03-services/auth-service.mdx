@@ -1,0 +1,14 @@
+---
+title: Auth Service
+description: Dịch vụ xác thực danh tính, quản lý mật khẩu, cấp phát JWT và OAuth 2.0.
+---
+
+`auth-service` chịu trách nhiệm bảo vệ an toàn danh tính và phiên đăng nhập của người dùng.
+
+## Tính năng hỗ trợ
+
+- **Local Authentication**: Đăng ký, đăng nhập bằng Email/Password (Mã hóa Argon2id / Bcrypt).
+- **OAuth 2.0**: Đăng nhập bằng Google, Facebook, Apple ID.
+- **Token Management**: Phát hành cặp Access Token (JWT) và Refresh Token.
+- **Phiên đăng nhập**: Lưu danh sách Refresh Token vào Redis để hỗ trợ Revocation (Thu hồi quyền truy cập).
+- **Password Reset**: Tạo token đặt lại mật khẩu với thời hạn 15 phút.

@@ -1,0 +1,65 @@
+---
+title: Khởi động nhanh (Quick Start)
+description: Hướng dẫn cài đặt và khởi chạy toàn bộ hệ thống Tomato Cinema trên môi trường local.
+---
+
+Tài liệu này hướng dẫn cách chuẩn bị môi trường và chạy toàn bộ monorepo `tomato_cinema`.
+
+## Yêu cầu tiên quyết
+
+- **Node.js**: >= 18 (Khuyến nghị Node 20 LTS hoặc 22)
+- **pnpm**: Phiên bản 9.0.0 (Quản lý qua Corepack)
+- **Docker & Docker Compose**: Để chạy PostgreSQL, Redis, RabbitMQ cục bộ
+
+<Callout type="info" title="Bật Corepack">
+Hệ thống sử dụng Corepack để cố định phiên bản `pnpm@9.0.0`. Chạy lệnh sau nếu máy bạn chưa kích hoạt:
+```bash
+corepack enable
+```
+</Callout>
+
+## Các bước cài đặt
+
+<Steps>
+### Bước 1: Clone kho mã nguồn và cài dependencies
+
+Chạy lệnh cài đặt tại thư mục gốc của repository:
+
+```bash
+git clone https://github.com/kan-ckm/tomato_cinema.git
+cd tomato_cinema
+pnpm install
+```
+
+### Bước 2: Khởi động cơ sở dữ liệu & dịch vụ phụ trợ
+
+Khởi chạy PostgreSQL, Redis, Mailhog bằng Docker Compose:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+### Bước 3: Chạy toàn bộ services ở chế độ Development
+
+Turborepo sẽ song song khởi động tất cả microservices và web client:
+
+```bash
+pnpm dev
+```
+
+### Bước 4: Kiểm tra các cổng dịch vụ
+
+- **Web Client**: `http://localhost:3500`
+- **Documentation**: `http://localhost:3501/docs`
+- **API Gateway**: `http://localhost:3000`
+</Steps>
+
+## Lệnh thông dụng trong Monorepo
+
+| Lệnh | Ý nghĩa |
+| :--- | :--- |
+| `pnpm dev` | Khởi chạy tất cả apps và packages ở chế độ dev |
+| `pnpm build` | Build production toàn bộ hệ thống bằng Turborepo |
+| `pnpm --filter docs dev` | Chỉ chạy riêng ứng dụng tài liệu (Docs) |
+| `pnpm --filter web dev` | Chỉ chạy riêng Web frontend |
+| `pnpm check-types` | Kiểm tra lỗi TypeScript trên toàn bộ repo |

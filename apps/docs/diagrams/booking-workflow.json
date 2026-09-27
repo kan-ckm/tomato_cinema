@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Quy trình Đặt vé & Giữ chỗ Thời gian thực",
+    "output": "apps/docs/public/diagrams/booking-workflow.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-flow",
+        "label": "Hành trình đặt vé hoàn chỉnh",
+        "focus": ["user", "select_seat", "gw_router", "redis_lock", "booking_order", "pay_gate", "issue_ticket", "confirm_notify"],
+        "note": "Từ bước chọn ghế, khóa phân tán Redis đến thanh toán và nhận vé QR."
+      },
+      {
+        "id": "locking-phase",
+        "label": "Giai đoạn giữ chỗ",
+        "focus": ["select_seat", "gw_router", "redis_lock", "booking_order"],
+        "note": "Khóa phân tán đảm bảo không ai có thể mua trùng cùng 1 ghế trong 10 phút."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "client", "label": "Giao diện Khách hàng" },
+    { "id": "gateway", "label": "API Gateway" },
+    { "id": "booking", "label": "Dịch vụ Đặt vé" },
+    { "id": "payment", "label": "Thanh toán & Xuất vé" }
+  ],
+  "phases": [
+    { "id": "selection", "label": "Khảo sát & Chọn ghế", "fromCol": 0, "toCol": 1 },
+    { "id": "locking", "label": "Khóa chỗ Redis", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "fulfillment", "label": "Thanh toán & Giao vé", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["user", "select_seat", "gw_router", "redis_lock", "booking_order", "pay_gate", "issue_ticket", "confirm_notify"],
+  "nodes": [
+    { "id": "user", "lane": "client", "col": 0, "type": "external", "label": "Khách hàng", "sublabel": "chọn rạp & suất chiếu", "width": 140 },
+    { "id": "select_seat", "lane": "client", "col": 1, "type": "frontend", "label": "Sơ đồ Phòng chiếu", "sublabel": "nhấp chọn ghế H12", "width": 140 },
+    { "id": "gw_router", "lane": "gateway", "col": 2, "type": "security", "label": "API Gateway", "sublabel": "kiểm tra JWT & rate limit", "width": 140 },
+    { "id": "redis_lock", "lane": "booking", "col": 2, "type": "database", "label": "Redis Lock", "sublabel": "SET NX EX 600s", "tag": "TTL 10 phút", "width": 140 },
+    { "id": "booking_order", "lane": "booking", "col": 3, "type": "backend", "label": "Khởi tạo Đơn vé", "sublabel": "trạng thái HOLDING", "width": 140 },
+    { "id": "pay_gate", "lane": "payment", "col": 4, "type": "cloud", "label": "Cổng Thanh toán", "sublabel": "VNPay / Momo / Stripe", "width": 140 },
+    { "id": "issue_ticket", "lane": "payment", "col": 5, "type": "backend", "label": "Phát sinh Vé QR", "sublabel": "trạng thái PAID", "width": 140 },
+    { "id": "confirm_notify", "lane": "client", "col": 5, "type": "frontend", "label": "Vé Điện Tử Hoàn tất", "sublabel": "Email & App Pass", "width": 140 }
+  ],
+  "edges": [
+    { "id": "user-to-seat", "from": "user", "to": "select_seat", "variant": "default" },
+    { "id": "seat-to-gw", "from": "select_seat", "to": "gw_router", "label": "lock seat", "variant": "emphasis" },
+    { "id": "gw-to-lock", "from": "gw_router", "to": "redis_lock", "label": "acquire", "variant": "security" },
+    { "id": "lock-to-order", "from": "redis_lock", "to": "booking_order", "variant": "emphasis" },
+    { "id": "order-to-pay", "from": "booking_order", "to": "pay_gate", "label": "thanh toán", "variant": "emphasis" },
+    { "id": "pay-to-ticket", "from": "pay_gate", "to": "issue_ticket", "label": "IPN webhook", "variant": "emphasis" },
+    { "id": "ticket-to-client", "from": "issue_ticket", "to": "confirm_notify", "variant": "emphasis", "role": "return" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Chống Double-Booking",
+      "items": [
+        "Redis Distributed Lock khóa nguyên tử ghế trong 10 phút",
+        "Nếu hết 10 phút chưa thanh toán, khóa tự động giải phóng (Key Expire)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Thanh toán & Idempotency",
+      "items": [
+        "Webhook cổng thanh toán xác thực chữ ký HMAC",
+        "Đảm bảo chỉ cập nhật trạng thái PAID đúng 1 lần duy nhất"
+      ]
+    }
+  ]
+}

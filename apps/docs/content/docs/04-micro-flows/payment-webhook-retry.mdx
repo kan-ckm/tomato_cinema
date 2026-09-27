@@ -1,0 +1,21 @@
+---
+title: Xử lý Webhook thanh toán & Retry (Payment Webhook)
+description: Kỹ thuật xử lý Idempotency, xác thực chữ ký số HMAC và cơ chế Retry lũy tiến (Exponential Backoff).
+---
+
+Các cổng thanh toán (VNPay, Momo, ZaloPay, Stripe) thường gửi Webhook bất đồng bộ để thông báo kết quả giao dịch. Webhook có thể bị gửi lặp lại nhiều lần hoặc bị timeout do nghẽn mạng.
+
+## Nguyên tắc xử lý cốt lõi
+
+1. **Xác thực chữ ký (Signature Verification)**: Dùng thuật toán HMAC-SHA256 để đảm bảo request xuất phát từ cổng thanh toán, không bị giả mạo hay tấn công Man-in-the-Middle.
+2. **Tính bất biến (Idempotency)**: Đảm bảo dù nhận 10 request giống nhau cho cùng một mã giao dịch, hệ thống chỉ cập nhật vé đúng **1 lần duy nhất**.
+
+## Sơ đồ luồng Idempotency
+
+<DiagramViewer
+  src="/diagrams/payment-webhook.html"
+  title="Quy trình Xử lý Webhook Thanh toán & Idempotency (Archify Workflow)"
+  description="Xác thực chữ ký HMAC-SHA256, kiểm tra trạng thái giao dịch trước khi cập nhật Database Transaction và phát tán sự kiện RabbitMQ."
+  height="600px"
+/>
+

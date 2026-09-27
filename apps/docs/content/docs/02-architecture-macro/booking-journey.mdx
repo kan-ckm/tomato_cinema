@@ -1,0 +1,29 @@
+---
+title: Hành trình đặt vé xem phim (Booking Journey)
+description: Luồng nghiệp vụ cốt lõi từ chọn rạp, chọn suất chiếu, giữ chỗ thời gian thực đến thanh toán và xuất vé.
+---
+
+Đặt vé là luồng nghiệp vụ quan trọng nhất trong nền tảng Tomato Cinema, đòi hỏi tính nhất quán dữ liệu cao (Data Consistency) và độ trễ thấp khi có lượng người dùng truy cập đột biến.
+
+## Sơ đồ Quy trình Đặt vé & Giữ chỗ
+
+<DiagramViewer
+  src="/diagrams/booking-workflow.html"
+  title="Quy trình Đặt vé & Giữ chỗ Thời gian thực (Archify Workflow)"
+  description="Lanes phân định rõ ràng ranh giới Client, API Gateway, Dịch vụ Đặt vé và Cổng Thanh toán."
+  height="580px"
+/>
+
+## Các giai đoạn then chốt
+
+<Tabs items={['1. Giữ chỗ (Hold)', '2. Thanh toán (Payment)', '3. Hoàn tất (Fulfill)']}>
+  <Tab value="1. Giữ chỗ (Hold)">
+    Khi người dùng nhấp chọn ghế, hệ thống kích hoạt **Distributed Lock** trên Redis với thời gian hết hạn (TTL) là 10 phút. Trạng thái ghế chuyển sang `HOLDING` và thông báo tới các client khác qua WebSocket.
+  </Tab>
+  <Tab value="2. Thanh toán (Payment)">
+    Hệ thống tạo yêu cầu thanh toán (Payment Order) gửi tới cổng thanh toán (VNPay, Momo, Stripe). Client được điều hướng sang trang xác nhận thanh toán an toàn.
+  </Tab>
+  <Tab value="3. Hoàn tất (Fulfill)">
+    Sau khi nhận được Webhook thanh toán thành công, hệ thống chuyển trạng thái vé sang `PAID`, phát sinh mã QR vé lưu vào cơ sở dữ liệu và bắn event `BookingCompletedEvent` vào Message Queue.
+  </Tab>
+</Tabs>

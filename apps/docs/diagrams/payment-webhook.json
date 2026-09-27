@@ -1,0 +1,79 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Quy trình Xử lý Webhook Thanh toán & Idempotency",
+    "output": "apps/docs/public/diagrams/payment-webhook.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "webhook-flow",
+        "label": "Toàn cảnh luồng xử lý Webhook IPN",
+        "focus": ["webhook_req", "verify_hmac", "idempotent_gate", "db_txn", "fast_ack", "emit_event", "ack_200"],
+        "note": "Xác thực chữ ký số HMAC, phân luồng Idempotency và thực thi Database Transaction."
+      },
+      {
+        "id": "idempotency-gate",
+        "label": "Nhánh bảo vệ Idempotency",
+        "focus": ["idempotent_gate", "fast_ack", "ack_200"],
+        "note": "Nếu request gửi lặp lại khi giao dịch đã xử lý, hệ thống trả về 200 OK ngay lập tức mà không sửa DB."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "gateway_ext", "label": "Cổng Thanh toán Ngoài" },
+    { "id": "payment_svc", "label": "Dịch vụ Thanh toán" },
+    { "id": "database", "label": "Cơ sở dữ liệu PostgreSQL" },
+    { "id": "event_bus", "label": "Message Broker RabbitMQ" }
+  ],
+  "phases": [
+    { "id": "ingress", "label": "Tiếp nhận & Thẩm định", "fromCol": 0, "toCol": 1 },
+    { "id": "idempotency", "label": "Kiểm tra Bất biến (Idempotency)", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "settlement", "label": "Ghi nhận & Phát tán sự kiện", "fromCol": 3, "toCol": 4 }
+  ],
+  "mainPath": ["webhook_req", "verify_hmac", "idempotent_gate", "db_txn", "emit_event", "ack_200"],
+  "nodes": [
+    { "id": "webhook_req", "lane": "gateway_ext", "col": 0, "type": "cloud", "label": "Webhook IPN", "sublabel": "VNPay / Momo / Stripe", "width": 140 },
+    { "id": "verify_hmac", "lane": "payment_svc", "col": 1, "type": "security", "label": "Xác thực HMAC", "sublabel": "HMAC-SHA256 signature", "tag": "Security Gate", "width": 140 },
+    { "id": "idempotent_gate", "lane": "database", "col": 2, "type": "database", "label": "Kiểm tra Đã xử lý?", "sublabel": "SELECT status FOR UPDATE", "tag": "Idempotency", "width": 140 },
+    { "id": "db_txn", "lane": "database", "col": 3, "type": "database", "label": "Atomic DB Txn", "sublabel": "status PAID + vé QR", "tag": "ACID Safe", "width": 140 },
+    { "id": "fast_ack", "lane": "payment_svc", "col": 3, "type": "backend", "label": "Fast Short-Circuit", "sublabel": "bỏ qua cập nhật trùng", "tag": "Already Done", "width": 140 },
+    { "id": "emit_event", "lane": "event_bus", "col": 4, "type": "messagebus", "label": "Bắn Event RabbitMQ", "sublabel": "booking.confirmed", "tag": "Async Pub", "width": 140 },
+    { "id": "ack_200", "lane": "gateway_ext", "col": 4, "type": "frontend", "label": "Phản hồi 200 OK", "sublabel": "kết thúc chu kỳ IPN", "width": 140 }
+  ],
+  "edges": [
+    { "id": "req-verify", "from": "webhook_req", "to": "verify_hmac", "label": "gửi payload + chữ ký", "variant": "emphasis" },
+    { "id": "verify-gate", "from": "verify_hmac", "to": "idempotent_gate", "label": "chữ ký hợp lệ", "variant": "emphasis" },
+    { "id": "gate-txn", "from": "idempotent_gate", "to": "db_txn", "label": "chưa xử lý", "variant": "emphasis" },
+    { "id": "gate-fast", "from": "idempotent_gate", "to": "fast_ack", "label": "đã xử lý trước", "variant": "security" },
+    { "id": "txn-event", "from": "db_txn", "to": "emit_event", "label": "publish event", "variant": "emphasis" },
+    { "id": "event-ack", "from": "emit_event", "to": "ack_200", "label": "200 OK", "variant": "emphasis", "role": "return" },
+    { "id": "fast-ack", "from": "fast_ack", "to": "ack_200", "label": "200 OK ngay", "variant": "default", "role": "return" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Bảo mật HMAC-SHA256",
+      "items": [
+        "Mỗi request Webhook đi kèm checksum chữ ký số tạo từ Secret Key độc quyền",
+        "Ngăn chặn hoàn toàn kẻ xấu giả mạo thông báo thanh toán thành công để lấy vé"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Xử lý Bất biến (Idempotent Delivery)",
+      "items": [
+        "Cổng thanh toán tự động retry nếu timeout mạng; hệ thống luôn trả 200 OK an toàn",
+        "Tuyệt đối không chạy lại Transaction hay cấp trùng vé nếu đơn đã hoàn tất"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Bất đồng bộ với Message Broker",
+      "items": [
+        "Sau khi DB commit thành công, event 'booking.confirmed' được bắn lên RabbitMQ",
+        "Các worker gửi email và cộng điểm loyalty xử lý song song ở nền (background)"
+      ]
+    }
+  ]
+}

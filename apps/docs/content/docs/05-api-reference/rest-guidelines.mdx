@@ -1,0 +1,30 @@
+---
+title: Quy chuẩn REST API
+description: Nguyên tắc đặt tên endpoint, phân trang, lọc dữ liệu và cấu trúc envelope response.
+---
+
+Tất cả các API công khai của Tomato Cinema đều tuân theo chuẩn RESTful với định dạng JSON.
+
+## Định dạng phản hồi thành công (Standard Envelope)
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "totalItems": 150,
+      "totalPages": 8
+    }
+  }
+}
+```
+
+## Chuẩn phân trang & Lọc
+
+- `page`: Số thứ tự trang (bắt đầu từ 1).
+- `limit`: Số phần tử trên mỗi trang (mặc định 20, tối đa 100).
+- `sort`: Tiêu chí sắp xếp, vd: `createdAt:desc`.

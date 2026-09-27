@@ -1,0 +1,39 @@
+---
+title: Xử lý tranh chấp khóa ghế (Seat Locking & Concurrency)
+description: Luồng nhỏ chi tiết cách giải quyết Race Condition khi nhiều người cùng chọn một ghế bằng Redis Distributed Lock (Redlock).
+---
+
+Khi các bộ phim bom tấn mở bán vé, hàng nghìn người dùng có thể nhấp chọn cùng một ghế (ví dụ ghế VIP `H12`) tại cùng một mili-giây. Nếu chỉ dùng SQL `UPDATE`, hệ thống rất dễ bị Deadlock hoặc Double-Booking.
+
+## Giải pháp kỹ thuật
+
+Hệ thống sử dụng kỹ thuật **Redis Distributed Lock với lệnh nguyên tử `SET NX EX`** kết hợp kiểm tra Lua Script để giải phóng khóa an toàn.
+
+## Sơ đồ thuật toán xử lý
+
+<DiagramViewer
+  src="/diagrams/seat-locking.html"
+  title="Trình tự Tranh chấp Khóa ghế (Archify Sequence)"
+  description="Mô phỏng 2 khách hàng gửi yêu cầu khóa ghế cùng một mili-giây và cơ chế phân xử nguyên tử bằng Redis SET NX EX."
+  height="620px"
+/>
+
+
+## Mã giả Lua Script giải phóng khóa an toàn
+
+Khi khách hàng hoàn tất thanh toán hoặc tự tay hủy chọn ghế, việc mở khóa phải đảm bảo **chính chủ** (tránh trường hợp Client A giải phóng khóa của Client B sau khi lock của A đã hết hạn TTL):
+
+```lua
+-- KEYS[1]: lock key (vd: lock:show:101:seat:H12)
+-- ARGV[1]: lock value (vd: userId hoặc unique booking token)
+
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+```
+
+<Callout type="warn" title="Lưu ý về TTL">
+Khóa chỉ tồn tại tối đa 600 giây (10 phút). Nếu sau thời gian này người dùng không thanh toán, Redis sẽ tự động tiêu hủy key (Key Expiration), ghế sẽ tự động trở về trạng thái trống mà không cần can thiệp thủ công từ cơ sở dữ liệu.
+</Callout>

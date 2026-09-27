@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Kiến trúc Hàng đợi Sự kiện RabbitMQ",
+    "output": "apps/docs/public/diagrams/event-pipeline.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "pubsub-pipeline",
+        "label": "Mô hình Pub/Sub Topic Exchange",
+        "focus": ["auth", "booking", "exchange", "q_booking", "q_user", "q_loyalty", "notify_email", "user_loyalty"],
+        "note": "Producers bắn event vào Topic Exchange, RabbitMQ định tuyến đến các hàng đợi dựa trên routingKey."
+      }
+    ]
+  },
+  "components": [
+    { "id": "auth", "type": "backend", "label": "Auth Service", "sublabel": "User Producer", "pos": [40, 180], "size": [130, 60] },
+    { "id": "booking", "type": "backend", "label": "Booking Service", "sublabel": "Order Producer", "pos": [40, 340], "size": [130, 60] },
+    { "id": "exchange", "type": "messagebus", "label": "Topic Exchange", "sublabel": "cinema.events", "brand": "rabbitmq", "pos": [280, 260], "size": [140, 64], "tag": "fanout router" },
+    { "id": "q_booking", "type": "messagebus", "label": "Queue: Bookings", "sublabel": "notification.bookings", "pos": [530, 160], "size": [150, 56] },
+    { "id": "q_user", "type": "messagebus", "label": "Queue: Users", "sublabel": "notification.users", "pos": [530, 260], "size": [150, 56] },
+    { "id": "q_loyalty", "type": "messagebus", "label": "Queue: Loyalty", "sublabel": "loyalty.points", "pos": [530, 360], "size": [150, 56] },
+    { "id": "notify_email", "type": "backend", "label": "Notification Svc", "sublabel": "Email & Push", "pos": [800, 210], "size": [140, 60] },
+    { "id": "user_loyalty", "type": "backend", "label": "User Service", "sublabel": "Loyalty Points", "pos": [800, 360], "size": [140, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "RabbitMQ Cluster & Event Consumers", "wraps": ["exchange", "q_booking", "q_user", "q_loyalty", "notify_email", "user_loyalty"] }
+  ],
+  "connections": [
+    { "id": "auth-ex", "from": "auth", "to": "exchange", "label": "publish", "variant": "emphasis" },
+    { "id": "book-ex", "from": "booking", "to": "exchange", "label": "publish", "variant": "emphasis" },
+    { "id": "ex-qbook", "from": "exchange", "to": "q_booking", "label": "booking.*", "variant": "default" },
+    { "id": "ex-quser", "from": "exchange", "to": "q_user", "label": "user.*", "labelDy": 16, "variant": "default" },
+    { "id": "ex-qloyalty", "from": "exchange", "to": "q_loyalty", "label": "booking.confirmed", "variant": "default" },
+    { "id": "qbook-notify", "from": "q_booking", "to": "notify_email", "label": "consume", "variant": "emphasis" },
+    { "id": "quser-notify", "from": "q_user", "to": "notify_email", "variant": "emphasis" },
+    { "id": "qloyalty-user", "from": "q_loyalty", "to": "user_loyalty", "label": "consume", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Topic Exchange Routing",
+      "items": [
+        "Sử dụng wildcard routing keys để phân phối linh hoạt tới nhiều hàng đợi",
+        "Producer không cần biết trước danh tính hay địa chỉ IP của consumer"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Bền bỉ & Chống thất lạc",
+      "items": [
+        "Hàng đợi cấu hình durable và tin nhắn lưu trữ persistent trên đĩa",
+        "Xác nhận tin nhắn thủ công (Manual ACK) đảm bảo không mất dữ liệu khi worker lỗi"
+      ]
+    }
+  ]
+}

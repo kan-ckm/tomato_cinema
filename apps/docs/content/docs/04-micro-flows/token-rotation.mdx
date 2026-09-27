@@ -1,0 +1,27 @@
+---
+title: Xoay vòng Refresh Token (Token Rotation & Reuse Detection)
+description: Kỹ thuật bảo mật phát hiện và ngăn chặn tấn công đánh cắp Refresh Token.
+---
+
+Trong kiến trúc bảo mật của Tomato Cinema, Refresh Token không có giá trị vĩnh viễn và bắt buộc phải **xoay vòng (Rotate)** mỗi lần lấy Access Token mới.
+
+## Cơ chế phát hiện tái sử dụng Token (Token Reuse Detection)
+
+Nếu kẻ tấn công lấy cắp được Refresh Token cũ và cố tình gọi API `/auth/refresh`, hệ thống sẽ phát hiện hành vi xâm nhập và **ngay lập tức hủy bỏ toàn bộ chuỗi phiên (Family Tokens)** của người dùng đó.
+
+## Sơ đồ luồng xử lý
+
+<DiagramViewer
+  src="/diagrams/token-rotation.html"
+  title="Cơ chế Xoay vòng & Phát hiện Tái sử dụng Token (Archify Workflow)"
+  description="Quy trình phân giải hai nhánh: Cấp phát phiên mới (Happy Path) và Thu hồi toàn bộ Token Family khi phát hiện xâm nhập (Breach Detected)."
+  height="600px"
+/>
+
+
+## Dữ liệu gia đình Token (Token Family)
+
+Mỗi lần người dùng đăng nhập bằng Email/Mật khẩu:
+1. Hệ thống sinh ra một `familyId` duy nhất (UUIDv4).
+2. Khi refresh, token mới nhận cùng `familyId`, còn token cũ được lưu vào danh sách đen (Blacklist/Used List) trong vòng 24 giờ.
+3. Nếu bất kỳ token cũ nào trong family đó được gửi lại, toàn bộ familyId bị vô hiệu hóa ngay lập tức.

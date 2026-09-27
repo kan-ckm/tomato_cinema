@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Pipeline Xử lý Video & Streaming HLS",
+    "output": "apps/docs/public/diagrams/media-streaming.html",
+    "viewBox": [1080, 620],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-pipeline",
+        "label": "Pipeline truyền tải toàn diện",
+        "focus": ["admin", "worker", "prod_s3", "cdn", "client"],
+        "note": "Từ bước tải lên video thô, nén HLS đa bitrate đến phân phối qua CDN."
+      }
+    ]
+  },
+  "stages": [
+    { "label": "Tải lên" },
+    { "label": "Chuyển mã" },
+    { "label": "Kho phân phối" },
+    { "label": "Mạng biên" },
+    { "label": "Trình phát" }
+  ],
+  "nodes": [
+    { "id": "admin", "type": "external", "label": "Admin Studio", "sublabel": "Upload video gốc", "stage": 0, "row": 1, "tag": "4K / MP4" },
+    { "id": "worker", "type": "backend", "label": "FFmpeg Worker", "sublabel": "Chuyển mã HLS", "stage": 1, "row": 1, "tag": "1080p/720p/480p" },
+    { "id": "prod_s3", "type": "cloud", "label": "S3 Production", "sublabel": "Kho video HLS", "stage": 2, "row": 1, "tag": "master.m3u8" },
+    { "id": "cdn", "type": "cloud", "label": "CloudFront CDN", "sublabel": "Edge Caching", "stage": 3, "row": 1, "tag": "HLS streaming" },
+    { "id": "client", "type": "frontend", "label": "HLS Video Player", "sublabel": "Web & Mobile App", "stage": 4, "row": 1, "tag": "ABR player" }
+  ],
+  "flows": [
+    { "from": "admin", "to": "worker", "label": "raw video upload", "classification": "presigned", "variant": "emphasis", "route": "straight" },
+    { "from": "worker", "to": "prod_s3", "label": "output segments", "classification": "HLS m3u8", "variant": "emphasis", "route": "straight" },
+    { "from": "prod_s3", "to": "cdn", "label": "origin fetch", "classification": "cacheable", "variant": "emphasis", "route": "straight" },
+    { "from": "cdn", "to": "client", "label": "adaptive stream", "classification": "HTTPS", "variant": "emphasis", "route": "straight" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Chuyển mã Thích ứng (ABR)",
+      "items": [
+        "FFmpeg chuyển đổi video thành các phân đoạn 1080p, 720p, 480p",
+        "Trình phát tự động chuyển đổi độ phân giải mượt mà theo tốc độ mạng"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Bảo vệ & Phân phối Tối ưu",
+      "items": [
+        "Upload trực tiếp lên kho lưu trữ qua Presigned URL không nghẽn máy chủ API",
+        "Mạng biên CloudFront CDN lưu đệm phân đoạn giúp giảm 95% tải hạ tầng"
+      ]
+    }
+  ]
+}

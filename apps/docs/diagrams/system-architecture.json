@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Kiến trúc Tổng quan Tomato Cinema",
+    "output": "apps/docs/public/diagrams/system-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "client-to-gateway",
+        "label": "Luồng truy cập người dùng",
+        "focus": ["web", "mobile", "gateway", "auth_svc", "user_svc"],
+        "note": "Các yêu cầu từ Web và Mobile qua Gateway để định tuyến vào các dịch vụ lõi."
+      },
+      {
+        "id": "data-and-session",
+        "label": "Lớp dữ liệu & Phiên đăng nhập",
+        "focus": ["auth_svc", "user_svc", "redis", "postgres"],
+        "note": "Auth và User service đồng bộ phiên với Redis và lưu dữ liệu lâu dài tại PostgreSQL."
+      },
+      {
+        "id": "async-event-bus",
+        "label": "Hàng đợi sự kiện bất đồng bộ",
+        "focus": ["media_svc", "rabbitmq", "notify_svc"],
+        "note": "Xử lý thông báo và media background thông qua RabbitMQ Topic Exchange."
+      }
+    ]
+  },
+  "components": [
+    { "id": "web", "type": "frontend", "label": "Web Client", "sublabel": "Next.js 16 App", "brand": "next-js", "pos": [40, 220], "size": [130, 60] },
+    { "id": "mobile", "type": "external", "label": "Mobile App", "sublabel": "iOS / Android", "pos": [40, 380], "size": [130, 60] },
+    { "id": "gateway", "type": "security", "label": "API Gateway", "sublabel": "NestJS :3000", "pos": [250, 300], "size": [140, 64], "tag": "Rate Limit + JWT" },
+    { "id": "auth_svc", "type": "backend", "label": "Auth Service", "sublabel": "Identity :3001", "pos": [490, 160], "size": [140, 60] },
+    { "id": "user_svc", "type": "backend", "label": "User Service", "sublabel": "Profile :3002", "pos": [490, 300], "size": [140, 60] },
+    { "id": "media_svc", "type": "backend", "label": "Media Service", "sublabel": "Streaming :3003", "pos": [490, 440], "size": [140, 60] },
+    { "id": "redis", "type": "database", "label": "Redis Cache", "sublabel": "Locks :6379", "brand": "redis", "pos": [730, 160], "size": [130, 60] },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "Primary :5432", "brand": "postgresql", "pos": [730, 300], "size": [130, 60] },
+    { "id": "rabbitmq", "type": "messagebus", "label": "RabbitMQ", "sublabel": "Events :5672", "brand": "rabbitmq", "pos": [730, 440], "size": [130, 60] },
+    { "id": "notify_svc", "type": "backend", "label": "Notification", "sublabel": "Email/SMS :3004", "pos": [950, 440], "size": [130, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Tomato Cinema Microservices Cluster", "wraps": ["gateway", "auth_svc", "user_svc", "media_svc", "redis", "postgres", "rabbitmq", "notify_svc"] }
+  ],
+  "connections": [
+    { "id": "web-gw", "from": "web", "to": "gateway", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "mob-gw", "from": "mobile", "to": "gateway", "variant": "emphasis" },
+    { "id": "gw-auth", "from": "gateway", "to": "auth_svc", "label": "auth" },
+    { "id": "gw-user", "from": "gateway", "to": "user_svc" },
+    { "id": "gw-media", "from": "gateway", "to": "media_svc", "label": "media" },
+    { "id": "auth-redis", "from": "auth_svc", "to": "redis", "label": "tokens", "variant": "security" },
+    { "id": "user-db", "from": "user_svc", "to": "postgres", "label": "SQL" },
+    { "id": "media-mq", "from": "media_svc", "to": "rabbitmq", "label": "events", "variant": "dashed" },
+    { "id": "mq-notify", "from": "rabbitmq", "to": "notify_svc", "label": "consume", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Bảo mật & Cổng kết nối", "items": ["Gateway xác thực JWT và bảo vệ Rate Limit", "Redis lưu trữ whitelist và quản lý phiên đăng nhập"] },
+    { "dot": "emerald", "title": "Dữ liệu & Nghiệp vụ", "items": ["PostgreSQL lưu trữ quan hệ cho user và đơn đặt vé", "Kiến trúc phân tách theo domain microservice"] },
+    { "dot": "cyan", "title": "Bất đồng bộ & Phân phối", "items": ["RabbitMQ điều phối hàng đợi Domain Events", "Notification Service gửi email vé và tin nhắn tự động"] }
+  ]
+}

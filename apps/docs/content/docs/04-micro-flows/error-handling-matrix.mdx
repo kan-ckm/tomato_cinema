@@ -1,0 +1,33 @@
+---
+title: Chuẩn hóa xử lý lỗi (Error Handling Matrix)
+description: Định dạng phản hồi lỗi thống nhất và ma trận Exception Filters xuyên suốt microservices.
+---
+
+Để hỗ trợ Frontend và các Client xử lý lỗi nhất quán, toàn bộ API của Tomato Cinema đều tuân theo chuẩn **RFC 7807 (Problem Details for HTTP APIs)**.
+
+## Cấu trúc Error Response chuẩn
+
+```json
+{
+  "success": false,
+  "statusCode": 409,
+  "errorCode": "BOOKING_SEAT_ALREADY_LOCKED",
+  "message": "Ghế đã được giữ bởi người dùng khác. Vui lòng chọn ghế khác.",
+  "timestamp": "2026-09-27T21:00:00.000Z",
+  "path": "/api/v1/seats/lock",
+  "details": {
+    "seatId": "H12",
+    "lockExpiresInSeconds": 482
+  }
+}
+```
+
+## Bảng mã lỗi tiêu biểu
+
+| Mã lỗi (Error Code) | HTTP Status | Miêu tả |
+| :--- | :--- | :--- |
+| `AUTH_INVALID_CREDENTIALS` | `401 Unauthorized` | Email hoặc mật khẩu không chính xác |
+| `AUTH_TOKEN_EXPIRED` | `401 Unauthorized` | Access Token đã hết hạn |
+| `AUTH_TOKEN_REVOKED` | `403 Forbidden` | Phiên đăng nhập đã bị vô hiệu hóa |
+| `BOOKING_SEAT_ALREADY_LOCKED` | `409 Conflict` | Ghế đang trong phiên giữ chỗ của người khác |
+| `PAYMENT_GATEWAY_TIMEOUT` | `504 Gateway Timeout`| Cổng thanh toán không phản hồi trong 30 giây |

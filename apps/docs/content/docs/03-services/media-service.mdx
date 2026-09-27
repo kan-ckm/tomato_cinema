@@ -1,0 +1,13 @@
+---
+title: Media Service
+description: Quản lý tập tin đa phương tiện, tích hợp S3/MinIO và chuyển mã video HLS.
+---
+
+`media-service` cung cấp API chuyên dụng cho việc lưu trữ, xử lý hình ảnh và video trailer.
+
+## Trách nhiệm chính
+
+- Nhận upload tập tin lớn với cơ chế Chunked Upload (Multipart).
+- Tích hợp dịch vụ lưu trữ AWS S3 hoặc MinIO tương thích S3.
+- Xử lý nén ảnh tự động sang định dạng WebP/AVIF để tối ưu tốc độ tải trang client.
+- Tạo presigned URLs cho phép client upload trực tiếp lên cloud storage mà không nghẽn server.

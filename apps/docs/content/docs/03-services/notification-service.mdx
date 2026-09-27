@@ -1,0 +1,12 @@
+---
+title: Notification Service
+description: Xử lý gửi thông báo đa kênh (Email HTML, Push Notification di động, SMS OTP).
+---
+
+`notification-service` hoạt động chủ yếu như một Event Consumer từ hàng đợi RabbitMQ.
+
+## Các kênh thông báo
+
+- **Email Service**: Tích hợp Nodemailer / AWS SES với template HTML responsive.
+- **Push Notification**: Firebase Cloud Messaging (FCM) thông báo nhắc giờ chiếu phim trước 30 phút.
+- **SMS OTP**: Gửi mã OTP xác nhận đặt vé và đổi số điện thoại.

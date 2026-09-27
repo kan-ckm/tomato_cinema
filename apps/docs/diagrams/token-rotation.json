@@ -1,0 +1,70 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Cơ chế Xoay vòng & Phát hiện Tái sử dụng Token",
+    "output": "apps/docs/public/diagrams/token-rotation.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "rotation-flow",
+        "label": "Toàn cảnh luồng kiểm tra và xoay vòng",
+        "focus": ["client_req", "verify_jwt", "check_family", "issue_new", "detect_reuse", "success_resp", "revoke_family"],
+        "note": "Phân nhánh xử lý giữa cấp token mới hợp lệ và phát hiện token bị đánh cắp để khóa phiên."
+      },
+      {
+        "id": "breach-detection",
+        "label": "Nhánh phát hiện xâm nhập",
+        "focus": ["check_family", "detect_reuse", "revoke_family"],
+        "note": "Khi token cũ trong family được dùng lại, hệ thống lập tức thu hồi toàn bộ token của người dùng."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "client", "label": "Giao diện Khách hàng" },
+    { "id": "auth", "label": "Dịch vụ Xác thực" },
+    { "id": "storage", "label": "Lưu trữ Redis Session" },
+    { "id": "alert", "label": "Bảo mật & Ứng phó Xâm nhập" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "Thẩm định Chữ ký", "fromCol": 0, "toCol": 1 },
+    { "id": "inspection", "label": "Kiểm tra Trạng thái Token", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "outcomes", "label": "Xoay vòng hoặc Khóa phiên", "fromCol": 3, "toCol": 4 }
+  ],
+  "mainPath": ["client_req", "verify_jwt", "check_family", "issue_new", "success_resp"],
+  "nodes": [
+    { "id": "client_req", "lane": "client", "col": 0, "type": "frontend", "label": "Client Request", "sublabel": "gọi /auth/refresh", "width": 140 },
+    { "id": "verify_jwt", "lane": "auth", "col": 1, "type": "security", "label": "Thẩm định Token", "sublabel": "kiểm tra chữ ký và hạn", "width": 140 },
+    { "id": "check_family", "lane": "storage", "col": 2, "type": "database", "label": "Redis Family Store", "sublabel": "kiểm tra token blacklist", "tag": "Gatekeeper", "width": 140 },
+    { "id": "issue_new", "lane": "auth", "col": 3, "type": "backend", "label": "Xoay vòng Token", "sublabel": "cấp cặp token mới", "tag": "Hợp lệ", "width": 140 },
+    { "id": "detect_reuse", "lane": "alert", "col": 3, "type": "security", "label": "Phát hiện Đột nhập", "sublabel": "token đã dùng trước đó", "tag": "Cảnh báo đỏ", "width": 140 },
+    { "id": "success_resp", "lane": "client", "col": 4, "type": "frontend", "label": "Cập nhật Phiên Mới", "sublabel": "200 OK + Cookie mới", "width": 140 },
+    { "id": "revoke_family", "lane": "alert", "col": 4, "type": "security", "label": "Thu hồi Toàn bộ Phiên", "sublabel": "buộc logout mọi thiết bị", "tag": "403 Forbidden", "width": 140 }
+  ],
+  "edges": [
+    { "id": "req-verify", "from": "client_req", "to": "verify_jwt", "label": "gửi cookie", "variant": "emphasis" },
+    { "id": "verify-family", "from": "verify_jwt", "to": "check_family", "label": "tra cứu ID", "variant": "emphasis" },
+    { "id": "family-issue", "from": "check_family", "to": "issue_new", "label": "chưa từng dùng", "variant": "emphasis" },
+    { "id": "family-reuse", "from": "check_family", "to": "detect_reuse", "label": "đã từng dùng", "variant": "security" },
+    { "id": "issue-client", "from": "issue_new", "to": "success_resp", "label": "cấp JWT mới", "variant": "emphasis", "role": "return" },
+    { "id": "reuse-revoke", "from": "detect_reuse", "to": "revoke_family", "label": "hủy family", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Token Rotation Mỗi Lần Refresh",
+      "items": [
+        "Mỗi Refresh Token chỉ được sử dụng một lần duy nhất (Single-Use Token)",
+        "Khi lấy Access Token mới, một Refresh Token mới được sinh ra và token cũ bị hủy"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Phát hiện Xâm nhập Tức thì (Reuse Detection)",
+      "items": [
+        "Nếu kẻ tấn công dùng lại token cũ đã lộ, hệ thống nhận diện vi phạm ngay lập tức",
+        "Toàn bộ phiên thuộc cùng Token Family ID bị hủy trên mọi thiết bị và ghi log bảo mật"
+      ]
+    }
+  ]
+}

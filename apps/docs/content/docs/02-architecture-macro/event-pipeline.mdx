@@ -1,0 +1,25 @@
+---
+title: Hàng đợi sự kiện (Event-Driven Pipeline)
+description: Kiến trúc giao tiếp bất đồng bộ qua Message Broker (RabbitMQ) và quản lý sự kiện hệ thống.
+---
+
+Để đảm bảo hiệu năng cao và tính độc lập (Loose Coupling) giữa các microservices, hệ thống sử dụng Message Broker để phát và tiêu thụ các Domain Events.
+
+## Danh sách Domain Events chính
+
+| Sự kiện (Event Name) | Service phát ra (Producer) | Service tiếp nhận (Consumer) | Mục đích |
+| :--- | :--- | :--- | :--- |
+| `user.registered` | `auth-service` | `notification-service`, `user-service` | Gửi email kích hoạt & khởi tạo profile |
+| `booking.confirmed` | `gateway-service` | `notification-service`, `user-service` | Gửi vé QR & cộng điểm thành viên |
+| `media.transcoded` | `media-service` | `gateway-service` | Cập nhật URL trailer vào catalog phim |
+| `payment.failed` | `gateway-service` | `notification-service` | Báo khách hàng thanh toán chưa hoàn tất |
+
+## Mô hình Pub/Sub với RabbitMQ
+
+<DiagramViewer
+  src="/diagrams/event-pipeline.html"
+  title="Kiến trúc Hàng đợi Sự kiện RabbitMQ (Archify Architecture)"
+  description="Mô hình Topic Exchange định tuyến thông điệp bất đồng bộ tới các consumer độc lập."
+  height="600px"
+/>
+

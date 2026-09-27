@@ -3,27 +3,37 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kan-ckm/tomato_cinema.git",
+    "directory": "apps/docs"
+  },
   "scripts": {
-    "dev": "next dev --port 3501",
+    "dev": "node scripts/patch-fumadocs.js && next dev --port 3501",
+    "prebuild": "node scripts/patch-fumadocs.js",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint --max-warnings 0",
+    "start": "next start --port 3501",
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
-    "lucide-react": "^1.38.0",
+    "cn": "^0.3.0",
+    "fumadocs-core": "16.15.14",
+    "fumadocs-mdx": "15.4.5",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.15.14",
+    "lucide-react": "^1.47.0",
+    "mermaid": "^12.0.0",
     "next": "16.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/mdx": "^2.0.14",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
     "typescript": "5.9.2"
   }
 }

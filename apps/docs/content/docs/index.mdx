@@ -1,0 +1,56 @@
+---
+title: Tomato Cinema Documentation
+description: Tài liệu kiến trúc hệ thống, quy trình luồng lớn (Macro) và luồng nhỏ (Micro) cho nền tảng Tomato Cinema.
+---
+
+Chào mừng bạn đến với trung tâm tài liệu kỹ thuật của **Tomato Cinema** — hệ thống đặt vé xem phim và phát trực tuyến đa dịch vụ xây dựng theo mô hình Monorepo (pnpm + Turborepo).
+
+Trang tài liệu này được thiết kế để phân chia rõ ràng giữa **Kiến trúc tổng thể (Luồng lớn)** và **Chi tiết kỹ thuật chuyên sâu (Luồng nhỏ)**, giúp đội ngũ phát triển dễ dàng nắm bắt, bảo trì và mở rộng hệ thống.
+
+---
+
+## Cấu trúc tài liệu
+
+<Cards>
+  <Card
+    title="Khởi động nhanh"
+    description="Hướng dẫn thiết lập môi trường, biến môi trường và chạy dự án local với Turborepo."
+    href="/docs/01-getting-started/quick-start"
+  />
+  <Card
+    title="Luồng lớn (Macro Flows)"
+    description="Kiến trúc tổng quan, luồng xác thực toàn hệ thống, hành trình đặt vé và media pipeline."
+    href="/docs/02-architecture-macro/system-overview"
+  />
+  <Card
+    title="Dịch vụ (Microservices)"
+    description="Chi tiết từng service: Gateway, Auth, User, Media, Notification, Bot và Web."
+    href="/docs/03-services/gateway-service"
+  />
+  <Card
+    title="Luồng nhỏ (Micro Flows)"
+    description="Xử lý kỹ thuật chuyên sâu: Redis Distributed Lock, Token Rotation, Webhook Retry, Multipart Upload."
+    href="/docs/04-micro-flows/seat-locking-concurrency"
+  />
+</Cards>
+
+---
+
+## Sơ đồ tổng quan kiến trúc hệ thống
+
+Dưới đây là mô hình phân lớp và giao tiếp giữa các thành phần trong hệ thống Tomato Cinema, được trực quan hóa bằng sơ đồ tương tác Archify:
+
+<DiagramViewer
+  src="/diagrams/system-architecture.html"
+  title="Sơ đồ Kiến trúc Phân tán Tomato Cinema"
+  description="Trực quan hóa luồng giao tiếp giữa Client, API Gateway, Microservices và Cơ sở dữ liệu"
+  height="540px"
+/>
+
+---
+
+## Nguyên tắc thiết kế tài liệu
+
+- **Tính module:** Mỗi luồng nghiệp vụ hoặc kỹ thuật là một trang tài liệu độc lập với URL cố định.
+- **Trực quan hóa chuẩn Archify:** Các luồng cốt lõi sở hữu sơ đồ tương tác, hỗ trợ chuyển đổi Dark/Light mode, phóng to thu nhỏ và tra cứu từng nhánh kết nối.
+- **Tối ưu tốc độ:** Sử dụng Next.js SSG giúp thời gian chuyển trang tức thì, hỗ trợ tìm kiếm toàn văn phím tắt `Ctrl + K`.

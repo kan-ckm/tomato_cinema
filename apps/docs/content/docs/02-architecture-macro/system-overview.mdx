@@ -1,0 +1,36 @@
+---
+title: Kiến trúc tổng quan (System Overview)
+description: Khái quát kiến trúc phân tán microservices và phân bổ vai trò trong tomato_cinema.
+---
+
+Hệ thống **Tomato Cinema** áp dụng mô hình kiến trúc phân tán hướng dịch vụ (Distributed Microservices Architecture) phối hợp giữa giao tiếp đồng bộ (Synchronous HTTP/REST) và bất đồng bộ (Asynchronous Event-Driven).
+
+## Mô hình phân lớp
+
+1. **Client Tier**: Web App (Next.js 16 App Router), Mobile App, Admin Dashboard.
+2. **API Gateway Tier**: `gateway-service` đóng vai trò Reverse Proxy, Rate Limiter, định tuyến request và thực hiện xác thực bước đầu.
+3. **Core Services Tier**:
+   - `auth-service`: Quản lý danh tính, phân quyền, cấp phát token JWT & refresh token.
+   - `user-service`: Quản lý thông tin hồ sơ người dùng, hạng mức thành viên, lịch sử đặt vé.
+   - `media-service`: Xử lý lưu trữ video, ảnh poster, luồng phát trực tuyến trailer phim.
+   - `notification-service`: Xử lý gửi email kích hoạt, tin nhắn xác nhận vé xem phim.
+   - `bot-service`: Hỗ trợ chăm sóc khách hàng tự động và tra cứu suất chiếu qua bot.
+4. **Shared Packages**:
+   - `@repo/common`: Chứa DTO, Utility, Constants, Error handlers dùng chung.
+   - `@repo/contracts`: Định nghĩa interface, event payload giữa các services.
+   - `@repo/ui`: Thư viện React UI components dùng chung.
+
+## Sơ đồ Kiến trúc Hệ thống
+
+<DiagramViewer
+  src="/diagrams/system-architecture.html"
+  title="Kiến trúc Phân tán Tomato Cinema (Archify Interactive)"
+  description="Nhấp vào từng service để xem tiêu điểm kết nối hoặc chuyển đổi theme ở góc sơ đồ."
+  height="540px"
+/>
+
+## Lợi ích kiến trúc
+
+- **Độc lập triển khai (Independent Deployment):** Mỗi service có thể build, test và scale riêng mà không làm gián đoạn toàn hệ thống.
+- **Tách biệt dữ liệu (Database per Service):** Giảm thiểu xung đột khóa bảng và đảm bảo tính bao đóng của từng domain.
+- **Khả năng chịu lỗi cao (Resilience):** Khi `notification-service` hoặc `media-service` gặp sự cố, các luồng mua vé và đăng nhập vẫn hoạt động bình thường.

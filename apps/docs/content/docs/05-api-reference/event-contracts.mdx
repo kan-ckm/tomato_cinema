@@ -1,0 +1,35 @@
+---
+title: Hợp đồng sự kiện (Event Contracts)
+description: Định nghĩa cấu trúc tin nhắn RabbitMQ trao đổi giữa các microservices.
+---
+
+Các sự kiện được quản lý tập trung tại thư viện `@repo/contracts`.
+
+## Cấu trúc sự kiện Envelope chung
+
+Mọi tin nhắn bắn vào RabbitMQ đều có cấu trúc tiêu chuẩn:
+
+```typescript
+export interface BaseEventPayload<T = unknown> {
+  eventId: string;        // UUIDv4
+  eventType: string;      // Vd: 'user.registered'
+  occurredAt: string;     // ISO 8601 Timestamp
+  producer: string;       // Tên service phát sinh sự kiện
+  version: string;        // Semver, vd: '1.0.0'
+  data: T;                // Dữ liệu nghiệp vụ chi tiết
+}
+```
+
+## Ví dụ sự kiện `booking.confirmed`
+
+```typescript
+export interface BookingConfirmedEvent {
+  bookingId: string;
+  userId: string;
+  showId: string;
+  cinemaId: string;
+  totalAmount: number;
+  seats: Array<{ seatId: string; seatCode: string }>;
+  qrCodeUrl: string;
+}
+```

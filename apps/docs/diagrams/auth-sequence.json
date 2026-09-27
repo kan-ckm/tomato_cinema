@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Vòng đời Xác thực & Cấp phát Token",
+    "output": "apps/docs/public/diagrams/auth-sequence.html",
+    "viewBox": [900, 780],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "login-flow",
+        "label": "Đăng nhập & Cấp phát Token",
+        "focus": ["user", "web", "gateway", "auth", "db", "redis"],
+        "note": "Khách hàng đăng nhập, Auth Service thẩm định mật khẩu và lưu phiên tại Redis."
+      },
+      {
+        "id": "authenticated-request",
+        "label": "Truy cập tài nguyên bảo mật",
+        "focus": ["web", "gateway"],
+        "note": "Gateway tự động thẩm định chữ ký JWT Access Token mà không cần gọi lại Auth Service."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "Khách hàng", "sublabel": "Browser" },
+    { "id": "web", "type": "frontend", "label": "Web Client", "sublabel": "Next.js 16", "brand": "next-js" },
+    { "id": "gateway", "type": "security", "label": "API Gateway", "sublabel": "Edge Guard :3000" },
+    { "id": "auth", "type": "backend", "label": "Auth Service", "sublabel": "Identity :3001" },
+    { "id": "db", "type": "database", "label": "PostgreSQL", "sublabel": "Primary :5432", "brand": "postgresql" },
+    { "id": "redis", "type": "database", "label": "Redis Store", "sublabel": "Session :6379", "brand": "redis" }
+  ],
+  "segments": [
+    { "from": 150, "to": 540, "label": "Đăng nhập & Cấp phát phiên" },
+    { "from": 556, "to": 720, "label": "Xác thực truy cập qua Gateway" }
+  ],
+  "messages": [
+    { "from": "user", "to": "web", "y": 180, "label": "1. Nhập email và mật khẩu", "variant": "emphasis" },
+    { "from": "web", "to": "gateway", "y": 222, "label": "2. POST /api/v1/auth/login", "variant": "emphasis" },
+    { "from": "gateway", "to": "auth", "y": 264, "label": "3. forward credentials", "variant": "default" },
+    { "from": "auth", "to": "db", "y": 306, "label": "4. query user & password hash", "variant": "default" },
+    { "from": "db", "to": "auth", "y": 348, "label": "5. user record", "variant": "return" },
+    { "from": "auth", "to": "redis", "y": 390, "label": "6. lưu refresh token whitelist", "variant": "security" },
+    { "from": "auth", "to": "gateway", "y": 432, "label": "7. return JWT + Refresh Token", "variant": "return" },
+    { "from": "gateway", "to": "web", "y": 474, "label": "8. 200 OK + Set-Cookie HttpOnly", "variant": "return" },
+    { "from": "web", "to": "user", "y": 516, "label": "9. Đăng nhập thành công", "variant": "return" },
+    { "from": "web", "to": "gateway", "y": 580, "label": "10. GET /api/v1/users/profile", "variant": "emphasis" },
+    { "from": "gateway", "to": "web", "y": 640, "label": "11. 200 OK verify JWT signature", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "web", "from": 174, "to": 524, "type": "frontend" },
+    { "participant": "gateway", "from": 216, "to": 480, "type": "security" },
+    { "participant": "auth", "from": 258, "to": 438, "type": "backend" },
+    { "participant": "db", "from": 300, "to": 354, "type": "database" },
+    { "participant": "redis", "from": 384, "to": 410, "type": "database" },
+    { "participant": "gateway", "from": 574, "to": 646, "type": "security" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Cơ chế Dual-Token", "items": ["Access Token JWT sống 15 phút đính kèm Authorization header", "Refresh Token sống 7 ngày lưu trữ tại Cookie HttpOnly Secure"] },
+    { "dot": "emerald", "title": "Bảo vệ tại Gateway", "items": ["Gateway xác thực chữ ký JWT độc lập giảm tải cho Auth Service", "Tự động trích xuất X-User-Id và chuyển tiếp vào mạng nội bộ"] },
+    { "dot": "cyan", "title": "Quản lý phiên Redis", "items": ["Redis lưu giữ Token Family ID hỗ trợ thu hồi quyền truy cập tức thì", "Phát hiện Token Reuse Attack và vô hiệu hóa toàn bộ phiên khi bị lộ"] }
+  ]
+}

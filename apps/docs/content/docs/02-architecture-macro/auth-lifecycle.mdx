@@ -1,0 +1,27 @@
+---
+title: Vòng đời xác thực (Authentication Lifecycle)
+description: Luồng lớn thể hiện toàn bộ vòng đời xác thực từ Đăng nhập, Cấp phát Token, Chặn truy cập Gateway đến Xác thực Downstream.
+---
+
+Luồng xác thực của **Tomato Cinema** sử dụng chuẩn **Dual-Token Pattern (Access Token + Refresh Token)** kết hợp với cơ chế thẩm định tại `gateway-service`.
+
+## Sơ đồ Sequence Vòng đời Xác thực
+
+<DiagramViewer
+  src="/diagrams/auth-sequence.html"
+  title="Trình tự Đăng nhập & Xác thực Truy cập (Archify Sequence)"
+  description="Trực quan hóa trình tự cấp phát JWT, lưu session Redis và xác thực không trạng thái tại API Gateway."
+  height="620px"
+/>
+
+## Quy định bảo mật
+
+1. **Access Token (JWT)**:
+   - Thời gian sống ngắn: 15 phút.
+   - Chứa thông tin tối thiểu: `sub` (userId), `email`, `roles`.
+   - Được Gateway giải mã và đính kèm vào header nội bộ: `X-User-Id`, `X-User-Role`.
+
+2. **Refresh Token**:
+   - Thời gian sống: 7 ngày.
+   - Được lưu trong Cookie dạng `HttpOnly`, `SameSite=Strict`, `Secure`.
+   - Có trạng thái lưu tại Redis để hỗ trợ chức năng **Đăng xuất khỏi tất cả thiết bị (Revocation)**.

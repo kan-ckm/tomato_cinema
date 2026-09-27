@@ -4,6 +4,10 @@
   },
   "name": "tomato-cinema",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kan-ckm/tomato_cinema.git"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "pnpm format && turbo run dev",

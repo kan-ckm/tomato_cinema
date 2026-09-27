@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Trình tự Tranh chấp Khóa ghế (Seat Locking & Concurrency)",
+    "output": "apps/docs/public/diagrams/seat-locking.html",
+    "viewBox": [960, 720],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "lock-acquisition",
+        "label": "Khóa ghế thành công (Client A)",
+        "focus": ["user_a", "api", "redis", "ws"],
+        "note": "Khách hàng A gửi request trước vài ms, Redis cấp lock nguyên tử và hệ thống broadcast trạng thái."
+      },
+      {
+        "id": "lock-conflict",
+        "label": "Tranh chấp & Xử lý lỗi (Client B)",
+        "focus": ["user_b", "api", "redis"],
+        "note": "Khách hàng B gửi request sau, Redis từ chối và trả về mã lỗi 409 Conflict."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "user_a", "type": "external", "label": "Khách hàng A", "sublabel": "Browser A" },
+    { "id": "user_b", "type": "external", "label": "Khách hàng B", "sublabel": "Browser B" },
+    { "id": "api", "type": "backend", "label": "Booking API", "sublabel": "Lock Controller :3002" },
+    { "id": "redis", "type": "database", "label": "Redis Store", "sublabel": "Distributed Lock :6379", "brand": "redis" },
+    { "id": "ws", "type": "frontend", "label": "WebSocket Hub", "sublabel": "Realtime Sync" }
+  ],
+  "segments": [
+    { "from": 150, "to": 430, "label": "Khách hàng A đến trước — Giữ ghế & Broadcast" },
+    { "from": 446, "to": 660, "label": "Khách hàng B đến sau — Xử lý xung đột (409 Conflict)" }
+  ],
+  "messages": [
+    { "from": "user_a", "to": "api", "y": 180, "label": "1. POST /seats/lock { seat: 'H12' }", "variant": "emphasis" },
+    { "from": "api", "to": "redis", "y": 224, "label": "2. SET lock:101:H12 user_A NX EX 600", "variant": "default" },
+    { "from": "redis", "to": "api", "y": 268, "label": "3. OK (Lock acquired)", "variant": "return" },
+    { "from": "api", "to": "ws", "y": 312, "label": "4. Broadcast { seat: 'H12', status: 'HOLD' }", "variant": "emphasis" },
+    { "from": "ws", "to": "user_b", "y": 356, "label": "5. Nhận cập nhật: H12 đang giữ", "variant": "default" },
+    { "from": "api", "to": "user_a", "y": 400, "label": "6. 200 OK (Giữ ghế 10 phút)", "variant": "return" },
+    { "from": "user_b", "to": "api", "y": 480, "label": "7. POST /seats/lock { seat: 'H12' }", "variant": "emphasis" },
+    { "from": "api", "to": "redis", "y": 524, "label": "8. SET lock:101:H12 user_B NX EX 600", "variant": "default" },
+    { "from": "redis", "to": "api", "y": 568, "label": "9. NULL (Lock failed, key exists)", "variant": "return" },
+    { "from": "api", "to": "user_b", "y": 612, "label": "10. 409 Conflict (Ghế đã được giữ)", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 174, "to": 406, "type": "backend" },
+    { "participant": "redis", "from": 218, "to": 274, "type": "database" },
+    { "participant": "ws", "from": 306, "to": 362, "type": "frontend" },
+    { "participant": "api", "from": 474, "to": 618, "type": "backend" },
+    { "participant": "redis", "from": 518, "to": 574, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Nguyên tử SET NX EX",
+      "items": [
+        "Lệnh kết hợp ghi nhận và đặt TTL 600s nguyên tử, triệt tiêu nguy cơ Deadlock",
+        "Chỉ một request duy nhất trong cùng mili-giây nhận được phản hồi OK từ Redis"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Đồng bộ thời gian thực",
+      "items": [
+        "WebSocket Hub đẩy ngay lập tức sự kiện thay đổi trạng thái ghế tới tất cả phòng vé",
+        "Giao diện người dùng tự động chuyển màu ghế sang trạng thái giữ (Holding)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Lua Script giải phóng an toàn",
+      "items": [
+        "Thẩm định quyền sở hữu token trước khi DEL để chống xóa nhầm khóa của người khác",
+        "Nếu hết hạn TTL mà chưa thanh toán, Redis tự động giải phóng khóa không cần worker"
+      ]
+    }
+  ]
+}

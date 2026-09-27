@@ -1,0 +1,37 @@
+---
+title: Biến môi trường (Environment Variables)
+description: Danh sách biến môi trường mẫu và cấu hình chuẩn giữa các microservices.
+---
+
+Mỗi service trong `apps/` có thể sở hữu file `.env` riêng biệt, hoặc kế thừa file cấu hình chung tại thư mục gốc.
+
+## Bảng phân bổ cổng mặc định
+
+| Service | Port | Giao thức | Mục đích |
+| :--- | :--- | :--- | :--- |
+| `gateway-service` | `3000` | HTTP / WebSocket | Điểm vào duy nhất cho Client |
+| `auth-service` | `3001` | HTTP / gRPC | Xác thực & Quản lý phiên |
+| `user-service` | `3002` | HTTP / gRPC | Hồ sơ người dùng & Thành viên |
+| `media-service` | `3003` | HTTP / gRPC | Tải lên & Quản lý phim/media |
+| `notification-service` | `3004` | Event Consumer | Gửi Email, SMS, Push notification |
+| `bot-service` | `3005` | HTTP / Webhook | Tương tác Chatbot hỗ trợ khách hàng |
+| `web` | `3500` | HTTP | Frontend khách hàng (Next.js) |
+| `docs` | `3501` | HTTP | Trang tài liệu kỹ thuật |
+
+## Cấu hình Redis & Database
+
+```bash
+# PostgreSQL
+DATABASE_URL="postgresql://tomato:secret@localhost:5432/tomato_cinema?schema=public"
+
+# Redis
+REDIS_HOST="localhost"
+REDIS_PORT=6379
+REDIS_PASSWORD=""
+
+# JWT Secrets
+JWT_ACCESS_SECRET="your-super-secret-access-key"
+JWT_REFRESH_SECRET="your-super-secret-refresh-key"
+JWT_ACCESS_EXPIRES_IN="15m"
+JWT_REFRESH_EXPIRES_IN="7d"
+```

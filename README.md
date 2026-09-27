@@ -133,7 +133,7 @@ Máy bạn cần cài sẵn:
 
 ```bash
 # Clone dự án về máy
-git clone https://github.com/your-username/tomato_cinema.git
+git clone https://github.com/kan-ckm/tomato_cinema.git
 cd tomato_cinema
 
 # Cài đặt tất cả dependencies cho các app và package trong monorepo

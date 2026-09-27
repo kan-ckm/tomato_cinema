@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Quy trình Tải lên Video Phân đoạn & Phục hồi Gián đoạn",
+    "output": "apps/docs/public/diagrams/video-resumption.html",
+    "viewBox": [940, 840],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "initiation-phase",
+        "label": "Khởi tạo phiên Multipart",
+        "focus": ["admin", "media", "s3"],
+        "note": "Client xin cấp uploadId và danh sách URL tải trực tiếp cho từng mảnh file."
+      },
+      {
+        "id": "resumption-phase",
+        "label": "Tải chunks và tự động phục hồi",
+        "focus": ["admin", "s3"],
+        "note": "Khi chunk 2 bị ngắt kết nối mạng, trình duyệt chỉ gửi lại duy nhất chunk 2."
+      },
+      {
+        "id": "completion-phase",
+        "label": "Hoàn tất ghép file S3",
+        "focus": ["admin", "media", "s3"],
+        "note": "S3 ghép các chunk thành video trailer hoàn chỉnh và kích hoạt pipeline chuyển mã."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "admin", "type": "external", "label": "Trình duyệt Admin", "sublabel": "Upload Client" },
+    { "id": "media", "type": "backend", "label": "Media Service", "sublabel": "Upload Controller :3004" },
+    { "id": "s3", "type": "database", "label": "S3 Object Store", "sublabel": "Raw Bucket" }
+  ],
+  "segments": [
+    { "from": 150, "to": 350, "label": "Khởi tạo Phiên Tải lên Phân đoạn (Initiate)" },
+    { "from": 366, "to": 580, "label": "Tải lên Song song & Phục hồi Chunk lỗi (Chunk Resumption)" },
+    { "from": 596, "to": 780, "label": "Hoàn tất Ghép File & Xác nhận (Complete)" }
+  ],
+  "messages": [
+    { "from": "admin", "to": "media", "y": 180, "label": "1. POST /media/multipart/initiate", "variant": "emphasis" },
+    { "from": "media", "to": "s3", "y": 224, "label": "2. CreateMultipartUpload", "variant": "default" },
+    { "from": "s3", "to": "media", "y": 268, "label": "3. uploadId: 'up_98124'", "variant": "return" },
+    { "from": "media", "to": "admin", "y": 312, "label": "4. uploadId + Presigned URLs", "variant": "return" },
+    { "from": "admin", "to": "s3", "y": 396, "label": "5. PUT Part 1 (5MB) -> ETag 'etag_1'", "variant": "emphasis" },
+    { "from": "admin", "to": "s3", "y": 440, "label": "6. PUT Part 2 (5MB) -> Lỗi mất mạng (Drop)", "variant": "security" },
+    { "from": "admin", "to": "s3", "y": 484, "label": "7. Retry riêng Part 2 -> ETag 'etag_2'", "variant": "emphasis" },
+    { "from": "admin", "to": "s3", "y": 528, "label": "8. PUT Part 3 (5MB) -> ETag 'etag_3'", "variant": "emphasis" },
+    { "from": "admin", "to": "media", "y": 620, "label": "9. POST /media/multipart/complete { ETags }", "variant": "emphasis" },
+    { "from": "media", "to": "s3", "y": 664, "label": "10. CompleteMultipartUpload", "variant": "default" },
+    { "from": "s3", "to": "media", "y": 708, "label": "11. 200 OK (Ghép file thành công)", "variant": "return" },
+    { "from": "media", "to": "admin", "y": 752, "label": "12. 200 Video Ready -> Kích hoạt Transcode", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "media", "from": 174, "to": 320, "type": "backend" },
+    { "participant": "s3", "from": 218, "to": 274, "type": "database" },
+    { "participant": "s3", "from": 390, "to": 536, "type": "database" },
+    { "participant": "media", "from": 614, "to": 760, "type": "backend" },
+    { "participant": "s3", "from": 658, "to": 714, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Chống Mất Tiến Trình (Resumable Upload)",
+      "items": [
+        "File lớn được cắt thành các chunk 5MB; nếu kết nối ngắt, client chỉ cần upload lại đúng phần bị lỗi",
+        "Không bao giờ phải truyền lại từ đầu những gigabyte dữ liệu đã tải lên thành công"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Bỏ qua Gateway — Upload trực tiếp S3",
+      "items": [
+        "Sử dụng Presigned S3 URLs cho phép trình duyệt gửi trực tiếp dữ liệu thô vào Object Storage",
+        "Triệt tiêu hoàn toàn nghẽn băng thông và nghẽn CPU tại API Gateway"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Ghép file nguyên tử & Tự động Transcode",
+      "items": [
+        "S3 kiểm tra toàn vẹn mã băm MD5/ETag của từng mảnh trước khi kết nối thành file duy nhất",
+        "Ngay sau khi file ghép xong, sự kiện được phát đi để kích hoạt FFmpeg Transcoding Worker"
+      ]
+    }
+  ]
+}

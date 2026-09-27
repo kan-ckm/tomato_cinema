@@ -1,0 +1,10 @@
+{
+  "title": "Luồng lớn (Macro Flows)",
+  "pages": [
+    "system-overview",
+    "auth-lifecycle",
+    "booking-journey",
+    "media-streaming",
+    "event-pipeline"
+  ]
+}

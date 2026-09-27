@@ -1,0 +1,22 @@
+---
+title: Quy trình xử lý Media (Media & Streaming Pipeline)
+description: Luồng xử lý tải lên, chuyển mã định dạng HLS/DASH và phân phối video trailer, poster phim.
+---
+
+`media-service` chịu trách nhiệm toàn bộ chu trình xử lý tập tin đa phương tiện trong Tomato Cinema, từ hình ảnh độ phân giải cao cho poster đến video trailer chuẩn thích ứng (Adaptive Bitrate Streaming).
+
+## Sơ đồ Pipeline Xử lý Video
+
+<DiagramViewer
+  src="/diagrams/media-streaming.html"
+  title="Pipeline Xử lý Video & Streaming HLS (Archify Dataflow)"
+  description="Chu trình tiếp nhận video thô, chuyển mã đa bitrate (HLS) qua FFmpeg worker và phân phối bằng CDN."
+  height="600px"
+/>
+
+
+## Đặc tả kỹ thuật
+
+- **Chuẩn nén:** H.264 (AVC) / H.265 (HEVC) + AAC Audio.
+- **Giao thức phân phối:** Apple HLS (`.m3u8` playlist và các segments `.ts`/`.m4s`).
+- **Tối ưu hình ảnh Poster:** Tự động nén WebP/AVIF đa kích thước (thumbnail, banner, mobile).
