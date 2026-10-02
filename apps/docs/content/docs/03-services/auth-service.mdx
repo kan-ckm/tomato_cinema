@@ -1,26 +1,32 @@
 ---
-title: Auth Service (Dịch vụ Xác thực Danh tính)
-description: Vi dịch vụ cốt lõi chịu trách nhiệm quản lý tài khoản, mã hóa Argon2id, xác thực OTP và cấp phát Dual-Token qua gRPC.
+title: Auth Service (Dịch vụ Xác thực & Quản lý Danh tính)
+description: Vi dịch vụ cốt lõi chịu trách nhiệm quản lý tài khoản, mã hóa Argon2id, xác thực OTP, bảo mật phiên Dual-Token và hợp đồng gRPC AuthService & AccountService.
 ---
 
-`auth-service` là vi dịch vụ chịu trách nhiệm đảm bảo toàn vẹn danh tính và phiên người dùng trên toàn hệ thống Tomato Cinema. Service hoạt động độc lập và chỉ giao tiếp với API Gateway hoặc các service nội bộ khác thông qua giao thức **gRPC / Protocol Buffers**.
+`auth-service` là vi dịch vụ chịu trách nhiệm đảm bảo toàn vẹn danh tính và phiên người dùng trên toàn hệ thống **Tomato Cinema**. Service hoạt động độc lập và chỉ giao tiếp với API Gateway hoặc các service nội bộ khác thông qua giao thức **gRPC / Protocol Buffers**.
 
 ---
 
 ## 1. Kiến trúc & Công nghệ Cốt lõi
 
 - **Framework**: NestJS Microservices (gRPC Server).
-- **Hợp đồng giao tiếp (Contract)**: `@tomatocinema/contracts/proto/auth.proto`.
-- **Mã hóa mật khẩu**: Thuật toán **Argon2id** (`argon2`) kháng GPU/ASIC brute-force.
+- **Hợp đồng giao tiếp (Contracts)**: 
+  - `@tomatocinema/contracts/proto/auth.proto` (`AuthService`)
+  - `@tomatocinema/contracts/proto/account.proto` (`AccountService`)
+- **Mã hóa mật khẩu**: Thuật toán **Argon2id** (`argon2`) kháng GPU/ASIC brute-force theo chuẩn OWASP.
 - **Cơ chế Token**: Engine độc quyền `@tomatocinema/passport` với HMAC Domain Separation (`PassportAccessToken/v1` & `PassportRefreshToken/v1`).
-- **Cache & Quản lý phiên**: Redis Cluster (Lưu mã xác thực OTP 5 phút và session Refresh Token 30 ngày).
+- **Cache & Quản lý phiên**: Redis Cluster (Lưu mã xác thực OTP 5 phút, phiên Refresh Token 30 ngày, cửa sổ ân hạn Grace 30s và lịch sử xoay vòng 24h).
 - **Message Broker**: RabbitMQ kết nối với `notification-service` và `user-service`.
 
 ---
 
-## 2. Danh mục Giao diện gRPC (`AuthService`)
+## 2. Danh mục Giao diện gRPC
 
-Định nghĩa trong file hợp đồng `packages/contracts/proto/auth.proto`:
+`auth-service` triển khai hai service gRPC chính phục vụ toàn bộ vòng đời tài khoản:
+
+### 2.1. `AuthService` (`auth.proto`)
+
+Điều phối quy trình đăng ký, đăng nhập, quên mật khẩu và xoay vòng phiên:
 
 | Tên RPC Method | Kiểu Request | Kiểu Response | Mô tả nghiệp vụ |
 | :--- | :--- | :--- | :--- |
@@ -28,10 +34,24 @@ description: Vi dịch vụ cốt lõi chịu trách nhiệm quản lý tài kho
 | `VerifyEmail` | `VerifyEmailRequest` | `AuthResponse` | Kiểm tra mã OTP, kích hoạt tài khoản và cấp cặp token đầu tiên. |
 | `ResendVerification` | `ResendVerificationRequest` | `ResendVerificationResponse` | Sinh lại mã OTP mới nếu mã cũ hết hạn sau 5 phút. |
 | `Login` | `LoginRequest` | `AuthResponse` | Xác thực Email/Mật khẩu bằng Argon2id và cấp phát Dual-Token. |
-| `Refresh` | `RefreshRequest` | `RefreshResponse` | Xoay vòng Refresh Token (hủy token cũ, cấp token mới). |
+| `Refresh` | `RefreshRequest` | `RefreshResponse` | Xoay vòng Refresh Token (hỗ trợ Grace Period 30s & Reuse Detection). |
 | `Logout` | `LogoutRequest` | `LogoutResponse` | Thu hồi Refresh Token khỏi Redis phía máy chủ. |
 | `ForgotPassword` | `ForgotPasswordRequest` | `ForgotPasswordResponse` | Yêu cầu gửi mã OTP đặt lại mật khẩu qua email. |
-| `ResetPassword` | `ResetPasswordRequest` | `ResetPasswordResponse` | Đặt lại mật khẩu mới và thu hồi tất cả phiên cũ của user. |
+| `ResetPassword` | `ResetPasswordRequest` | `ResetPasswordResponse` | Đặt lại mật khẩu mới và **thu hồi toàn bộ phiên** trên mọi thiết bị. |
+
+### 2.2. `AccountService` (`account.proto`)
+
+Quản lý hồ sơ xác thực và thay đổi thông tin nhạy cảm của người dùng:
+
+| Tên RPC Method | Kiểu Request | Kiểu Response | Mô tả nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| `GetAccount` | `GetAccountRequest` | `GetAccountResponse` | Lấy thông tin tài khoản, trạng thái xác thực email/phone và vai trò. |
+| `InitEmailChange` | `InitEmailChangeRequest` | `InitEmailChangeResponse` | Yêu cầu đổi email, kiểm tra trùng lặp và gửi mã OTP về email mới. |
+| `ConfirmEmailChange` | `ConfirmEmailChangeRequest` | `ConfirmEmailChangeResponse` | Xác thực OTP và cập nhật email chính thức. |
+| `InitPhoneChange` | `InitPhoneChangeRequest` | `InitPhoneChangeResponse` | Yêu cầu đổi số điện thoại và gửi mã OTP SMS. |
+| `ConfirmPhoneChange` | `ConfirmPhoneChangeRequest` | `ConfirmPhoneChangeResponse` | Xác thực OTP và cập nhật số điện thoại chính thức. |
+| `InitPasswordChange` | `InitPasswordChangeRequest` | `InitPasswordChangeResponse` | Kiểm tra mật khẩu hiện tại bằng Argon2id và gửi mã OTP về email. |
+| `ConfirmPasswordChange` | `ConfirmPasswordChangeRequest` | `ConfirmPasswordChangeResponse` | Xác thực OTP, cập nhật hash mật khẩu mới và **thu hồi toàn bộ phiên**. |
 
 ---
 
@@ -39,26 +59,53 @@ description: Vi dịch vụ cốt lõi chịu trách nhiệm quản lý tài kho
 
 ```
 apps/auth-service/src/modules/
-├── account/             # Quản lý bản ghi Account trong cơ sở dữ liệu
-├── auth/                # Controller gRPC và Service điều phối quy trình đăng ký/đăng nhập
-├── forgot-password/     # Nghiệp vụ quên và đặt lại mật khẩu an toàn
-├── otp/                 # Sinh mã 6 số (patcode), băm SHA-256 và lưu Redis
+├── account/             # AccountController & AccountService (quản lý thông tin, đổi email, phone, mật khẩu)
+├── auth/                # AuthController & AuthService, ForgotPasswordService, ResendVerificationService
+├── otp/                 # OtpService sinh mã 6 số (patcode), băm SHA-256 và lưu Redis
 ├── telegram/            # Xác thực SSO đăng nhập bằng Telegram Bot Widget
-└── token/               # TokenService điều phối PassportService và Redis Session
+├── token/               # TokenService điều phối PassportService, Redis Session, Grace Period & Reuse Detection
+└── users/               # Client gRPC đồng bộ hồ sơ sang UserService
 ```
 
 ---
 
 ## 4. Quản lý Khóa & Phiên tại Redis
 
+Hệ thống quản lý dữ liệu tạm thời và phiên đăng nhập stateful trên Redis với tiền tố rõ ràng:
+
 | Cấu trúc Khóa (Key Pattern) | Kiểu dữ liệu | Thời gian sống (TTL) | Mục đích sử dụng |
 | :--- | :---: | :---: | :--- |
-| `otp:email:{email}` | String (Hash SHA-256) | 300 giây (5 phút) | Lưu mã OTP xác thực email kích hoạt hoặc reset pass. |
-| `rt:{userId}:{fingerprint}` | String (JSON Session) | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động, phục vụ Rotation. |
+| `otp:email:{email}` | String (Hash SHA-256) | 300 giây (5 phút) | Mã OTP xác thực đăng ký hoặc kích hoạt tài khoản. |
+| `password_reset:{email}` | String (Hash SHA-256) | 300 giây (5 phút) | Mã OTP đặt lại mật khẩu từ `ForgotPasswordService`. |
+| `pwd_change_otp:{userId}` | String (Hash SHA-256) | 300 giây (5 phút) | Mã OTP xác nhận đổi mật khẩu từ `AccountService`. |
+| `email_change_otp:{userId}` | String (Hash SHA-256) | 300 giây (5 phút) | Mã OTP xác nhận cập nhật email mới. |
+| `phone_change_otp:{userId}` | String (Hash SHA-256) | 300 giây (5 phút) | Mã OTP xác nhận cập nhật số điện thoại mới. |
+| `rt:{userId}:{fingerprint}` | String (JSON Session) | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động (Active Session). |
+| `rt_grace:{userId}:{fingerprint}` | String (JSON Cặp Token mới) | 30 giây | **Cửa sổ Ân hạn (Grace Period)**: Khắc phục Race Condition khi mở nhiều tab. |
+| `rt_revoked:{userId}:{fingerprint}` | String (`1`) | 24 giờ (86,400s) | **Lịch sử Xoay vòng**: Lưu vết token đã xoay vòng để phát hiện tấn công tái sử dụng (Reuse Detection). |
 
 ---
 
-## 5. Sự kiện Bất đồng bộ (RabbitMQ Domain Events)
+## 5. Cơ chế Bảo mật Nâng cao
+
+### 5.1. Cửa sổ Ân hạn (Grace Period 30s)
+Khi người dùng mở đồng thời nhiều tab trình duyệt và Access Token hết hạn, các tab sẽ đồng loạt gửi yêu cầu làm mới. Request đầu tiên thực hiện xoay vòng, cấp cặp token mới và lưu vào cache `rt_grace`. Trong vòng 30 giây, các tab tiếp theo gửi cùng token cũ sẽ nhận lại ngay cặp token mới mà không bị lỗi `401 Unauthorized`, giải quyết triệt để vấn đề xung đột phiên (Race Condition).
+
+### 5.2. Phát hiện Tái sử dụng Token (Token Reuse Detection)
+Theo khuyến nghị OAuth 2.0 Security BCP: Nếu một Refresh Token hợp lệ về mặt chữ ký nhưng đã nằm trong danh sách `rt_revoked` (ngoài cửa sổ ân hạn 30s) được gửi lên lại, hệ thống nhận diện đây là hành vi **đánh cắp phiên hoặc Replay Attack**. Hệ thống lập tức kích hoạt cơ chế tự vệ **thu hồi toàn bộ phiên của người dùng** (`revokeAllRefreshTokens`).
+
+### 5.3. Thu hồi Toàn bộ Phiên (Global Revocation)
+Tất cả các phiên đăng nhập trên mọi thiết bị của người dùng sẽ bị xóa sạch khỏi Redis trong các tình huống an ninh:
+1. Người dùng **đổi mật khẩu** (`AccountService.confirmPasswordChange`).
+2. Người dùng **đặt lại mật khẩu qua email** (`ForgotPasswordService.resetPassword`).
+3. Phát hiện **tái sử dụng token bất thường** (`TokenService.rotate`).
+4. Người dùng chọn *“Đăng xuất khỏi tất cả thiết bị”* hoặc tài khoản bị quản trị viên khóa.
+
+Hàm `revokeAllRefreshTokens` sử dụng con trỏ `SCAN` duyệt qua các pattern `rt:${userId}:*`, `rt_grace:${userId}:*`, `rt_revoked:${userId}:*` không chặn Redis main thread.
+
+---
+
+## 6. Sự kiện Bất đồng bộ (RabbitMQ Domain Events)
 
 `auth-service` phát ra (Producer) các sự kiện domain quan trọng sau qua Topic Exchange:
 
@@ -68,3 +115,5 @@ apps/auth-service/src/modules/
 2. **`auth.account.registered`**:
    - Gửi sang `user-service` sau khi email được kích hoạt thành công để khởi tạo User Profile và cấp điểm thành viên mới.
    - Payload: `{ accountId: string, email: string }`.
+3. **`auth.password.changed`**:
+   - Gửi sang `notification-service` để thông báo cho người dùng biết mật khẩu của họ vừa được cập nhật thành công.

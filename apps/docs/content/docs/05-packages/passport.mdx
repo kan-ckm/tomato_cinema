@@ -113,3 +113,22 @@ export class AuthGuard implements CanActivate {
   }
 }
 ```
+
+---
+
+## 4. Tích hợp Stateful với Redis (`TokenService`)
+
+Trong khi `@tomatocinema/passport` là thư viện thuần tuý không trạng thái (**Stateless Crypto Engine**), tầng dịch vụ `auth-service` tận dụng engine này để xây dựng cơ chế quản lý phiên đa tầng kết hợp với Redis (**Stateful Session Management**):
+
+1. **Thẩm định chữ ký & Phân tách Miền**:
+   `PassportService.verify(refreshToken, 'refresh')` kiểm tra tính hợp lệ của token và domain HMAC `PassportRefreshToken/v1`.
+2. **Băm Fingerprint SHA-256**:
+   Để tiết kiệm bộ nhớ RAM Redis và bảo vệ token gốc không bị rò rỉ khi dump dữ liệu:
+   ```typescript
+   const fingerprint = createHash('sha256').update(refreshToken).digest('hex').slice(0, 32);
+   ```
+3. **Cửa sổ Ân hạn (Grace Period 30s)**:
+   Lưu bản sao cặp token mới tại `rt_grace:{userId}:{fingerprint}` với TTL 30s. Nếu người dùng mở nhiều tab cùng lúc, các tab đến sau nhận ngay token mới mà không bị đăng xuất cưỡng chế.
+4. **Phát hiện Tái sử dụng (Reuse Detection)**:
+   Lưu vết token đã xoay vòng tại `rt_revoked:{userId}:{fingerprint}` với TTL 24h. Bất kỳ nỗ lực nào sử dụng lại token cũ ngoài cửa sổ ân hạn sẽ lập tức kích hoạt lệnh hủy toàn bộ phiên (`revokeAllRefreshTokens`).
+

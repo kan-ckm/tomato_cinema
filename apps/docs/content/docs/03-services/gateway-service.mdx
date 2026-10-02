@@ -1,20 +1,134 @@
 ---
-title: API Gateway Service
-description: Cổng điều hướng tập trung, xác thực sơ bộ và giới hạn lưu lượng (Rate Limiting).
+title: API Gateway Service (Cổng Điều phối & Bảo vệ Biên)
+description: Điểm đón tiếp duy nhất từ Internet, xác thực không trạng thái qua Passport Engine, quản lý HttpOnly Cookie, bảo vệ lưu lượng Rate Limiting và bộ lọc lỗi gRPC.
 ---
 
-`gateway-service` là điểm đón nhận request duy nhất từ bên ngoài hệ thống.
+`gateway-service` đóng vai trò là **Edge Guard** (Cổng bảo vệ biên) và Reverse Proxy duy nhất tiếp nhận toàn bộ lưu lượng HTTP/REST từ các client bên ngoài (Web App Next.js, Mobile App, Third-party Webhook). Service chịu trách nhiệm thẩm định bảo mật sơ bộ, bóc tách context và chuyển đổi giao thức HTTP sang **gRPC nội bộ** với độ trễ tối thiểu.
 
-## Vai trò chính
+---
 
-- **Reverse Proxy & Routing**: Chuyển tiếp request đến service tương ứng.
-- **Authentication Guard**: Kiểm tra tính hợp lệ của Access Token trước khi vào mạng nội bộ.
-- **Rate Limiting**: Giới hạn số lượng request trên mỗi IP / User để phòng chống DDOS.
-- **CORS & Security Headers**: Cấu hình chuẩn Helmet, CSP, CORS cho toàn bộ API.
+## 1. Kiến trúc & Công nghệ Cốt lõi
 
-## Cấu trúc Endpoint
+- **Framework**: NestJS REST API Gateway (HTTP Server).
+- **Cổng dịch vụ (Port)**: `3000` (mặc định) hoặc biến môi trường `PORT`.
+- **Động cơ Xác thực (Auth Engine)**: `@tomatocinema/passport` thẩm định Access Token độc lập không trạng thái (**Zero-I/O Verification**).
+- **Phòng chống Lạm dụng (Rate Limiting)**: `@nestjs/throttler` với `AppThrottlerGuard` áp dụng hạn mức riêng cho từng loại hành động.
+- **Bảo mật Header**: `helmet` cấu hình Content Security Policy (CSP), Cross-Origin Embedder/Opener/Resource Policy và CORS.
+- **Giám sát & Đo lường**: `HttpMetricsInterceptor` thu thập số lượng request, độ trễ và mã HTTP response đẩy về Prometheus.
+- **Truy vết Phân tán**: OpenTelemetry SDK tự động gắn span context cho mọi request đi vào hệ thống.
 
-- `/api/v1/auth/*` -> `auth-service`
-- `/api/v1/users/*` -> `user-service`
-- `/api/v1/media/*` -> `media-service`
-- `/api/v1/bot/*` -> `bot-service`
+---
+
+## 2. Các Trách nhiệm Bảo mật Trọng yếu
+
+### 2.1. Xác thực Không Trạng Thái (`AuthGuard`)
+
+Tất cả các route được đánh dấu bằng decorator `@Protected()` đều được `AuthGuard` kiểm soát tự động:
+
+```typescript
+// apps/gateway-service/src/shared/guards/auth.guard.ts
+const token = this.extractToken(request);
+const result = this.passportService.verify(token, 'access');
+
+if (!result.valid) {
+  throw new UnauthorizedException(result.reason);
+}
+
+// Bơm ngữ cảnh người dùng vào request để các Controller sử dụng
+request.user = { id: result.userId };
+```
+
+- **Độ trễ cực thấp (< 0.05ms)**: Nhờ thuật toán HMAC Domain Separation của `@tomatocinema/passport`, việc kiểm tra chữ ký diễn ra hoàn toàn trong bộ nhớ RAM của Gateway mà không cần thực hiện bất kỳ lệnh I/O nào đến Database hay Redis.
+- **Trích xuất định danh (`@CurrentUser()`)**: Các controller dễ dàng lấy được `userId` từ token thông qua parameter decorator `@CurrentUser()`.
+
+---
+
+### 2.2. Quản lý HttpOnly Cookie cho Refresh Token
+
+Để triệt tiêu nguy cơ rò rỉ token qua lỗ hổng XSS (Cross-Site Scripting), API Gateway chịu trách nhiệm toàn bộ việc đóng gói và giải nén cookie:
+
+1. **Khi Đăng nhập thành công (`POST /auth/login`)**:
+   - `auth-service` trả về cặp token qua gRPC.
+   - Gateway chỉ trả `accessToken` về JSON Response Body.
+   - `refreshToken` được Gateway gắn trực tiếp vào header `Set-Cookie`:
+     ```typescript
+     res.cookie('refreshToken', token, {
+       httpOnly: true,                                       // Chặn JS đọc cookie
+       secure: this.configService.get('NODE_ENV') === 'production',
+       sameSite: 'lax',                                      // Chống tấn công CSRF
+       maxAge: 30 * 24 * 60 * 60 * 1000,                    // 30 ngày
+       path: '/'
+     });
+     ```
+2. **Khi Làm mới Token (`POST /auth/refresh`)**:
+   - Gateway tự động bóc tách `req.cookies.refreshToken`.
+   - Gửi yêu cầu xoay vòng token sang `auth-service`.
+   - Nhận cặp token mới, ghi đè cookie mới và trả `accessToken` mới cho client.
+3. **Khi Đăng xuất (`POST /auth/logout`)**:
+   - Gateway gọi gRPC để hủy session trên Redis phía máy chủ.
+   - Gửi chỉ thị xóa cookie về trình duyệt (`maxAge: 0`, `expires: new Date(0)`).
+
+---
+
+### 2.3. Phòng chống Brute-force & Spam (`AppThrottlerGuard`)
+
+Gateway triển khai các chính sách phân tầng lưu lượng nghiêm ngặt thông qua Custom Decorators:
+
+| Decorator | Endpoint áp dụng | Giới hạn (Limit / TTL) | Mục đích phòng thủ |
+| :--- | :--- | :---: | :--- |
+| **`@ThrottleAuth()`** | `/auth/login`, `/auth/register` | 5 lần / 60 giây | Chống dò quét mật khẩu (Credential Stuffing). |
+| **`@ThrottleOtp()`** | `/auth/resend-verification`, `/account/password/init` | 3 lần / 60 giây | Ngăn chặn lạm dụng cổng gửi email/SMS mã xác thực. |
+| **Mặc định** | Toàn bộ API còn lại | 100 lần / 60 giây | Bảo vệ hạ tầng khỏi tấn công DDOS thông thường. |
+
+---
+
+### 2.4. Chuyển đổi Ngoại lệ gRPC sang HTTP (`GrpcExceptionFilter`)
+
+Khi các microservice phía sau ném ra `RpcException`, Gateway tự động chuyển đổi mã lỗi gRPC sang HTTP Status Code tương ứng:
+
+```typescript
+// apps/gateway-service/src/shared/filters/grpc.exception.filter.ts
+const codeMap: Record<number, HttpStatus> = {
+  [RpcStatus.INVALID_ARGUMENT]: HttpStatus.BAD_REQUEST,           // 400
+  [RpcStatus.UNAUTHENTICATED]: HttpStatus.UNAUTHORIZED,            // 401
+  [RpcStatus.PERMISSION_DENIED]: HttpStatus.FORBIDDEN,             // 403
+  [RpcStatus.NOT_FOUND]: HttpStatus.NOT_FOUND,                     // 404
+  [RpcStatus.ALREADY_EXISTS]: HttpStatus.CONFLICT,                 // 409
+  [RpcStatus.RESOURCE_EXHAUSTED]: HttpStatus.TOO_MANY_REQUESTS,    // 429
+  [RpcStatus.INTERNAL]: HttpStatus.INTERNAL_SERVER_ERROR           // 500
+};
+```
+
+---
+
+## 3. Danh mục Endpoint Điều phối
+
+### 3.1. Phân hệ Xác thực (`/api/v1/auth`)
+
+Định nghĩa trong `apps/gateway-service/src/modules/auth/controllers/auth.controller.ts`:
+
+| Method | Endpoint | Yêu cầu Auth | Mô tả nghiệp vụ |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/auth/register` | Không | Đăng ký tài khoản mới bằng Email/Mật khẩu (Gửi OTP). |
+| `POST` | `/auth/verify-email` | Không | Xác thực OTP 6 số để kích hoạt tài khoản. |
+| `POST` | `/auth/resend-verification` | Không | Yêu cầu gửi lại mã OTP kích hoạt. |
+| `POST` | `/auth/login` | Không | Đăng nhập tài khoản, thiết lập cookie `refreshToken`. |
+| `POST` | `/auth/refresh` | Cookie | Xoay vòng Refresh Token (hỗ trợ Grace Period 30s). |
+| `POST` | `/auth/logout` | Cookie | Đăng xuất và hủy phiên trên server lẫn client. |
+| `POST` | `/auth/forgot-password` | Không | Yêu cầu gửi OTP đặt lại mật khẩu qua email. |
+| `POST` | `/auth/reset-password` | Không | Đặt lại mật khẩu mới bằng OTP và thu hồi mọi phiên cũ. |
+| `POST` | `/auth/telegram/verify` | Không | Tiếp nhận dữ liệu xác thực từ Telegram Widget SSO. |
+| `POST` | `/auth/telegram/finalize` | Không | Hoàn tất liên kết tài khoản sau khi xác thực Telegram. |
+
+### 3.2. Phân hệ Tài khoản Cá nhân (`/api/v1/account`)
+
+Định nghĩa trong `apps/gateway-service/src/modules/account/account.controller.ts`:
+
+| Method | Endpoint | Yêu cầu Auth | Mô tả nghiệp vụ |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/account/email/init` | `@Protected()` | Khởi tạo quy trình thay đổi Email (gửi OTP). |
+| `POST` | `/account/email/confirm` | `@Protected()` | Xác thực OTP và hoàn tất cập nhật Email. |
+| `POST` | `/account/phone/init` | `@Protected()` | Khởi tạo quy trình thay đổi Số điện thoại (gửi OTP). |
+| `POST` | `/account/phone/confirm` | `@Protected()` | Xác thực OTP và hoàn tất cập nhật Số điện thoại. |
+| `POST` | `/account/password/init` | `@Protected()` | Kiểm tra mật khẩu cũ và gửi OTP xác nhận đổi mật khẩu. |
+| `POST` | `/account/password/confirm` | `@Protected()` | Xác thực OTP, đổi mật khẩu mới và **thu hồi toàn bộ phiên**. |

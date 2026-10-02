@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Kiến trúc Đường ống Giám sát & Logs tập trung (Observability Pipeline)",
+    "output": "apps/docs/public/diagrams/observability-pipeline.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "log-shipping",
+        "label": "Luồng Thu thập Logs",
+        "focus": ["auth_svc", "infra_docker", "promtail", "loki", "grafana"],
+        "note": "Logs có cấu trúc JSON từ các container được Promtail cào định kỳ và đẩy vào Grafana Loki."
+      },
+      {
+        "id": "trace-pipeline",
+        "label": "Luồng Phân tán Traces",
+        "focus": ["gw_svc", "otel_col", "tempo", "grafana"],
+        "note": "OpenTelemetry SDK thu thập trace spans và chuyển qua OTel Collector về Grafana Tempo."
+      },
+      {
+        "id": "full-observability",
+        "label": "Tổng thể Observability (Logs, Traces, Metrics)",
+        "focus": ["auth_svc", "infra_docker", "gw_svc", "promtail", "otel_col", "loki", "tempo", "prometheus", "grafana"],
+        "note": "Hệ thống liên kết 2 chiều giữa Logs (Loki) và Traces (Tempo) trên giao diện Grafana."
+      }
+    ]
+  },
+  "components": [
+    { "id": "auth_svc", "type": "backend", "label": "Auth Service", "sublabel": "Pino + Trace ID", "pos": [50, 120], "size": [140, 60], "tag": "JSON stdout" },
+    { "id": "infra_docker", "type": "database", "label": "Docker Containers", "sublabel": "Postgres, Redis, RMQ", "brand": "docker", "pos": [50, 240], "size": [140, 60], "tag": "stdout/stderr" },
+    { "id": "gw_svc", "type": "backend", "label": "Microservices", "sublabel": "Gateway, Users, etc.", "pos": [50, 380], "size": [140, 60], "tag": "OTel Tracing" },
+    { "id": "promtail", "type": "security", "label": "Promtail Shipper", "sublabel": "Docker SD :9080", "pos": [310, 170], "size": [150, 64], "tag": "log scraper" },
+    { "id": "otel_col", "type": "security", "label": "OTel Collector", "sublabel": "Contrib :4317/:4318", "pos": [310, 380], "size": [150, 64], "tag": "batch & memory" },
+    { "id": "loki", "type": "database", "label": "Grafana Loki", "sublabel": "TSDB Chunks :3100", "brand": "grafana", "pos": [580, 150], "size": [150, 64], "tag": "Logs Store" },
+    { "id": "tempo", "type": "database", "label": "Grafana Tempo", "sublabel": "Distributed Traces", "brand": "grafana", "pos": [580, 280], "size": [150, 64], "tag": "Traces Store" },
+    { "id": "prometheus", "type": "database", "label": "Prometheus", "sublabel": "Metrics TSDB :9090", "brand": "prometheus", "pos": [580, 410], "size": [150, 64], "tag": "Metrics Store" },
+    { "id": "grafana", "type": "frontend", "label": "Grafana Portal", "sublabel": "UI Dashboard :3001", "brand": "grafana", "pos": [900, 260], "size": [150, 70], "tag": "Unified View" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Tầng Ứng dụng & Hạ tầng phát sinh Logs", "wraps": ["auth_svc", "infra_docker", "gw_svc"] },
+    { "kind": "region", "label": "Tầng Thu thập & Tiếp nhận Telemetry", "wraps": ["promtail", "otel_col"] },
+    { "kind": "region", "label": "Cụm Lưu trữ Giám sát Chuyên biệt", "wraps": ["loki", "tempo", "prometheus"] }
+  ],
+  "connections": [
+    { "id": "auth-promtail", "from": "auth_svc", "to": "promtail", "label": "stdout JSON", "variant": "emphasis" },
+    { "id": "infra-promtail", "from": "infra_docker", "to": "promtail", "label": "docker stream", "variant": "default" },
+    { "id": "gw-otel", "from": "gw_svc", "to": "otel_col", "label": "gRPC OTLP", "variant": "emphasis" },
+    { "id": "promtail-loki", "from": "promtail", "to": "loki", "label": "HTTP push", "variant": "emphasis" },
+    { "id": "otel-tempo", "from": "otel_col", "to": "tempo", "label": "traces", "variant": "emphasis" },
+    { "id": "otel-prom", "from": "otel_col", "to": "prometheus", "label": "metrics", "variant": "default" },
+    { "id": "loki-grafana", "from": "loki", "to": "grafana", "label": "LogQL", "variant": "emphasis" },
+    { "id": "tempo-grafana", "from": "tempo", "to": "grafana", "label": "traces", "labelDx": -25, "variant": "emphasis" },
+    { "id": "prom-grafana", "from": "prometheus", "to": "grafana", "label": "PromQL", "variant": "default" }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Tự động đính kèm TraceID vào Log",
+      "items": [
+        "Pino Logger sử dụng mixin trích xuất context traceId từ OpenTelemetry",
+        "Mỗi dòng log của Auth Service tự động chứa trường trace_id phục vụ truy vết"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Thu thập Logs không xâm lấn với Promtail",
+      "items": [
+        "Tự động phát hiện container mới qua Docker Socket mỗi 5 giây",
+        "Đánh nhãn container, service, project và chuẩn hóa timestamp nano"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Tương quan 2 chiều (Logs ↔ Traces)",
+      "items": [
+        "Derived Fields trên Loki tạo nút nhảy trực tiếp sang xem Trace trên Tempo",
+        "TracesToLogs trên Tempo cho phép nhảy ngược về xem toàn bộ Logs của Span"
+      ]
+    }
+  ]
+}

@@ -150,17 +150,19 @@ Khi Access Token hết hạn (sau 1 giờ), Frontend gọi endpoint `POST /auth/
 
 1. Gateway đọc `refreshToken` từ cookie gửi lên (nếu không có cookie $\rightarrow$ trả về `401 Unauthorized`).
 2. Gateway gọi gRPC sang `auth-service`:
-   - Kiểm tra tính hợp lệ và chữ ký của Refresh Token.
+   - Thẩm định tính hợp lệ và chữ ký của Refresh Token qua `passportService.verify`.
    - Băm SHA-256 token lấy **32 ký tự Fingerprint**:
      ```typescript
      fingerprint = sha256(token).slice(0, 32);
      ```
-   - Kiểm tra sự tồn tại của session trong Redis tại key `rt:{userId}:{fingerprint}`:
-     - Nếu **không tìm thấy** $\rightarrow$ Phiên đã bị thu hồi hoặc đã hết hạn.
+   - **Kiểm tra Cửa sổ Ân hạn (Grace Period 30s)**:
+     - Nếu token vừa được xoay vòng trong vòng 30 giây (do tab khác gửi trước), trả về ngay cặp token mới được lưu trong cache `rt_grace:{userId}:{fingerprint}`. Giải quyết triệt để vấn đề xung đột phiên (Race Condition) khi mở nhiều tab.
+   - **Phát hiện Tái sử dụng Token (Token Reuse Detection)**:
+     - Nếu token nằm trong danh sách đã xoay vòng `rt_revoked:{userId}:{fingerprint}` (ngoài 30s ân hạn), hệ thống xác định có hành vi đánh cắp phiên và **lập tức kích hoạt thu hồi toàn bộ phiên của người dùng** (`revokeAllRefreshTokens`).
    - **Xoay vòng (Rotation)**:
-     - Xóa bỏ ngay lập tức token cũ khỏi Redis: `DEL rt:{userId}:{fingerprint}`.
-     - Tạo ra một cặp Access Token và Refresh Token hoàn toàn mới.
-     - Lưu Refresh Token mới vào Redis với fingerprint mới.
+     - Xóa token cũ khỏi active: `DEL rt:{userId}:{fingerprint}`.
+     - Cấp phát cặp Access Token và Refresh Token hoàn toàn mới.
+     - Dùng Redis Pipeline lưu token mới vào `rt:{userId}:{newFingerprint}`, lưu `rt_grace` (30s) và lưu `rt_revoked` (24h).
 3. Gateway nhận cặp token mới, ghi đè cookie `refreshToken` mới và trả `accessToken` mới về cho client.
 
 ---
@@ -172,4 +174,10 @@ Khác với các hệ thống chỉ xóa token ở client (không an toàn), Tom
 - **Đăng xuất đơn lẻ (`POST /auth/logout`)**:
   Xóa phiên hiện tại trong Redis (`rt:{userId}:{fingerprint}`) và xóa cookie ở trình duyệt. Kể từ lúc này, Refresh Token đó không bao giờ có thể dùng để refresh được nữa.
 - **Thu hồi toàn bộ thiết bị (Global Revocation)**:
-  Khi người dùng đổi mật khẩu, bị khóa tài khoản hoặc chọn *“Đăng xuất khỏi tất cả thiết bị”*, hệ thống dùng lệnh `SCAN` quét pattern `rt:{userId}:*` không chặn thread của Redis và xóa sạch toàn bộ các phiên của tài khoản đó.
+  Được kích hoạt tự động trong các kịch bản an ninh:
+  1. Người dùng **đổi mật khẩu** (`AccountService.confirmPasswordChange`).
+  2. Người dùng **đặt lại mật khẩu qua email** (`ForgotPasswordService.resetPassword`).
+  3. Hệ thống phát hiện **xâm nhập / tái sử dụng token** (`TokenService.rotate`).
+  4. Quản trị viên khóa tài khoản hoặc người dùng bấm *“Đăng xuất khỏi tất cả thiết bị”*.
+
+  Hệ thống dùng con trỏ `SCAN` quét các pattern `rt:${userId}:*`, `rt_grace:${userId}:*`, `rt_revoked:${userId}:*` không chặn Redis main thread và xóa sạch toàn bộ các phiên của tài khoản đó.

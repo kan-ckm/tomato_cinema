@@ -5,6 +5,7 @@
     "auth-lifecycle",
     "booking-journey",
     "media-streaming",
-    "event-pipeline"
+    "event-pipeline",
+    "observability-pipeline"
   ]
 }

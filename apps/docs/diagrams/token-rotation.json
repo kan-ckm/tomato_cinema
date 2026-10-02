@@ -16,7 +16,7 @@
         "id": "breach-detection",
         "label": "Nhánh phát hiện xâm nhập",
         "focus": ["check_family", "detect_reuse", "revoke_family"],
-        "note": "Khi token cũ trong family được dùng lại, hệ thống lập tức thu hồi toàn bộ token của người dùng."
+        "note": "Khi token cũ ngoài cửa sổ ân hạn được dùng lại, hệ thống lập tức thu hồi toàn bộ token của người dùng."
       }
     ]
   },
@@ -35,9 +35,9 @@
   "nodes": [
     { "id": "client_req", "lane": "client", "col": 0, "type": "frontend", "label": "Client Request", "sublabel": "gọi /auth/refresh", "width": 140 },
     { "id": "verify_jwt", "lane": "auth", "col": 1, "type": "security", "label": "Thẩm định Token", "sublabel": "kiểm tra chữ ký và hạn", "width": 140 },
-    { "id": "check_family", "lane": "storage", "col": 2, "type": "database", "label": "Redis Family Store", "sublabel": "kiểm tra token blacklist", "tag": "Gatekeeper", "width": 140 },
-    { "id": "issue_new", "lane": "auth", "col": 3, "type": "backend", "label": "Xoay vòng Token", "sublabel": "cấp cặp token mới", "tag": "Hợp lệ", "width": 140 },
-    { "id": "detect_reuse", "lane": "alert", "col": 3, "type": "security", "label": "Phát hiện Đột nhập", "sublabel": "token đã dùng trước đó", "tag": "Cảnh báo đỏ", "width": 140 },
+    { "id": "check_family", "lane": "storage", "col": 2, "type": "database", "label": "Redis State Store", "sublabel": "kiểm tra grace & active", "tag": "Gatekeeper", "width": 140 },
+    { "id": "issue_new", "lane": "auth", "col": 3, "type": "backend", "label": "Xoay vòng Token", "sublabel": "cấp mới & set grace 30s", "tag": "Hợp lệ", "width": 140 },
+    { "id": "detect_reuse", "lane": "alert", "col": 3, "type": "security", "label": "Phát hiện Đột nhập", "sublabel": "tái dùng ngoài grace", "tag": "Cảnh báo đỏ", "width": 140 },
     { "id": "success_resp", "lane": "client", "col": 4, "type": "frontend", "label": "Cập nhật Phiên Mới", "sublabel": "200 OK + Cookie mới", "width": 140 },
     { "id": "revoke_family", "lane": "alert", "col": 4, "type": "security", "label": "Thu hồi Toàn bộ Phiên", "sublabel": "buộc logout mọi thiết bị", "tag": "403 Forbidden", "width": 140 }
   ],
@@ -52,18 +52,18 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "Token Rotation Mỗi Lần Refresh",
+      "title": "Token Rotation & Grace Period 30s",
       "items": [
-        "Mỗi Refresh Token chỉ được sử dụng một lần duy nhất (Single-Use Token)",
-        "Khi lấy Access Token mới, một Refresh Token mới được sinh ra và token cũ bị hủy"
+        "Mỗi Refresh Token chỉ dùng 1 lần; cấp cặp token mới và lưu Grace Period 30 giây",
+        "Khắc phục Race Condition: Các tab đồng thời nhận cùng token mới mà không bị đăng xuất"
       ]
     },
     {
       "dot": "rose",
       "title": "Phát hiện Xâm nhập Tức thì (Reuse Detection)",
       "items": [
-        "Nếu kẻ tấn công dùng lại token cũ đã lộ, hệ thống nhận diện vi phạm ngay lập tức",
-        "Toàn bộ phiên thuộc cùng Token Family ID bị hủy trên mọi thiết bị và ghi log bảo mật"
+        "Nếu kẻ tấn công dùng lại token cũ ngoài cửa sổ ân hạn, hệ thống kích hoạt cảnh báo",
+        "Toàn bộ phiên của người dùng bị thu hồi tức thì trên mọi thiết bị để bảo vệ tài khoản"
       ]
     }
   ]

@@ -10,15 +10,16 @@ Hệ thống **Tomato Cinema** áp dụng mô hình kiến trúc phân tán hư�
 1. **Client Tier**: Web App (Next.js 16 App Router), Mobile App, Admin Dashboard.
 2. **API Gateway Tier**: `gateway-service` đóng vai trò Reverse Proxy, Rate Limiter, định tuyến request và thực hiện xác thực bước đầu.
 3. **Core Services Tier**:
-   - `auth-service`: Quản lý danh tính, phân quyền, cấp phát token JWT & refresh token.
+   - `auth-service`: Quản lý danh tính, phân quyền, cấp phát Dual-Token qua engine bảo mật `@tomatocinema/passport` và quản lý phiên xoay vòng trên Redis.
    - `user-service`: Quản lý thông tin hồ sơ người dùng, hạng mức thành viên, lịch sử đặt vé.
    - `media-service`: Xử lý lưu trữ video, ảnh poster, luồng phát trực tuyến trailer phim.
    - `notification-service`: Xử lý gửi email kích hoạt, tin nhắn xác nhận vé xem phim.
    - `bot-service`: Hỗ trợ chăm sóc khách hàng tự động và tra cứu suất chiếu qua bot.
 4. **Shared Packages**:
-   - `@repo/common`: Chứa DTO, Utility, Constants, Error handlers dùng chung.
-   - `@repo/contracts`: Định nghĩa interface, event payload giữa các services.
-   - `@repo/ui`: Thư viện React UI components dùng chung.
+   - `@tomatocinema/common`: Chứa DTO, Utility, Constants, Enum và Error handlers dùng chung.
+   - `@tomatocinema/contracts`: Định nghĩa hợp đồng giao tiếp gRPC / Protocol Buffers giữa các services.
+   - `@tomatocinema/passport`: Thư viện tạo và thẩm định token HMAC Domain Separation hiệu năng cao.
+   - `@tomatocinema/ui`: Thư viện giao diện React UI components dùng chung trên toàn hệ thống.
 
 ## Sơ đồ Kiến trúc Hệ thống
 

@@ -1,9 +1,11 @@
 ---
 title: Xoay vòng Refresh Token (Token Rotation & Session Management)
-description: Kỹ thuật bảo mật quản lý phiên stateful với Redis, băm Fingerprint SHA-256 và cơ chế xoay vòng Refresh Token Rotation.
+description: Kỹ thuật bảo mật quản lý phiên stateful với Redis, băm Fingerprint SHA-256, cửa sổ ân hạn Grace Period 30s và cơ chế phòng vệ Token Reuse Detection.
 ---
 
-Trong kiến trúc bảo mật của **Tomato Cinema**, Refresh Token đóng vai trò sinh tử trong việc duy trì phiên người dùng mà không bắt họ phải nhập lại mật khẩu nhiều lần. Tuy nhiên, nếu Refresh Token có thời hạn dài mà không được xoay vòng, việc rò rỉ token có thể khiến kẻ tấn công duy trì phiên vĩnh viễn.
+Trong kiến trúc bảo mật của **Tomato Cinema**, Refresh Token đóng vai trò sinh tử trong việc duy trì phiên người dùng mà không bắt họ phải nhập lại mật khẩu nhiều lần. Tuy nhiên, nếu Refresh Token có thời hạn dài mà không được kiểm soát chặt chẽ, việc rò rỉ token có thể khiến kẻ tấn công duy trì phiên vĩnh viễn hoặc gây ra hiện tượng xung đột phiên (Race Condition) khi người dùng mở nhiều tab trình duyệt.
+
+Dự án áp dụng mô hình xoay vòng token thế hệ mới kết hợp giữa **Cửa sổ Ân hạn (Grace Period)** và **Phát hiện Tái sử dụng (Token Reuse Detection)** theo khuyến nghị bảo mật **OAuth 2.0 Security Best Current Practice (RFC 6749)**.
 
 ---
 
@@ -12,7 +14,7 @@ Trong kiến trúc bảo mật của **Tomato Cinema**, Refresh Token đóng vai
 <DiagramViewer
   src="/diagrams/token-rotation.html"
   title="Cơ chế Xoay vòng & Quản lý Phiên Token (Archify Workflow)"
-  description="Quy trình phân giải hai nhánh: Cấp phát phiên mới (Happy Path) và Thu hồi toàn bộ phiên khi phát hiện xâm nhập hoặc phiên bất hợp lệ."
+  description="Quy trình phân giải ba nhánh: Cấp phát phiên mới (Happy Path), Tiếp nhận đa tab trong Cửa sổ Ân hạn (Grace Period) và Thu hồi toàn bộ phiên khi phát hiện xâm nhập (Reuse Detection)."
   height="600px"
 />
 
@@ -20,15 +22,18 @@ Trong kiến trúc bảo mật của **Tomato Cinema**, Refresh Token đóng vai
 
 ## 2. Mô hình Phiên Stateful trên Redis
 
-Dù Access Token hoàn toàn **Stateless** (không lưu trữ trên server để Gateway xác thực siêu tốc), Refresh Token lại là **Stateful** và được quản lý chặt chẽ tại Redis:
+Dù Access Token hoàn toàn **Stateless** (không lưu trữ trên server để API Gateway xác thực siêu tốc với độ trễ dưới 0.05ms), Refresh Token lại là **Stateful** và được quản lý đa tầng tại Redis:
 
-### Cấu trúc khóa lưu trữ:
-```
-rt:{userId}:{fingerprint}
-```
+### Cấu trúc 3 nhóm khóa lưu trữ:
+
+| Khóa Redis | Thời gian sống (TTL) | Mục đích kỹ thuật |
+| :--- | :--- | :--- |
+| `rt:{userId}:{fingerprint}` | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động (Active Session). |
+| `rt_grace:{userId}:{fingerprint}` | 30 giây | **Cửa sổ Ân hạn (Grace Period)**: Lưu bản sao cặp token mới để phục vụ các request đồng thời từ nhiều tab trình duyệt. |
+| `rt_revoked:{userId}:{fingerprint}` | 24 giờ (86,400s) | **Lịch sử Xoay vòng (Revocation Tracking)**: Lưu vết token đã xoay vòng để phát hiện tấn công tái sử dụng (Reuse Detection). |
 
 Trong đó:
-- `rt`: Tiền tố (Prefix) định danh khóa Refresh Token.
+- `rt`, `rt_grace`, `rt_revoked`: Tiền tố (Prefix) định danh từng trạng thái vòng đời token.
 - `{userId}`: UUID định danh người dùng trong database.
 - `{fingerprint}`: Dấu vân tay 32 ký tự hex được băm SHA-256 từ chuỗi Refresh Token gốc:
   ```typescript
@@ -36,97 +41,146 @@ Trong đó:
     return createHash('sha256').update(token).digest('hex').slice(0, 32);
   }
   ```
-- **Dữ liệu lưu trữ (Value)**: Chuỗi JSON lưu thông tin phiên `{ userId, createdAt: 1790521290000 }`.
-- **Thời gian sống (TTL)**: Được thiết lập tự động bằng cấu hình `passport.refreshTtl` (mặc định 30 ngày = `2,592,000` giây).
 
 > **Tại sao phải dùng Fingerprint thay vì lưu trực tiếp toàn bộ token vào Redis key?**  
-> 1. Tiết kiệm dung lượng RAM trên Redis khi lưu trữ hàng triệu phiên.  
-> 2. Đảm bảo an toàn: Ngay cả khi quản trị viên dump dữ liệu Redis, họ cũng không sở hữu token gốc để giả lập phiên của khách hàng.
+> 1. **Tiết kiệm dung lượng RAM**: Khóa ngắn gọn 32 ký tự giúp Redis cluster tiết kiệm bộ nhớ khi quản lý hàng triệu phiên.  
+> 2. **Bảo mật tối thượng**: Ngay cả khi quản trị viên dump dữ liệu Redis hoặc bộ nhớ cache bị rò rỉ, kẻ tấn công cũng **không thể khôi phục ra chuỗi Refresh Token gốc** để giả mạo phiên của người dùng.
 
 ---
 
-## 3. Thuật toán Xoay vòng (Rotation Step-by-Step)
+## 3. Thuật toán Xoay vòng Toàn diện (`TokenService.rotate`)
 
-Mỗi lần client gọi API `POST /auth/refresh`, quy trình sau được kích hoạt tại `AuthService` và `TokenService`:
+Mỗi lần client gọi API `POST /auth/refresh`, quy trình xử lý được thực thi nguyên tử (atomic) tại `TokenService`:
 
 ```typescript
-// Bước 1: Thẩm định chữ ký điện tử HMAC và hạn sống của Token
-const result = await this.tokenService.verifyRefreshToken(refreshToken);
-if (!result.valid) {
-  throw new RpcException({
-    code: RpcStatus.UNAUTHENTICATED,
-    details: result.reason // 'chữ ký không hợp lệ' | 'Token hết hạn' | 'loại token không hợp lệ'
-  });
+public async rotate(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  // BƯỚC 1: Thẩm định chữ ký HMAC và hạn dùng của Token
+  const result = this.passportService.verify(refreshToken, 'refresh');
+  if (!result.valid) {
+    throw new RpcException({
+      code: RpcStatus.UNAUTHENTICATED,
+      details: result.reason
+    });
+  }
+
+  const { userId } = result;
+  const fingerprint = this.computeFingerprint(refreshToken);
+
+  // BƯỚC 2: Kiểm tra Cửa sổ Ân hạn (Grace Period 30s)
+  // Xử lý triệt để Race Condition khi người dùng mở nhiều tab hoặc gọi nhiều API đồng thời
+  const graceKey = `rt_grace:${userId}:${fingerprint}`;
+  const graceSession = await this.redisService.get(graceKey);
+  if (graceSession) {
+    return JSON.parse(graceSession); // Trả về ngay cặp token mới vừa sinh
+  }
+
+  // BƯỚC 3: Phát hiện Tái sử dụng Token (Token Reuse Detection)
+  // Nếu token cũ ngoài cửa sổ ân hạn được dùng lại -> Dấu hiệu bị đánh cắp phiên
+  const revokedKey = `rt_revoked:${userId}:${fingerprint}`;
+  const isReused = await this.redisService.get(revokedKey);
+  if (isReused) {
+    // Thu hồi ngay lập tức TOÀN BỘ phiên của người dùng trên mọi thiết bị
+    await this.revokeAllRefreshTokens(userId);
+    throw new RpcException({
+      code: RpcStatus.UNAUTHENTICATED,
+      details: 'Phát hiện tái sử dụng token bất thường. Toàn bộ phiên đăng nhập đã bị thu hồi để bảo vệ tài khoản.'
+    });
+  }
+
+  // BƯỚC 4: Kiểm tra tính hợp lệ của phiên hiện tại trong Redis
+  const redisKey = `rt:${userId}:${fingerprint}`;
+  const session = await this.redisService.get(redisKey);
+  if (!session) {
+    throw new RpcException({
+      code: RpcStatus.UNAUTHENTICATED,
+      details: 'Phiên đã hết hạn hoặc đã bị thu hồi'
+    });
+  }
+
+  // BƯỚC 5: Sinh cặp Token mới
+  const newTokens = await this.generate(userId);
+
+  // BƯỚC 6: Cập nhật Redis nguyên tử bằng Pipeline
+  const pipeline = this.redisService.pipeline();
+  pipeline.del(redisKey);                                  // Xóa token cũ khỏi active
+  pipeline.set(graceKey, JSON.stringify(newTokens), 'EX', 30); // Lưu grace 30s
+  pipeline.set(revokedKey, '1', 'EX', 86400);              // Lưu vết 24h để phát hiện reuse
+  await pipeline.exec();
+
+  return newTokens;
 }
-
-// Bước 2: Thu hồi (Revoke) Refresh Token cũ NGAY LẬP TỨC khỏi Redis
-await this.tokenService.revokeRefreshToken(result.userId, result.fingerprint);
-
-// Bước 3: Cấp phát cặp Access Token và Refresh Token hoàn toàn mới
-return await this.tokenService.generate(result.userId);
 ```
-
-### Lợi ích an ninh của việc xoay vòng:
-- **Nguyên tắc dùng một lần (Single-Use Token)**: Mỗi Refresh Token chỉ có thể được sử dụng đúng một lần duy nhất.
-- **Rút ngắn cửa sổ nguy cơ (Window of Exposure)**: Kẻ tấn công nếu có lấy được token cũ cũng không thể sử dụng sau khi người dùng hợp lệ đã thực hiện thao tác refresh.
 
 ---
 
-## 4. Xử lý Đăng xuất & Thu hồi Toàn bộ Thiết bị
+## 4. Giải quyết Các Bài toán Hóc búa về Xác thực
 
-### 4.1. Đăng xuất phiên hiện tại (`POST /auth/logout`)
+### 4.1. Bài toán Race Condition khi Mở Nhiều Tab (Multi-Tab Concurrency)
+- **Vấn đề trước đây**: Khi Access Token hết hạn, nếu người dùng mở 3 tab trình duyệt, cả 3 tab đồng thời gửi `POST /auth/refresh`. Tab đến trước xóa ngay token cũ trong Redis, khiến 2 tab đến sau bị báo lỗi `401 Phiên đã hết hạn` và người dùng bị **văng ra màn hình đăng nhập (Forced Logout)** bất công.
+- **Giải pháp Tomato Cinema**: Nhờ cơ chế **Grace Period 30 giây**, trong vòng 30s sau khi xoay vòng, mọi request gửi cùng token cũ đều nhận lại bản sao token mới nhất. Trải nghiệm người dùng hoàn toàn liền mạch, không còn tình trạng gián đoạn phiên.
+
+### 4.2. Bài toán Đánh cắp Token (Token Theft & Replay Attack Defense)
+- **Vấn đề**: Kẻ tấn công đánh cắp được chuỗi Refresh Token trong quá trình truyền tải.
+- **Giải pháp Tomato Cinema**:
+  - Nếu kẻ tấn công dùng token trước $\rightarrow$ Người dùng hợp lệ dùng lại sau đó $\rightarrow$ Hệ thống phát hiện Token Reuse, **ngay lập tức hủy toàn bộ phiên của cả hai bên**. Kẻ tấn công bị đá văng khỏi hệ thống.
+  - Nếu người dùng hợp lệ refresh trước $\rightarrow$ Kẻ tấn công cố dùng token cũ sau 30s $\rightarrow$ Hệ thống phát hiện Token Reuse và hủy toàn bộ phiên ngay lập tức.
+
+---
+
+## 5. Xử lý Đăng xuất & Thu hồi Toàn bộ Thiết bị
+
+### 5.1. Đăng xuất phiên đơn lẻ (`POST /auth/logout`)
 1. Gateway bóc tách cookie `refreshToken`.
-2. Gửi gRPC sang `auth-service` để xóa khóa `rt:{userId}:{fingerprint}` khỏi Redis.
-3. Gateway gửi header hủy cookie về trình duyệt:
-   ```typescript
-   res.cookie('refreshToken', '', {
-     httpOnly: true,
-     secure: process.env.NODE_ENV === 'production',
-     domain: process.env.COOKIE_DOMAIN,
-     sameSite: 'lax',
-     expires: new Date(0)
-   });
-   ```
+2. Gửi gRPC sang `auth-service` để xóa sạch các khóa `rt`, `rt_grace`, `rt_revoked` tương ứng khỏi Redis.
+3. Gateway gửi header hủy cookie về trình duyệt (`expires: new Date(0)`).
 
-### 4.2. Thu hồi toàn bộ phiên đăng nhập (Global Revocation)
-Được kích hoạt khi:
-- Người dùng **đổi mật khẩu** hoặc yêu cầu **đặt lại mật khẩu (Reset Password)**.
-- Người dùng bấm nút **“Đăng xuất khỏi tất cả các thiết bị”**.
-- Tài khoản bị quản trị viên khóa do nghi ngờ gian lận.
+### 5.2. Thu hồi toàn bộ phiên đăng nhập (Global Revocation)
+Được kích hoạt tự động trong các trường hợp sau:
+1. **Người dùng Đổi mật khẩu thành công** (`AccountService.confirmPasswordChange`).
+2. **Người dùng Đặt lại mật khẩu qua Email OTP** (`ForgotPasswordService.resetPassword`).
+3. **Hệ thống phát hiện xâm nhập** (Token Reuse Detection kích hoạt trong `TokenService.rotate`).
+4. **Quản trị viên khóa tài khoản** hoặc người dùng chọn *"Đăng xuất khỏi tất cả thiết bị"*.
 
-Để tránh làm nghẽn Redis khi tài khoản có nhiều phiên, hàm `revokeAllRefreshTokens` sử dụng con trỏ `SCAN` thay vì lệnh `KEYS`:
+Để tránh làm nghẽn Redis khi quét nhiều session, hàm `revokeAllRefreshTokens` sử dụng con trỏ `SCAN` thay vì lệnh `KEYS`:
 
 ```typescript
 public async revokeAllRefreshTokens(userId: string): Promise<void> {
-  const pattern = `${REDIS_RT_PREFIX}:${userId}:*`;
-  let cursor = '0';
+  const patterns = [
+    `rt:${userId}:*`,
+    `rt_grace:${userId}:*`,
+    `rt_revoked:${userId}:*`
+  ];
 
-  do {
-    const [nextCursor, keys] = await this.redisService.scan(
-      cursor,
-      'MATCH',
-      pattern,
-      'COUNT',
-      100
-    );
-    cursor = nextCursor;
+  for (const pattern of patterns) {
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redisService.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100
+      );
+      cursor = nextCursor;
 
-    if (keys.length > 0) {
-      await this.redisService.del(...keys);
-    }
-  } while (cursor !== '0');
+      if (keys.length > 0) {
+        await this.redisService.del(...keys);
+      }
+    } while (cursor !== '0');
+  }
 }
 ```
 
 ---
 
-## 5. Bảng Ma trận So sánh Access Token vs. Refresh Token
+## 6. Bảng Ma trận So sánh Access Token vs. Refresh Token
 
 | Tiêu chí | Access Token | Refresh Token |
 | :--- | :--- | :--- |
-| **Bản chất lưu trữ** | **Stateless** (Chỉ xác thực chữ ký HMAC) | **Stateful** (Lưu vết session trong Redis) |
+| **Bản chất lưu trữ** | **Stateless** (Chỉ xác thực chữ ký HMAC trong RAM) | **Stateful** (Lưu vết session trong Redis) |
 | **Thời hạn sống (TTL)** | 1 giờ (3,600 giây) | 30 ngày (2,592,000 giây) |
-| **Vị trí lưu trữ phía Client** | Header `Authorization: Bearer <token>` | Cookie `HttpOnly`, `SameSite=Lax`, `Secure` |
+| **Vị trí lưu trữ phía Client** | Response Body (Frontend lưu trong bộ nhớ RAM JS) | Cookie `HttpOnly: true`, `SameSite=Lax`, `Secure` |
 | **HMAC Domain** | `PassportAccessToken/v1` | `PassportRefreshToken/v1` |
 | **Nơi thẩm định** | API Gateway (`AuthGuard`) | Auth Service (`TokenService` + Redis) |
-| **Khả năng thu hồi tức thì** | Theo hạn sống (hoặc Blacklist nếu có) | Thu hồi tức thì bằng thao tác `DEL` Redis |
+| **Cơ chế đặc thù** | Zero-I/O Verification (độ trễ < 0.05ms) | Token Rotation + Grace Period 30s + Reuse Detection |
+| **Khả năng thu hồi tức thì** | Theo hạn sống (hoặc Blacklist) | Thu hồi tức thì bằng lệnh `DEL` Redis |

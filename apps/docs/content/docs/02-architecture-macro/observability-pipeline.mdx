@@ -1,0 +1,180 @@
+---
+title: Giám sát & Logs tập trung (Observability Pipeline)
+description: Kiến trúc thu thập Logs có cấu trúc, Distributed Tracing và cơ chế tương quan 2 chiều Logs-Traces qua Grafana Loki, Tempo và OpenTelemetry.
+---
+
+Trong hệ thống phân tán đa dịch vụ (Microservices Monorepo) như **Tomato Cinema**, việc gỡ lỗi (debugging) khi có sự cố phát sinh xuyên suốt các services (từ Client -> API Gateway -> Auth Service -> Database/Message Queue) đòi hỏi một hệ sinh thái giám sát hoàn chỉnh dựa trên 3 trụ cột: **Logs**, **Traces**, và **Metrics**.
+
+---
+
+## 1. Sơ đồ Kiến trúc Đường ống Observability
+
+Dưới đây là mô hình đường ống vận chuyển dữ liệu giám sát và logs tập trung, được thiết kế theo chuẩn Archify Showcase:
+
+<DiagramViewer
+  src="/diagrams/observability-pipeline.html"
+  title="Kiến trúc Đường ống Giám sát & Logs tập trung (Archify Architecture)"
+  description="Dữ liệu từ Container và OTel SDK được Promtail & OTel Collector thu thập, lưu trữ tại Loki / Tempo và tương quan 2 chiều trên Grafana."
+  height="580px"
+/>
+
+---
+
+## 2. Rà soát Chi tiết Từng Tầng Luồng Xử lý
+
+Hệ thống giám sát và nhật ký của dự án được phân tách thành 4 tầng rõ ràng:
+
+### 2.1. Tầng Phát sinh Logs & Telemetry (Application Producers)
+
+Mỗi microservice trong `apps/` chịu trách nhiệm tạo ra nhật ký hoạt động và span ngữ cảnh:
+
+1. **`auth-service` (Chuẩn mẫu tốt nhất - Gold Standard):**
+   - Tích hợp `nestjs-pino` thay thế cho Logger mặc định của NestJS.
+   - **Tự động gắn mã vết (Trace Context Injection):** Thông qua hàm `mixin` trong [logger.config-loader.ts](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/auth-service/src/config/loaders/logger.config-loader.ts), logger tự động trích xuất `traceId` từ ngữ cảnh hoạt động của OpenTelemetry (`@opentelemetry/api`):
+     ```typescript
+     mixin: () => {
+       const span = trace.getSpan(context.active())
+       const traceId = span?.spanContext().traceId
+       return {
+         service: 'auth-service',
+         ...(traceId ? { trace_id: traceId } : {})
+       }
+     }
+     ```
+   - **Định dạng linh hoạt:** Khi chạy debug local (`LOG_PRETTY=true`), hệ thống dùng `pino-pretty` hiển thị màu sắc dễ đọc. Khi chạy Docker/Production, hệ thống xuất **JSON có cấu trúc thuần túy (Raw JSON)** ra `stdout` để Promtail thu thập.
+   - **Lọc nhiễu:** Tự động loại bỏ log từ endpoint `/metrics` định kỳ để tránh làm loãng dữ liệu.
+
+2. **`gateway-service` & `notification-service`:**
+   - Khởi động OpenTelemetry NodeSDK ngay từ bootstrap ([tracking.ts](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/gateway-service/src/observability/tracking.ts)) với các plugin auto-instrumentation: HTTP, Express, NestJS-Core, và gRPC.
+   - Thu thập chỉ số lưu lượng và độ trễ qua `HttpMetricsInterceptor` và `RmqMetricsAckInterceptor`.
+
+3. **`media-service` (Go Backend):**
+   - Sử dụng package logging nội bộ [pkg/logger/logger.go](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/pkg/logger/logger.go) với các cấp độ `debug`, `info`, `warn`, `error`, `fatal`.
+   - Xuất dữ liệu kèm timestamp và file nguồn ra `stdout`.
+
+4. **Hạ tầng Docker (PostgreSQL, Redis, RabbitMQ, Nginx):**
+   - Toàn bộ container xuất log trực tiếp ra luồng chuẩn `stdout`/`stderr` do Docker Engine quản lý.
+
+---
+
+### 2.2. Tầng Thu thập & Gom tụ (Log Shipping & Collection)
+
+Hệ thống sử dụng cơ chế thu thập **không xâm lấn (Non-intrusive log scraping)** kết hợp với trạm gom chuẩn mở:
+
+1. **`Promtail` (Port `9080`):**
+   - Đóng vai trò là Log Shipper chính, gắn trực tiếp với Host qua Docker Socket (`/var/run/docker.sock`) và volume `/var/lib/docker/containers`.
+   - **Docker Service Discovery:** Tự động phát hiện container mới khởi chạy mỗi 5 giây (`refresh_interval: 5s`).
+   - **Đánh nhãn tự động (Relabeling Stages):**
+     - `container`: Tên container rút gọn (bỏ dấu `/`).
+     - `service`: Nhãn Compose service (ví dụ: `auth-service`, `gateway-service`, `postgres`).
+     - `project`: Tên dự án (`tomato-cinema`).
+     - `stream`: Luồng log (`stdout` hoặc `stderr`).
+   - **Bóc tách Pipeline (Pipeline Stages):** Bóc lớp vỏ bọc JSON do Docker Engine tạo ra (`{"log":"...", "time":"..."}`) và gán lại timestamp gốc nano (`RFC3339Nano`) trước khi đẩy về Loki qua HTTP `/loki/api/v1/push`.
+
+2. **`OpenTelemetry Collector Contrib` (Ports `4317` gRPC / `4318` HTTP):**
+   - Đóng vai trò "Trạm trung chuyển dữ liệu giám sát trung tâm".
+   - Áp dụng bộ lọc `memory_limiter` (trần tối đa 75% RAM) và `batch` (gom đợt 1024 bản ghi hoặc timeout 1s) nhằm tối ưu hiệu suất I/O mạng.
+   - Định tuyến dữ liệu:
+     - **Traces:** Chuyển tiếp tới **Grafana Tempo** (`tempo:4317`) và **Jaeger** (`jaeger:4317`).
+     - **Logs OTLP:** Chuyển tiếp tới **Grafana Loki** (`http://loki:3100/otlp`).
+     - **Metrics:** Xuất cổng scraping cho Prometheus (`0.0.0.0:8889` namespace `tomatocinema`).
+
+---
+
+### 2.3. Tầng Lưu trữ & Đánh chỉ mục (Storage & Indexing Backends)
+
+1. **`Grafana Loki` (Port `3100`):**
+   - Sử dụng storage engine hiện đại **TSDB** (`schema: v13`), gom dữ liệu dạng chunks nén trên filesystem cục bộ (`/loki/chunks`).
+   - Cấu hình `allow_structured_metadata: true` hỗ trợ đầy đủ log ngữ cảnh OTLP.
+   - Tích hợp bộ nhớ đệm truy vấn `embedded_cache` (100MB RAM) giúp tốc độ tìm kiếm LogQL tức thì.
+   - Chu kỳ xoay vòng chỉ mục (index period): 24 giờ.
+
+2. **`Grafana Tempo` (Port `3200`):**
+   - Kho lưu trữ phân tán hiệu năng cao cho dữ liệu Spans và Traces theo chuẩn OTLP.
+
+3. **`Prometheus` (Port `9090`):**
+   - Định kỳ kéo (scrape) metrics từ Node Exporter, Postgres Exporter, Redis Exporter, RabbitMQ và các dịch vụ ứng dụng.
+
+---
+
+### 2.4. Trực quan hóa & Tương quan 2 Chiều (Bi-directional Correlation on Grafana)
+
+Điểm nổi bật nhất trong kiến trúc giám sát của **Tomato Cinema** là tính năng **liên kết 2 chiều thông minh giữa Logs và Traces** được cấu hình tự động tại [grafana-datasources.yaml](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/observability/config/grafana-datasources.yaml):
+
+1. **Từ Logs nhảy sang Traces (Logs -> Traces):**
+   - Datasource **Loki** khai báo trường dẫn xuất (`derivedFields`):
+     ```yaml
+     derivedFields:
+       - datasourceUid: tempo
+         matcherRegex: '"trace_id":"(\w+)"|trace_id=(\w+)'
+         name: TraceID
+         url: "$${__value.raw}"
+     ```
+   - *Trải nghiệm thực tế:* Khi developer tra cứu log trên Grafana Explore, nếu dòng log chứa `trace_id` (do Pino đính kèm), Grafana sẽ tự động hiển thị một **Badge/Button `TraceID`**. Nhấp vào nút này sẽ lập tức mở giao diện Waterfall Trace của chính request đó trên **Tempo** mà không cần copy/paste thủ công.
+
+2. **Từ Traces nhảy ngược về Logs (Traces -> Logs):**
+   - Datasource **Tempo** khai báo cấu hình liên kết ngược:
+     ```yaml
+     tracesToLogsV2:
+       datasourceUid: loki
+       spanStartTimeShift: "-1h"
+       spanEndTimeShift: "1h"
+       filterByTraceID: true
+       filterBySpanID: true
+     ```
+   - *Trải nghiệm thực tế:* Khi đang xem biểu đồ thời gian thực thi (Waterfall Trace) của một span chậm hoặc lỗi trên Tempo, developer có thể nhấp **"Logs for this span"** để xem ngay tất cả các dòng log phát sinh trong khoảng thời gian span đó chạy trên Loki.
+
+---
+
+## 3. Hướng dẫn Tra cứu & Vận hành (Operations & LogQL)
+
+### 3.1. Địa chỉ Truy cập Bảng điều khiển
+
+| Thành phần | Cổng Host | Địa chỉ Truy cập | Tài khoản / Ghi chú |
+| :--- | :---: | :--- | :--- |
+| **Grafana Portal** | `3001` | [http://localhost:3001](http://localhost:3001) | `admin` / `admin` (Provisioning tự động) |
+| **Grafana Loki** | `3100` | [http://localhost:3100](http://localhost:3100) | Endpoint tiếp nhận & truy vấn Log |
+| **Grafana Tempo** | `3200` | [http://localhost:3200](http://localhost:3200) | Cổng HTTP API truy vấn Traces |
+| **Prometheus** | `9090` | [http://localhost:9090](http://localhost:9090) | Bảng điều khiển chỉ số hiệu năng |
+| **Jaeger UI** | `16686` | [http://localhost:16686](http://localhost:16686) | Giao diện xem Trace dự phòng |
+
+---
+
+### 3.2. Các câu truy vấn LogQL phổ biến trên Grafana
+
+Truy cập **Grafana -> Explore -> Chọn Datasource Loki** và áp dụng các cú pháp sau:
+
+1. **Xem logs thời gian thực của một service cụ thể:**
+   ```text
+   {service="auth-service"}
+   ```
+
+2. **Lọc riêng các log có mức độ Lỗi (Error) và trích xuất trường JSON:**
+   ```text
+   {service="auth-service"} | json | level="error"
+   ```
+
+3. **Tìm kiếm mọi log có liên quan đến một mã TraceID xác định:**
+   ```text
+   {project="tomato-cinema"} |= "4bf92f3577b34da6a3ce929d0e0e4736"
+   ```
+
+4. **Đo đếm tần suất phát sinh log lỗi theo từng service (vẽ biểu đồ số lượng):**
+   ```text
+   sum by (service) (rate({project="tomato-cinema"} |= "error" [5m]))
+   ```
+
+5. **Theo dõi log luồng phát video của Media Service (Go):**
+   ```text
+   {service="media-service"} |= "[LỖI]"
+   ```
+
+---
+
+## 4. Khuyến nghị Nâng chuẩn Kỹ thuật (Hardening Roadmap)
+
+Để nâng cao tính nhất quán của toàn bộ hệ thống logs:
+
+1. **Đồng bộ hóa Pino Logger:** Nhân rộng cấu hình `nestjs-pino` kèm `trace_id mixin` từ `auth-service` sang `gateway-service`, `user-service`, và `notification-service`.
+2. **Chuẩn hóa Zap Logger cho Go:** Với `media-service`, nâng cấp từ `pkg/logger` dạng print sang `uber-go/zap` hoặc Go 1.21+ `log/slog` có gắn kèm OpenTelemetry trace context.
+3. **Cảnh báo tự động (Alerting Rules):** Thiết lập Loki Ruler gửi thông báo trực tiếp về kênh Telegram của bot khi tỉ lệ log lỗi 5xx vượt quá 2% trong vòng 5 phút.

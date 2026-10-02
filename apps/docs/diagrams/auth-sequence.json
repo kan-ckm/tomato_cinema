@@ -18,7 +18,7 @@
         "id": "authenticated-request",
         "label": "Truy cập tài nguyên bảo mật",
         "focus": ["web", "gateway"],
-        "note": "Gateway tự động thẩm định chữ ký JWT Access Token mà không cần gọi lại Auth Service."
+        "note": "Gateway tự động thẩm định chữ ký Passport Access Token mà không cần gọi lại Auth Service."
       }
     ]
   },
@@ -40,12 +40,12 @@
     { "from": "gateway", "to": "auth", "y": 264, "label": "3. forward credentials", "variant": "default" },
     { "from": "auth", "to": "db", "y": 306, "label": "4. query user & password hash", "variant": "default" },
     { "from": "db", "to": "auth", "y": 348, "label": "5. user record", "variant": "return" },
-    { "from": "auth", "to": "redis", "y": 390, "label": "6. lưu refresh token whitelist", "variant": "security" },
-    { "from": "auth", "to": "gateway", "y": 432, "label": "7. return JWT + Refresh Token", "variant": "return" },
+    { "from": "auth", "to": "redis", "y": 390, "label": "6. lưu session Refresh Token", "variant": "security" },
+    { "from": "auth", "to": "gateway", "y": 432, "label": "7. return Passport Dual-Token", "variant": "return" },
     { "from": "gateway", "to": "web", "y": 474, "label": "8. 200 OK + Set-Cookie HttpOnly", "variant": "return" },
     { "from": "web", "to": "user", "y": 516, "label": "9. Đăng nhập thành công", "variant": "return" },
     { "from": "web", "to": "gateway", "y": 580, "label": "10. GET /api/v1/users/profile", "variant": "emphasis" },
-    { "from": "gateway", "to": "web", "y": 640, "label": "11. 200 OK verify JWT signature", "variant": "return" }
+    { "from": "gateway", "to": "web", "y": 640, "label": "11. 200 OK verify Passport token", "variant": "return" }
   ],
   "activations": [
     { "participant": "web", "from": 174, "to": 524, "type": "frontend" },
@@ -56,8 +56,8 @@
     { "participant": "gateway", "from": 574, "to": 646, "type": "security" }
   ],
   "cards": [
-    { "dot": "rose", "title": "Cơ chế Dual-Token", "items": ["Access Token JWT sống 15 phút đính kèm Authorization header", "Refresh Token sống 7 ngày lưu trữ tại Cookie HttpOnly Secure"] },
-    { "dot": "emerald", "title": "Bảo vệ tại Gateway", "items": ["Gateway xác thực chữ ký JWT độc lập giảm tải cho Auth Service", "Tự động trích xuất X-User-Id và chuyển tiếp vào mạng nội bộ"] },
-    { "dot": "cyan", "title": "Quản lý phiên Redis", "items": ["Redis lưu giữ Token Family ID hỗ trợ thu hồi quyền truy cập tức thì", "Phát hiện Token Reuse Attack và vô hiệu hóa toàn bộ phiên khi bị lộ"] }
+    { "dot": "rose", "title": "Cơ chế Dual-Token", "items": ["Passport Access Token sống 1 giờ không trạng thái đính kèm header Bearer", "Refresh Token sống 30 ngày lưu trữ tại Cookie HttpOnly Secure"] },
+    { "dot": "emerald", "title": "Bảo vệ tại Gateway", "items": ["Gateway xác thực chữ ký HMAC Domain Separation không tốn I/O (< 0.05ms)", "Tự động trích xuất X-User-Id và chuyển tiếp vào mạng nội bộ"] },
+    { "dot": "cyan", "title": "Quản lý phiên Redis", "items": ["Redis lưu Fingerprint SHA-256 hỗ trợ thu hồi quyền truy cập tức thì", "Cơ chế Grace Period 30s xử lý đa tab và Reuse Detection bảo vệ tài khoản"] }
   ]
 }
