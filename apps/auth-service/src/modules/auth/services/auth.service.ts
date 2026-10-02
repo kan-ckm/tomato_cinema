@@ -14,7 +14,6 @@ import {
 	ResendVerificationResponse,
 	VerifyEmailRequest
 } from '@tomatocinema/contracts/gen/auth'
-import type { Account } from 'generated/client'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'
@@ -359,34 +358,25 @@ export class AuthService {
 
 	/**
 	 * Cấp lại cặp Token mới khi Access Token hết hạn.
-	 * Thực hiện Refresh Token Rotation: thu hồi token cũ, cấp token mới.
+	 * Thực hiện Refresh Token Rotation với cơ chế Grace Period 30s (khắc phục Race Condition đa tab)
+	 * và Token Reuse Detection (phát hiện và phòng thủ Replay Attack theo chuẩn OAuth 2.0 BCP).
 	 */
 	public async refresh(data: RefreshRequest): Promise<RefreshResponse> {
 		const { refreshToken } = data
-		const result = await this.tokenService.verifyRefreshToken(refreshToken)
 
-		if (!result.valid) {
-			this.logger.warn(
-				{ reason: result.reason },
-				'Làm mới token thất bại'
-			)
+		if (!refreshToken) {
 			throw new RpcException({
-				code: RpcStatus.UNAUTHENTICATED,
-				details: result.reason
+				code: RpcStatus.INVALID_ARGUMENT,
+				details: 'Refresh token không được để trống'
 			})
 		}
 
-		// REFRESH TOKEN ROTATION: Thu hồi Refresh Token cũ trước khi cấp token mới
-		await this.tokenService.revokeRefreshToken(
-			result.userId,
-			result.fingerprint
-		)
+		const tokens = await this.tokenService.rotate(refreshToken)
 
 		this.logger.info(
-			{ userId: result.userId },
-			'Làm mới token thành công (Rotation)'
+			'Làm mới token thành công (Rotation với Grace Period & Reuse Detection)'
 		)
-		return await this.tokenService.generate(result.userId)
+		return tokens
 	}
 
 	// ==========================================

@@ -157,6 +157,9 @@ export class ForgotPasswordService {
 		//Xóa mã xác thực khỏi Redis (chỉ sử dụng 1 lần)
 		await this.redisService.del(`password_reset:${normalizedEmail}`)
 
+		// Thu hồi toàn bộ Refresh Token của tài khoản trên mọi thiết bị để vô hiệu hóa các phiên cũ
+		await this.tokenService.revokeAllRefreshTokens(account.id)
+
 		//Gửi thông báo email xác nhận mật khẩu đã thay đổi
 		await this.messagingService.passwordChanged({
 			email: normalizedEmail
@@ -164,7 +167,7 @@ export class ForgotPasswordService {
 
 		this.logger.info(
 			{ accountId: account.id, email: normalizedEmail },
-			'Đặt lại mật khẩu thành công và phát sự kiện thông báo'
+			'Đặt lại mật khẩu thành công, đã thu hồi toàn bộ phiên và phát sự kiện thông báo'
 		)
 
 		return { ok: true }

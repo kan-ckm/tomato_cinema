@@ -15,6 +15,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { HashPasswordService } from '../../shared/hash-password/hash-password.service'
 import { OtpService } from '../otp/otp.service'
+import { TokenService } from '../token/token.service'
 import { AccountRepository } from './repositories'
 
 @Injectable()
@@ -24,7 +25,8 @@ export class AccountService {
 		private readonly messagingService: MessagingService,
 		private readonly accountRepository: AccountRepository,
 		private readonly otpService: OtpService,
-		private readonly hashPasswordService: HashPasswordService
+		private readonly hashPasswordService: HashPasswordService,
+		private readonly tokenService: TokenService
 	) {
 		this.logger.setContext(AccountService.name)
 	}
@@ -317,7 +319,14 @@ export class AccountService {
 		await this.accountRepository.update(userId, {
 			passwordHash: newPasswodHash
 		})
-		this.logger.info({ userId }, 'Xác nhận đổi mật khẩu thành công')
+
+		// Thu hồi toàn bộ Refresh Token của tài khoản trên mọi thiết bị
+		await this.tokenService.revokeAllRefreshTokens(userId)
+
+		this.logger.info(
+			{ userId },
+			'Xác nhận đổi mật khẩu thành công và đã thu hồi tất cả phiên thiết bị'
+		)
 		return { ok: true }
 	}
 }
