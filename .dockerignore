@@ -19,3 +19,10 @@ generated
 *.tsbuildinfo
 coverage
 test
+*.md
+docker
+apps/docs
+apps/media-service
+.github
+.husky
+.gemini
