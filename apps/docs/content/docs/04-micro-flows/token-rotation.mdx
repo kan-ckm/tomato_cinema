@@ -178,9 +178,40 @@ public async revokeAllRefreshTokens(userId: string): Promise<void> {
 | Tiêu chí | Access Token | Refresh Token |
 | :--- | :--- | :--- |
 | **Bản chất lưu trữ** | **Stateless** (Chỉ xác thực chữ ký HMAC trong RAM) | **Stateful** (Lưu vết session trong Redis) |
-| **Thời hạn sống (TTL)** | 1 giờ (3,600 giây) | 30 ngày (2,592,000 giây) |
+| **Thời hạn sống (TTL)** | 1 giờ (3,600 giây) | 24 giờ đến 30 ngày |
 | **Vị trí lưu trữ phía Client** | Response Body (Frontend lưu trong bộ nhớ RAM JS) | Cookie `HttpOnly: true`, `SameSite=Lax`, `Secure` |
 | **HMAC Domain** | `PassportAccessToken/v1` | `PassportRefreshToken/v1` |
 | **Nơi thẩm định** | API Gateway (`AuthGuard`) | Auth Service (`TokenService` + Redis) |
 | **Cơ chế đặc thù** | Zero-I/O Verification (độ trễ < 0.05ms) | Token Rotation + Grace Period 30s + Reuse Detection |
 | **Khả năng thu hồi tức thì** | Theo hạn sống (hoặc Blacklist) | Thu hồi tức thì bằng lệnh `DEL` Redis |
+
+---
+
+## 7. Phân tích Dữ liệu Thực tế trên Redis (Deep Dive Case Study)
+
+Khi mở công cụ quản lý Redis (như Redis Commander hoặc Redis GUI), bạn sẽ thấy các khóa có cấu trúc tương tự snapshot sau của tài khoản `bff2dc4d-d60e-444b-9e0a-54b7649b7838`:
+
+```text
+1. Nhóm Active Refresh Token (rt):
+   └── rt:bff2dc4d-d60e-444b-9e0a-54b7649b7838:ec524309067f0a92ff98a91dc55a067f
+       TTL: 23 h | Dung lượng: 181 B
+       Ý nghĩa: Token mới nhất đang hoạt động hợp lệ.
+
+2. Nhóm Cửa sổ Ân hạn (rt_grace):
+   ├── rt_grace:...:0be92051a829f1381ea0f8b9580a4a9e (TTL: 25 s | 491 B)
+   ├── rt_grace:...:62592a2ad1cb8f07722522b326606990 (TTL: -2 s | Đang hết hạn)
+   └── rt_grace:...:a8793ff75be4a208fe64a70e14319797 (TTL: 11 s | 491 B)
+       Ý nghĩa: Chứa bản sao JSON đầy đủ của cặp token mới để phục vụ các tab trình duyệt
+       đồng thời gửi request trong vòng 30s, chống lỗi Forced Logout.
+
+3. Nhóm Lịch sử Thu hồi (rt_revoked):
+   ├── rt_revoked:...:0be92051a829f1381ea0f8b9580a4a9e (TTL: 23 h | 109 B | Value: "1")
+   ├── rt_revoked:...:62592a2ad1cb8f07722522b326606990 (TTL: 23 h | 109 B | Value: "1")
+   └── rt_revoked:...:a8793ff75be4a208fe64a70e14319797 (TTL: 23 h | 109 B | Value: "1")
+       Ý nghĩa: Lưu vết các token cũ đã từng được xoay vòng trong 24 giờ. Nếu sau khi hết 30s
+       ân hạn mà token này bị dùng lại -> Kích hoạt Reuse Detection thu hồi toàn bộ session.
+```
+
+> 📄 **Tài liệu PDF Chuyên sâu**: Bạn có thể tải bản in tài liệu PDF kiến trúc chi tiết tại:  
+> [`/docs/token-rotation-redis-architecture.pdf`](/docs/token-rotation-redis-architecture.pdf) hoặc xem file gốc tại thư mục dự án: `apps/docs/docs_md/token-rotation-redis-architecture.pdf`.
+

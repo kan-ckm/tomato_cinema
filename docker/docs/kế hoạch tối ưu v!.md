@@ -1,7 +1,9 @@
 # Kế Hoạch Đánh Giá & Tối Ưu Hóa Toàn Diện Docker & Docker Images (Tomato Cinema)
 
 ## Goal Description
+
 Đánh giá toàn diện hiện trạng cấu hình Dockerfile, kích thước Image, tốc độ build và Docker Compose trong toàn bộ dự án `tomato_cinema`. Từ các phát hiện thực tế (Image phình to 750MB - 1.22GB do rò rỉ `devDependencies`, thiếu BuildKit cache mounts, rủi ro mất dữ liệu với `db push --accept-data-loss`, thiếu graceful shutdown và container healthchecks), thiết lập kế hoạch tối ưu hóa chuẩn hóa đa tầng giúp:
+
 1. **Giảm 50% - 70% kích thước image** (từ 1.22GB xuống ~250MB - 350MB uncompressed).
 2. **Tăng tốc độ build từ 3x - 10x** nhờ BuildKit cache mounts (`pnpm store`, `apk cache`, `turbo cache`).
 3. **Đảm bảo độ tin cậy và an toàn vận hành** (PID 1 graceful shutdown, loại bỏ rủi ro mất dữ liệu, bổ sung healthcheck và resource limits).
@@ -11,19 +13,21 @@
 ## Báo Cáo Đánh Giá Hiện Trạng Thực Tế
 
 ### 1. Bảng số liệu kích thước Image hiện tại
-| Tên Image | Kích thước Uncompressed | Kích thước Compressed | Mục tiêu sau tối ưu (Uncompressed) | Mức độ giảm |
-| :--- | :---: | :---: | :---: | :---: |
-| `tomato-cinema/auth-service:latest` | **1.22 GB** | 252 MB | **~280 MB - 350 MB** | **~70%** |
-| `tomato-cinema/notification-service:latest` | **865 MB** | 167 MB | **~240 MB - 300 MB** | **~65%** |
-| `tomato-cinema/gateway-service:latest` | **815 MB** | 159 MB | **~220 MB - 280 MB** | **~68%** |
-| `tomato-cinema/user-service:latest` | **752 MB** | 148 MB | **~220 MB - 280 MB** | **~65%** |
-| `tomato-cinema/bot-service:latest` | **554 MB** | 126 MB | **~180 MB - 220 MB** | **~60%** |
 
-*(Ghi chú: Dockerfile ghi chú kích thước ~150-240MB, nhưng thực tế khi giải nén chạy trên máy chủ là 750MB - 1.22GB).*
+| Tên Image                                   | Kích thước Uncompressed | Kích thước Compressed | Mục tiêu sau tối ưu (Uncompressed) | Mức độ giảm |
+| :------------------------------------------ | :---------------------: | :-------------------: | :--------------------------------: | :---------: |
+| `tomato-cinema/auth-service:latest`         |       **1.22 GB**       |        252 MB         |        **~280 MB - 350 MB**        |  **~70%**   |
+| `tomato-cinema/notification-service:latest` |       **865 MB**        |        167 MB         |        **~240 MB - 300 MB**        |  **~65%**   |
+| `tomato-cinema/gateway-service:latest`      |       **815 MB**        |        159 MB         |        **~220 MB - 280 MB**        |  **~68%**   |
+| `tomato-cinema/user-service:latest`         |       **752 MB**        |        148 MB         |        **~220 MB - 280 MB**        |  **~65%**   |
+| `tomato-cinema/bot-service:latest`          |       **554 MB**        |        126 MB         |        **~180 MB - 220 MB**        |  **~60%**   |
+
+_(Ghi chú: Dockerfile ghi chú kích thước ~150-240MB, nhưng thực tế khi giải nén chạy trên máy chủ là 750MB - 1.22GB)._
 
 ---
 
 ### 2. Các điểm tốt đã có (Strengths)
+
 - ✅ Đã sử dụng kỹ thuật **Multi-Stage Build** (4 tầng: `base` -> `pruner` -> `builder` -> `runner`).
 - ✅ Base image lựa chọn **Alpine Linux** (`node:22-alpine`) giúp giảm diện tích tấn công OS ban đầu.
 - ✅ Sử dụng **Turborepo prune** (`turbo prune ${APP_NAME} --docker`) để chỉ lấy đúng source code của service mục tiêu.
@@ -96,6 +100,7 @@ flowchart TD
 > [!IMPORTANT]
 > **1. Quy Trình Đồng Bộ Schema / Migration Database (`auth-service`)**:
 > Hiện tại, `auth-service` chạy `prisma db push --accept-data-loss` trực tiếp trong lệnh `CMD` khởi động container.
+>
 > - **Khuyến nghị**: Đối với môi trường Production, việc chạy `db push --accept-data-loss` tiềm ẩn rủi ro xóa mất dữ liệu người dùng khi thay đổi schema. Đề xuất tách thành script khởi chạy rõ ràng: nếu môi trường `NODE_ENV=production` sẽ chạy `prisma migrate deploy` (hoặc job migration chuyên biệt), còn môi trường local dev mới chạy `db push`.
 > - Việc đưa `prisma` CLI vào `devDependencies` và tách công đoạn migrate giúp giảm thêm hơn **150MB** dung lượng của container `auth-service`.
 
@@ -113,6 +118,7 @@ flowchart TD
 
 > [!IMPORTANT]
 > **Q1. Bạn muốn xử lý `prisma db push` như thế nào trong Docker?**
+>
 > - **Phương án A (Khuyên dùng)**: Sử dụng entrypoint script thông minh: Nếu biến môi trường `AUTO_MIGRATE=true` (dùng cho dev/test) mới chạy migration/sync, còn mặc định trong production sẽ không tự ý push phá hủy schema; đồng thời chuyển `prisma` về `devDependencies` khi build image production.
 > - **Phương án B**: Giữ nguyên cơ chế tự động chạy sync DB khi start container nhưng loại bỏ cờ `--accept-data-loss` để tránh rủi ro mất mát dữ liệu ngoài ý muốn.
 
@@ -127,7 +133,9 @@ flowchart TD
 ### Component 1: Tối Ưu Hóa `.dockerignore`
 
 #### [MODIFY] [.dockerignore](file:///home/tomato/ssd/data/Projects/tomato_cinema/.dockerignore)
+
 Loại trừ các thư mục tài liệu, cấu hình hạ tầng và media không liên quan tới quá trình build backend để tránh làm mất Docker cache khi sửa đổi file doc hoặc README:
+
 - Bổ sung `docker/` (đặc biệt là `docker/observability`, `docker/infra`, `docker/nginx`, `docker/README.md`)
 - Bổ sung `apps/docs/`
 - Bổ sung `apps/media-service/`
@@ -153,7 +161,9 @@ Loại trừ các thư mục tài liệu, cấu hình hạ tầng và media khô
 ### Component 2: Tối Ưu Hóa Dockerfile Đa Năng (`docker/Dockerfile`)
 
 #### [MODIFY] [docker/Dockerfile](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/Dockerfile)
+
 Cải tiến toàn diện 4 stage:
+
 1. **Header**: Khai báo cú pháp BuildKit `# syntax=docker/dockerfile:1`.
 2. **Stage 1 (Base)**: Sử dụng `--mount=type=cache,target=/root/.npm` khi cài đặt pnpm.
 3. **Stage 2 (Pruner)**: Tận dụng cache khi cài turbo.
@@ -248,6 +258,7 @@ CMD ["sh", "-c", "if [ \"$AUTO_MIGRATE\" = 'true' ] && [ -f apps/${APP_NAME}/pri
 ### Component 3: Chuẩn Hóa Dependencies Cho Microservices
 
 #### [MODIFY] [apps/auth-service/package.json](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/auth-service/package.json)
+
 - Chuyển `prisma` từ `"dependencies"` sang `"devDependencies"` để tránh kéo Prisma Studio Core và pglite vào production container.
 - Giữ nguyên `@prisma/client` và `@prisma/adapter-pg` trong `"dependencies"` phục vụ query runtime.
 
@@ -256,6 +267,7 @@ CMD ["sh", "-c", "if [ \"$AUTO_MIGRATE\" = 'true' ] && [ -f apps/${APP_NAME}/pri
 ### Component 4: Tối Ưu Hóa & Gia Cố Docker Compose (`docker/apps/docker-compose.yml`)
 
 #### [MODIFY] [docker/apps/docker-compose.yml](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/apps/docker-compose.yml)
+
 1. **Thêm Healthcheck**:
    - `gateway-service`: `wget -qO- http://127.0.0.1:${GATEWAY_HTTP_PORT:-4000}/health || exit 1`
    - `auth-service`: `wget -qO- http://127.0.0.1:9101/metrics || nc -z 127.0.0.1 ${AUTH_GRPC_PORT:-50051} || exit 1`
@@ -274,6 +286,7 @@ CMD ["sh", "-c", "if [ \"$AUTO_MIGRATE\" = 'true' ] && [ -f apps/${APP_NAME}/pri
 ### Component 5: Tối Ưu Hóa Hạ Tầng & Khả Năng Quan Sát
 
 #### [MODIFY] [docker/infra/docker-compose.yml](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/infra/docker-compose.yml)
+
 - Bổ sung cấu hình `logging` giới hạn dung lượng log cho PostgreSQL, Redis, RabbitMQ.
 - Bổ sung cấu hình `deploy.resources.limits` tránh trường hợp DB hoặc Cache tiêu thụ vượt quá RAM máy chủ vật lý.
 
@@ -282,6 +295,7 @@ CMD ["sh", "-c", "if [ \"$AUTO_MIGRATE\" = 'true' ] && [ -f apps/${APP_NAME}/pri
 ## Verification Plan
 
 ### Automated Tests
+
 1. **Kiểm tra cú pháp và build thử từng image**:
    ```bash
    DOCKER_BUILDKIT=1 docker build -f docker/Dockerfile --build-arg APP_NAME=gateway-service -t tomato-cinema/gateway-service:test .
@@ -302,6 +316,7 @@ CMD ["sh", "-c", "if [ \"$AUTO_MIGRATE\" = 'true' ] && [ -f apps/${APP_NAME}/pri
    ```
 
 ### Manual Verification
+
 1. Khởi động toàn bộ cụm hệ thống từ `docker/docker-compose.yml`:
    ```bash
    docker compose -f docker/docker-compose.yml up -d
