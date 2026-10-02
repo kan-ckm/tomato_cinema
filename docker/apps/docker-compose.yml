@@ -94,6 +94,8 @@ services:
       - DATABASE_USER=users
       - DATABASE_LOGGING=${DATABASE_LOGGING:-false}
       - DATABASE_SYNC=${DATABASE_SYNC:-true}
+      - RMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASSWORD}@rabbitmq:${RABBITMQ_PORT}
+      - RMQ_QUEUE=users_queue
       - GRPC_USER_HOST=0.0.0.0
       - GRPC_USER_PORT=${USER_GRPC_PORT}
       - GRPC_AUTH_HOST=auth-service
