@@ -7,55 +7,55 @@ option go_package = "github.com/tomatocinema/contracts/gen/go/media/v1;mediav1";
 option java_multiple_files = true;
 
 // ============================================================================
-// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với AWS S3
+// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với Cloudflare R2
 // ============================================================================
 service MediaService {
-    // Tải tệp lên AWS S3 (tương đương thao tác s3:PutObject)
+    // Tải tệp lên Cloudflare R2 (tương đương thao tác s3:PutObject)
     rpc Upload (UploadRequest) returns (UploadResponse);
 
-    // Lấy nội dung tệp từ AWS S3 (tương đương thao tác s3:GetObject)
+    // Lấy nội dung tệp từ Cloudflare R2 (tương đương thao tác s3:GetObject)
     rpc Get (GetRequest) returns (GetResponse);
 
-    // Xóa tệp khỏi AWS S3 (tương đương thao tác s3:DeleteObject)
+    // Xóa tệp khỏi Cloudflare R2 (tương đương thao tác s3:DeleteObject)
     rpc Delete (DeleteRequest) returns (DeleteResponse);
 }
 
 // ----------------------------------------------------------------------------
-// Thao tác UPLOAD tệp lên S3
+// Thao tác UPLOAD tệp lên Cloudflare R2
 // ----------------------------------------------------------------------------
 message UploadRequest {
   string file_name = 1;               // Tên gốc của tệp (vd: avatar.png, poster.jpg)
-  string folder = 2;                  // Tiền tố/thư mục trên S3 bucket (vd: "avatars", "movies/posters")
-  string content_type = 3;            // MIME type lưu vào metadata S3 (vd: "image/jpeg", "image/png")
-  bytes data = 4;                     // Luồng dữ liệu nhị phân (binary body) tải lên S3
-  optional int32 resize_width = 5;    // (Tùy chọn) Chiều rộng xử lý trước khi lưu vào S3
-  optional int32 resize_height = 6;   // (Tùy chọn) Chiều cao xử lý trước khi lưu vào S3
+  string folder = 2;                  // Tiền tố/thư mục trên Cloudflare R2 bucket (vd: "avatars", "movies/posters")
+  string content_type = 3;            // MIME type lưu vào metadata Cloudflare R2 (vd: "image/jpeg", "image/png")
+  bytes data = 4;                     // Luồng dữ liệu nhị phân (binary body) tải lên Cloudflare R2
+  optional int32 resize_width = 5;    // (Tùy chọn) Chiều rộng xử lý trước khi lưu vào Cloudflare R2
+  optional int32 resize_height = 6;   // (Tùy chọn) Chiều cao xử lý trước khi lưu vào Cloudflare R2
 }
 
 message UploadResponse {
-  string key = 1;                     // S3 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg")
+  string key = 1;                     // Cloudflare R2 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg")
 }
 
 // ----------------------------------------------------------------------------
-// Thao tác GET tệp từ S3
+// Thao tác GET tệp từ Cloudflare R2
 // ----------------------------------------------------------------------------
 message GetRequest {
-  string key = 1;                     // S3 Object Key định danh tệp cần lấy trên bucket
+  string key = 1;                     // Cloudflare R2 Object Key định danh tệp cần lấy trên bucket
 }
 
 message GetResponse {
-  bytes data = 1;                     // Dữ liệu nhị phân của tệp đọc từ S3
-  string content_type = 2;            // Content-Type của tệp đọc từ metadata S3
+  bytes data = 1;                     // Dữ liệu nhị phân của tệp đọc từ Cloudflare R2
+  string content_type = 2;            // Content-Type của tệp đọc từ metadata Cloudflare R2
 }
 
 // ----------------------------------------------------------------------------
-// Thao tác DELETE tệp khỏi S3
+// Thao tác DELETE tệp khỏi Cloudflare R2
 // ----------------------------------------------------------------------------
 message DeleteRequest {
-  string key = 1;                     // S3 Object Key định danh tệp cần xóa khỏi bucket
+  string key = 1;                     // Cloudflare R2 Object Key định danh tệp cần xóa khỏi bucket
 }
 
 message DeleteResponse {
-  bool ok = 1;                        // true nếu xóa thành công khỏi S3 bucket
+  bool ok = 1;                        // true nếu xóa thành công khỏi Cloudflare R2 bucket
 }
 

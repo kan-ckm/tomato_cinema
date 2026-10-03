@@ -23,16 +23,16 @@ const (
 )
 
 // ----------------------------------------------------------------------------
-// Thao tác UPLOAD tệp lên S3
+// Thao tác UPLOAD tệp lên Cloudflare R2
 // ----------------------------------------------------------------------------
 type UploadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FileName      string                 `protobuf:"bytes,1,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`                    // Tên gốc của tệp (vd: avatar.png, poster.jpg)
-	Folder        string                 `protobuf:"bytes,2,opt,name=folder,proto3" json:"folder,omitempty"`                                        // Tiền tố/thư mục trên S3 bucket (vd: "avatars", "movies/posters")
-	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`           // MIME type lưu vào metadata S3 (vd: "image/jpeg", "image/png")
-	Data          []byte                 `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`                                            // Luồng dữ liệu nhị phân (binary body) tải lên S3
-	ResizeWidth   *int32                 `protobuf:"varint,5,opt,name=resize_width,json=resizeWidth,proto3,oneof" json:"resize_width,omitempty"`    // (Tùy chọn) Chiều rộng xử lý trước khi lưu vào S3
-	ResizeHeight  *int32                 `protobuf:"varint,6,opt,name=resize_height,json=resizeHeight,proto3,oneof" json:"resize_height,omitempty"` // (Tùy chọn) Chiều cao xử lý trước khi lưu vào S3
+	Folder        string                 `protobuf:"bytes,2,opt,name=folder,proto3" json:"folder,omitempty"`                                        // Tiền tố/thư mục trên Cloudflare R2 bucket (vd: "avatars", "movies/posters")
+	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`           // MIME type lưu vào metadata Cloudflare R2 (vd: "image/jpeg", "image/png")
+	Data          []byte                 `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`                                            // Luồng dữ liệu nhị phân (binary body) tải lên Cloudflare R2
+	ResizeWidth   *int32                 `protobuf:"varint,5,opt,name=resize_width,json=resizeWidth,proto3,oneof" json:"resize_width,omitempty"`    // (Tùy chọn) Chiều rộng xử lý trước khi lưu vào Cloudflare R2
+	ResizeHeight  *int32                 `protobuf:"varint,6,opt,name=resize_height,json=resizeHeight,proto3,oneof" json:"resize_height,omitempty"` // (Tùy chọn) Chiều cao xử lý trước khi lưu vào Cloudflare R2
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -111,7 +111,7 @@ func (x *UploadRequest) GetResizeHeight() int32 {
 
 type UploadResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // S3 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg")
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // Cloudflare R2 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg")
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -154,11 +154,11 @@ func (x *UploadResponse) GetKey() string {
 }
 
 // ----------------------------------------------------------------------------
-// Thao tác GET tệp từ S3
+// Thao tác GET tệp từ Cloudflare R2
 // ----------------------------------------------------------------------------
 type GetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // S3 Object Key định danh tệp cần lấy trên bucket
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // Cloudflare R2 Object Key định danh tệp cần lấy trên bucket
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -202,8 +202,8 @@ func (x *GetRequest) GetKey() string {
 
 type GetResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`                                  // Dữ liệu nhị phân của tệp đọc từ S3
-	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"` // Content-Type của tệp đọc từ metadata S3
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`                                  // Dữ liệu nhị phân của tệp đọc từ Cloudflare R2
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"` // Content-Type của tệp đọc từ metadata Cloudflare R2
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -253,11 +253,11 @@ func (x *GetResponse) GetContentType() string {
 }
 
 // ----------------------------------------------------------------------------
-// Thao tác DELETE tệp khỏi S3
+// Thao tác DELETE tệp khỏi Cloudflare R2
 // ----------------------------------------------------------------------------
 type DeleteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // S3 Object Key định danh tệp cần xóa khỏi bucket
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"` // Cloudflare R2 Object Key định danh tệp cần xóa khỏi bucket
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -301,7 +301,7 @@ func (x *DeleteRequest) GetKey() string {
 
 type DeleteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"` // true nếu xóa thành công khỏi S3 bucket
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"` // true nếu xóa thành công khỏi Cloudflare R2 bucket
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

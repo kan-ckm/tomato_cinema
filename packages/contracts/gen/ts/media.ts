@@ -12,60 +12,60 @@ export const protobufPackage = "media.v1";
 
 /**
  * ----------------------------------------------------------------------------
- * Thao tác UPLOAD tệp lên S3
+ * Thao tác UPLOAD tệp lên Cloudflare R2
  * ----------------------------------------------------------------------------
  */
 export interface UploadRequest {
   /** Tên gốc của tệp (vd: avatar.png, poster.jpg) */
   fileName: string;
-  /** Tiền tố/thư mục trên S3 bucket (vd: "avatars", "movies/posters") */
+  /** Tiền tố/thư mục trên Cloudflare R2 bucket (vd: "avatars", "movies/posters") */
   folder: string;
-  /** MIME type lưu vào metadata S3 (vd: "image/jpeg", "image/png") */
+  /** MIME type lưu vào metadata Cloudflare R2 (vd: "image/jpeg", "image/png") */
   contentType: string;
-  /** Luồng dữ liệu nhị phân (binary body) tải lên S3 */
+  /** Luồng dữ liệu nhị phân (binary body) tải lên Cloudflare R2 */
   data: Uint8Array;
-  /** (Tùy chọn) Chiều rộng xử lý trước khi lưu vào S3 */
+  /** (Tùy chọn) Chiều rộng xử lý trước khi lưu vào Cloudflare R2 */
   resizeWidth?:
     | number
     | undefined;
-  /** (Tùy chọn) Chiều cao xử lý trước khi lưu vào S3 */
+  /** (Tùy chọn) Chiều cao xử lý trước khi lưu vào Cloudflare R2 */
   resizeHeight?: number | undefined;
 }
 
 export interface UploadResponse {
-  /** S3 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg") */
+  /** Cloudflare R2 Object Key duy nhất sau khi lưu (vd: "movies/posters/uuid.jpg") */
   key: string;
 }
 
 /**
  * ----------------------------------------------------------------------------
- * Thao tác GET tệp từ S3
+ * Thao tác GET tệp từ Cloudflare R2
  * ----------------------------------------------------------------------------
  */
 export interface GetRequest {
-  /** S3 Object Key định danh tệp cần lấy trên bucket */
+  /** Cloudflare R2 Object Key định danh tệp cần lấy trên bucket */
   key: string;
 }
 
 export interface GetResponse {
-  /** Dữ liệu nhị phân của tệp đọc từ S3 */
+  /** Dữ liệu nhị phân của tệp đọc từ Cloudflare R2 */
   data: Uint8Array;
-  /** Content-Type của tệp đọc từ metadata S3 */
+  /** Content-Type của tệp đọc từ metadata Cloudflare R2 */
   contentType: string;
 }
 
 /**
  * ----------------------------------------------------------------------------
- * Thao tác DELETE tệp khỏi S3
+ * Thao tác DELETE tệp khỏi Cloudflare R2
  * ----------------------------------------------------------------------------
  */
 export interface DeleteRequest {
-  /** S3 Object Key định danh tệp cần xóa khỏi bucket */
+  /** Cloudflare R2 Object Key định danh tệp cần xóa khỏi bucket */
   key: string;
 }
 
 export interface DeleteResponse {
-  /** true nếu xóa thành công khỏi S3 bucket */
+  /** true nếu xóa thành công khỏi Cloudflare R2 bucket */
   ok: boolean;
 }
 
@@ -73,40 +73,40 @@ export const MEDIA_V1_PACKAGE_NAME = "media.v1";
 
 /**
  * ============================================================================
- * MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với AWS S3
+ * MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với Cloudflare R2
  * ============================================================================
  */
 
 export interface MediaServiceClient {
-  /** Tải tệp lên AWS S3 (tương đương thao tác s3:PutObject) */
+  /** Tải tệp lên Cloudflare R2 (tương đương thao tác s3:PutObject) */
 
   upload(request: UploadRequest): Observable<UploadResponse>;
 
-  /** Lấy nội dung tệp từ AWS S3 (tương đương thao tác s3:GetObject) */
+  /** Lấy nội dung tệp từ Cloudflare R2 (tương đương thao tác s3:GetObject) */
 
   get(request: GetRequest): Observable<GetResponse>;
 
-  /** Xóa tệp khỏi AWS S3 (tương đương thao tác s3:DeleteObject) */
+  /** Xóa tệp khỏi Cloudflare R2 (tương đương thao tác s3:DeleteObject) */
 
   delete(request: DeleteRequest): Observable<DeleteResponse>;
 }
 
 /**
  * ============================================================================
- * MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với AWS S3
+ * MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với Cloudflare R2
  * ============================================================================
  */
 
 export interface MediaServiceController {
-  /** Tải tệp lên AWS S3 (tương đương thao tác s3:PutObject) */
+  /** Tải tệp lên Cloudflare R2 (tương đương thao tác s3:PutObject) */
 
   upload(request: UploadRequest): Promise<UploadResponse> | Observable<UploadResponse> | UploadResponse;
 
-  /** Lấy nội dung tệp từ AWS S3 (tương đương thao tác s3:GetObject) */
+  /** Lấy nội dung tệp từ Cloudflare R2 (tương đương thao tác s3:GetObject) */
 
   get(request: GetRequest): Promise<GetResponse> | Observable<GetResponse> | GetResponse;
 
-  /** Xóa tệp khỏi AWS S3 (tương đương thao tác s3:DeleteObject) */
+  /** Xóa tệp khỏi Cloudflare R2 (tương đương thao tác s3:DeleteObject) */
 
   delete(request: DeleteRequest): Promise<DeleteResponse> | Observable<DeleteResponse> | DeleteResponse;
 }

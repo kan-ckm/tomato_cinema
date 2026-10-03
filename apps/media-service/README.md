@@ -10,7 +10,7 @@
 - **Kiến trúc kép (Dual Protocol):**
   - **gRPC Server (Port 50059):** Giao tiếp nội bộ giữa các microservices để tải lên (Upload), xóa (Delete), quản lý media.
   - **HTTP Server (Port 4200):** Cung cấp đường dẫn công khai (Public URL) phục vụ người dùng xem hình ảnh trực tiếp với cơ chế cache HTTP.
-- **Tương thích chuẩn S3 (S3-Compatible Storage):** Tích hợp AWS SDK v2, hỗ trợ cả AWS S3, MinIO, Cloudflare R2 hoặc bất kỳ hệ thống lưu trữ tương thích S3 nào.
+- **Tương thích chuẩn S3 (S3-Compatible Storage):** Tích hợp AWS SDK v2, hỗ trợ Cloudflare R2, MinIO, hoặc bất kỳ hệ thống lưu trữ tương thích chuẩn S3 nào.
 - **Cơ chế Streaming I/O:** Sử dụng `io.Reader` và `io.ReadCloser` để truyền tải dữ liệu, không tải toàn bộ file lớn vào bộ nhớ RAM.
 
 ---
@@ -32,7 +32,7 @@ apps/media-service/
 │   │   ├── grpc/                   # Cấu hình gRPC server & Interceptors (Logging, TraceID)
 │   │   ├── http/                   # HTTP Server (Gin framework) phục vụ xem file
 │   │   ├── images/                 # Module xử lý hình ảnh (Resize, WebP - Processor Interface)
-│   │   └── storage/                # Storage Interface & Driver AWS S3 / MinIO
+│   │   └── storage/                # Storage Interface & Driver Cloudflare R2 / MinIO
 │   └── interfaces/                 # Tầng tiếp nhận dữ liệu (Adapters)
 │       └── grpc/                   # gRPC Handlers tiếp nhận protobuf request
 ├── pkg/
@@ -157,7 +157,7 @@ Dịch vụ đọc cấu hình từ file `.env` (tham khảo [.env.example](file
 ### Yêu cầu tiên quyết:
 
 - Go phiên bản **1.24+**
-- Hệ thống S3 (AWS S3 hoặc MinIO container đang hoạt động)
+- Hệ thống Storage (Cloudflare R2 hoặc MinIO container đang hoạt động)
 
 ### Các lệnh thực thi:
 

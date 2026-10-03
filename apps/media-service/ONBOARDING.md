@@ -32,7 +32,7 @@ Tài liệu này được biên soạn nhằm giúp các thành viên mới gia 
 - **Ngôn ngữ:** Go (Golang) phiên bản 1.24+.
 - **Giao tiếp nội bộ:** gRPC (`google.golang.org/grpc`) dựa trên protobuf `github.com/tomatocinema/contracts`.
 - **Phục vụ người dùng:** Gin Web Framework (`github.com/gin-gonic/gin`).
-- **Lưu trữ Object Storage:** AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`), tương thích hoàn toàn với AWS S3, MinIO và Cloudflare R2.
+- **Lưu trữ Object Storage:** AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`), tương thích hoàn toàn với Cloudflare R2 và MinIO.
 - **Xử lý luồng:** Cơ chế Non-buffering Streaming (`io.Reader` / `io.ReadCloser`) giúp tiết kiệm bộ nhớ RAM.
 
 ---
@@ -47,7 +47,7 @@ Dịch vụ áp dụng mô hình **giao thức kép (Dual-Protocol Server)**: m�
 
 - **Cổng gRPC (`:50059`)**: Nhận yêu cầu từ các microservice đồng cấp (như `movie-service`, `user-service`). Giao tiếp được tối ưu về tốc độ với Protobuf nhị phân và kèm theo bộ lọc Middleware (Logging, Distributed TraceID).
 - **Cổng HTTP (`:4200`)**: Phục vụ trực tiếp cho Trình duyệt / Mobile App của người dùng cuối. Tự động nhận diện MIME type của file và gắn header HTTP Cache (`Cache-Control: public, max-age=86400`) để giảm tải cho máy chủ.
-- **Tầng Storage trừu tượng**: Tách biệt logic nghiệp vụ khỏi công nghệ lưu trữ. Dù lưu trên MinIO Local hay AWS S3 Production, code nghiệp vụ hoàn toàn không thay đổi.
+- **Tầng Storage trừu tượng**: Tách biệt logic nghiệp vụ khỏi công nghệ lưu trữ. Dù lưu trên MinIO Local hay Cloudflare R2 Production, code nghiệp vụ hoàn toàn không thay đổi.
 
 ---
 
@@ -235,7 +235,7 @@ Hệ thống được thiết kế để đảm bảo không xảy ra hiện tư
   ```bash
   go install github.com/air-verse/air@latest
   ```
-- Hệ thống Object Storage (MinIO local trên Docker hoặc tài khoản AWS S3).
+- Hệ thống Object Storage (MinIO local trên Docker hoặc tài khoản Cloudflare R2).
 
 ### Bước 2: Tạo file `.env` từ file mẫu
 

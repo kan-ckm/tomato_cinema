@@ -9,7 +9,7 @@ import (
 	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
 )
 
-// UploadUseCase thực hiện nghiệp vụ tải lên tệp tin và lưu trữ vào Storage (S3/MinIO)
+// UploadUseCase thực hiện nghiệp vụ tải lên tệp tin và lưu trữ vào Storage (Cloudflare R2/MinIO)
 type UploadUseCase struct {
 	storage   storage.Storage  // Adapter giao tiếp lưu trữ
 	processor images.Processor // Bộ xử lý tối ưu hóa hình ảnh (resize, chuyển đổi định dạng)
@@ -25,7 +25,7 @@ func NewUploadUseCase(s storage.Storage, p images.Processor) *UploadUseCase {
 
 // Execute thực hiện lưu trữ file dạng luồng (stream):
 // 1. Tạo khóa định danh theo cấu trúc: {folder}/{fileName}
-// 2. Stream dữ liệu trực tiếp lên S3/MinIO mà không cần lưu tạm ra ổ cứng máy chủ
+// 2. Stream dữ liệu trực tiếp lên Cloudflare R2/MinIO mà không cần lưu tạm ra ổ cứng máy chủ
 // 3. Trả về khóa định danh của tệp tin vừa tải lên
 func (u *UploadUseCase) Execute(
 	ctx context.Context,

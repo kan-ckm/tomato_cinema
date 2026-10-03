@@ -12,7 +12,7 @@ type FileInfo struct {
 	MIMEType string // Định dạng MIME của tệp
 }
 
-// Storage là giao diện trừu tượng cho mọi dịch vụ lưu trữ (AWS S3, MinIO, GCS, Local Disk):
+// Storage là giao diện trừu tượng cho mọi dịch vụ lưu trữ (Cloudflare R2, MinIO, GCS, Local Disk):
 // Giúp tầng UseCase hoàn toàn độc lập với công nghệ lưu trữ cụ thể
 type Storage interface {
 	// UploadStream tải lên tệp tin dạng luồng dữ liệu mà không cần tải hết vào RAM

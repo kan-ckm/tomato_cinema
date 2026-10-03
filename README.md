@@ -58,7 +58,7 @@
 
 - **Giao tiếp nội bộ độ trễ thấp (Low-latency IPC):** Dùng **gRPC (HTTP/2 + Protocol Buffers)** thay vì REST HTTP/1.1 truyền thống trong mạng nội bộ, tối ưu hóa payload dạng nhị phân và chuẩn hóa hợp đồng dữ liệu (Contracts).
 - **Kiến trúc hướng sự kiện (Event-Driven):** Sử dụng **RabbitMQ** để xử lý các luồng công việc ngầm, tốn thời gian (gửi email xác thực OTP, thông báo hệ thống) mà không làm chậm trải nghiệm người dùng trên API chính.
-- **Xử lý đa phương tiện hiệu năng cao (High-performance Media Processing):** Microservice xử lý hình ảnh và truyền phát media được viết bằng **Golang**, tích hợp lưu trữ tương thích chuẩn S3 (AWS S3, MinIO, Cloudflare R2), hỗ trợ tối ưu ảnh WebP và Streaming I/O không chiếm dụng RAM.
+- **Xử lý đa phương tiện hiệu năng cao (High-performance Media Processing):** Microservice xử lý hình ảnh và truyền phát media được viết bằng **Golang**, tích hợp lưu trữ tương thích chuẩn S3 (Cloudflare R2, MinIO), hỗ trợ tối ưu ảnh WebP và Streaming I/O không chiếm dụng RAM.
 - **Mô hình Database-per-Service:** Các domain khác nhau sở hữu cơ sở dữ liệu riêng biệt trên PostgreSQL (Auth DB, Users DB), đảm bảo tính cô lập và khả năng mở rộng độc lập.
 - **Bảo mật & Phiên làm việc (Auth & Identity):** Đăng nhập Passwordless thông qua OTP Email hoặc liên kết Telegram Bot SSO 1-chạm, quản lý phiên qua Access Token và Refresh Token Rotation đặt trong HttpOnly Cookie bảo vệ chống tấn công XSS/CSRF.
 
@@ -121,7 +121,7 @@ tomato_cinema/
 | **Event Broker**          | RabbitMQ (AMQP)                | Xử lý hàng đợi phi đồng bộ, gửi email OTP và thông báo hệ thống             |
 | **Cơ sở dữ liệu**         | PostgreSQL 16                  | Hệ quản trị CSDL quan hệ chính (tách biệt database `auth` và `users`)       |
 | **Bộ nhớ đệm (Cache)**    | Redis 8                        | Lưu trữ phiên làm việc, chống spam gửi mã OTP, Blacklist/Whitelist Token    |
-| **Lưu trữ tệp (Storage)** | S3-Compatible (MinIO / AWS S3) | Lưu trữ posters, avatars, videos với cơ chế Streaming I/O                   |
+| **Lưu trữ tệp (Storage)** | S3-Compatible (Cloudflare R2 / MinIO) | Lưu trữ posters, avatars, videos với cơ chế Streaming I/O                   |
 | **ORM**                   | Prisma, TypeORM                | Thực hành cả Prisma ORM (`auth-service`) và TypeORM (`user-service`)        |
 | **Frontend**              | Next.js 16, React 19           | Trải nghiệm giao diện xem phim hiện đại, Server Components                  |
 | **Tài liệu & Sơ đồ**      | Fumadocs, Archify Diagrams     | Tài liệu hóa kiến trúc tương tác, xem sơ đồ động đa chế độ                  |

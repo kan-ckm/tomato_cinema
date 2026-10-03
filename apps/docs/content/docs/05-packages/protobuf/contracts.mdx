@@ -116,14 +116,14 @@ message User {
 }
 ```
 
-### 2.4. `media.proto` — Giao tiếp Đa phương tiện AWS S3
+### 2.4. `media.proto` — Giao tiếp Đa phương tiện Cloudflare R2
 Được triển khai bởi `media-service` (viết bằng Golang) và được gọi bởi `gateway-service` (Node.js):
 
 ```protobuf
 syntax = "proto3";
 package media.v1;
 
-option go_package = "github.com/tomatocinema/contracts/media/v1;mediav1";
+option go_package = "github.com/tomatocinema/contracts/gen/go/media/v1;mediav1";
 option java_multiple_files = true;
 
 service MediaService {
@@ -142,7 +142,7 @@ message UploadRequest {
 }
 
 message UploadResponse {
-  string key = 1; // S3 Object Key (vd: "movies/posters/uuid.webp")
+  string key = 1; // Cloudflare R2 Object Key (vd: "movies/posters/uuid.webp")
 }
 ```
 

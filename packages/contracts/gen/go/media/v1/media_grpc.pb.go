@@ -31,14 +31,14 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // ============================================================================
-// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với AWS S3
+// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với Cloudflare R2
 // ============================================================================
 type MediaServiceClient interface {
-	// Tải tệp lên AWS S3 (tương đương thao tác s3:PutObject)
+	// Tải tệp lên Cloudflare R2 (tương đương thao tác s3:PutObject)
 	Upload(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*UploadResponse, error)
-	// Lấy nội dung tệp từ AWS S3 (tương đương thao tác s3:GetObject)
+	// Lấy nội dung tệp từ Cloudflare R2 (tương đương thao tác s3:GetObject)
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
-	// Xóa tệp khỏi AWS S3 (tương đương thao tác s3:DeleteObject)
+	// Xóa tệp khỏi Cloudflare R2 (tương đương thao tác s3:DeleteObject)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 }
 
@@ -85,14 +85,14 @@ func (c *mediaServiceClient) Delete(ctx context.Context, in *DeleteRequest, opts
 // for forward compatibility.
 //
 // ============================================================================
-// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với AWS S3
+// MediaService: Quản lý tệp tin đa phương tiện tương tác trực tiếp với Cloudflare R2
 // ============================================================================
 type MediaServiceServer interface {
-	// Tải tệp lên AWS S3 (tương đương thao tác s3:PutObject)
+	// Tải tệp lên Cloudflare R2 (tương đương thao tác s3:PutObject)
 	Upload(context.Context, *UploadRequest) (*UploadResponse, error)
-	// Lấy nội dung tệp từ AWS S3 (tương đương thao tác s3:GetObject)
+	// Lấy nội dung tệp từ Cloudflare R2 (tương đương thao tác s3:GetObject)
 	Get(context.Context, *GetRequest) (*GetResponse, error)
-	// Xóa tệp khỏi AWS S3 (tương đương thao tác s3:DeleteObject)
+	// Xóa tệp khỏi Cloudflare R2 (tương đương thao tác s3:DeleteObject)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }

@@ -33,7 +33,7 @@ func NewMediaHandler(
 
 // Upload tiếp nhận cuộc gọi RPC Upload từ các service khác (User, Movie, Auth):
 // 1. Chuyển đổi dữ liệu nhị phân bytes.NewReader(req.Data) thành luồng io.Reader
-// 2. Gọi UploadUseCase để lưu trữ vào Storage (S3/MinIO)
+// 2. Gọi UploadUseCase để lưu trữ vào Storage (Cloudflare R2/MinIO)
 // 3. Trả về protobuf UploadResponse chứa khóa (Key) của tệp tin
 func (h *MediaHandler) Upload(
 	ctx context.Context,

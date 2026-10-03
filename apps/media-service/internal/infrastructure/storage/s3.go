@@ -17,8 +17,8 @@ import (
 	"github.com/tomatocinema/media-service/pkg/logger"
 )
 
-// S3Storage triển khai giao diện Storage dựa trên AWS S3 SDK v2:
-// Hỗ trợ cả AWS S3 thật, MinIO chạy local, Cloudflare R2 hoặc Ceph Object Storage
+// S3Storage triển khai giao diện Storage tương thích chuẩn S3 API (AWS SDK v2):
+// Hỗ trợ Cloudflare R2, MinIO chạy local hoặc Ceph Object Storage
 type S3Storage struct {
 	client     *s3.Client          // Client S3 API chính
 	uploader   *manager.Uploader   // Trình quản lý upload stream tối ưu phân mảnh
@@ -28,7 +28,7 @@ type S3Storage struct {
 	presigner  *s3.PresignClient   // Client tạo URL tạm thời có chữ ký (Presigned URL)
 }
 
-// NewS3Storage khởi tạo kết nối đến S3/MinIO:
+// NewS3Storage khởi tạo kết nối đến Cloudflare R2 / MinIO:
 // 1. Cấu hình Credentials và Region
 // 2. Bật Path-Style (`UsePathStyle = true`) để tương thích hoàn toàn với MinIO
 // 3. Tự động kiểm tra (`HeadBucket`) và tạo Bucket mới (`CreateBucket`) nếu chưa có

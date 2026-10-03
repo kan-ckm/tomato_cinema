@@ -24,7 +24,7 @@ type Config struct {
 		Host string // Địa chỉ host gRPC
 	}
 
-	// Cấu hình Object Storage (Hỗ trợ AWS S3, MinIO, Cloudflare R2)
+	// Cấu hình Object Storage (Hỗ trợ Cloudflare R2, MinIO)
 	Storage struct {
 		Driver    string // Loại driver lưu trữ (ví dụ: "s3")
 		Bucket    string // Tên bucket lưu trữ

@@ -29,7 +29,7 @@ func main() {
 	logger.Init(cfg.Logging.Level)
 	logger.Info("🚀 Đang khởi động media-service ở chế độ %s", cfg.App.Env)
 
-	// 3. Khởi tạo adapter lưu trữ S3 (Hỗ trợ cả AWS S3 và MinIO)
+	// 3. Khởi tạo adapter lưu trữ Storage (Hỗ trợ Cloudflare R2 và MinIO)
 	var mediaStorage storage.Storage
 	var err error
 
