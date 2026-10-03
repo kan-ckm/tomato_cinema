@@ -26,13 +26,14 @@ Dù Access Token hoàn toàn **Stateless** (không lưu trữ trên server để
 
 ### Cấu trúc 3 nhóm khóa lưu trữ:
 
-| Khóa Redis | Thời gian sống (TTL) | Mục đích kỹ thuật |
-| :--- | :--- | :--- |
-| `rt:{userId}:{fingerprint}` | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động (Active Session). |
-| `rt_grace:{userId}:{fingerprint}` | 30 giây | **Cửa sổ Ân hạn (Grace Period)**: Lưu bản sao cặp token mới để phục vụ các request đồng thời từ nhiều tab trình duyệt. |
-| `rt_revoked:{userId}:{fingerprint}` | 24 giờ (86,400s) | **Lịch sử Xoay vòng (Revocation Tracking)**: Lưu vết token đã xoay vòng để phát hiện tấn công tái sử dụng (Reuse Detection). |
+| Khóa Redis                          | Thời gian sống (TTL) | Mục đích kỹ thuật                                                                                                            |
+| :---------------------------------- | :------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `rt:{userId}:{fingerprint}`         | 30 ngày (2,592,000s) | Lưu phiên Refresh Token đang hoạt động (Active Session).                                                                     |
+| `rt_grace:{userId}:{fingerprint}`   | 30 giây              | **Cửa sổ Ân hạn (Grace Period)**: Lưu bản sao cặp token mới để phục vụ các request đồng thời từ nhiều tab trình duyệt.       |
+| `rt_revoked:{userId}:{fingerprint}` | 24 giờ (86,400s)     | **Lịch sử Xoay vòng (Revocation Tracking)**: Lưu vết token đã xoay vòng để phát hiện tấn công tái sử dụng (Reuse Detection). |
 
 Trong đó:
+
 - `rt`, `rt_grace`, `rt_revoked`: Tiền tố (Prefix) định danh từng trạng thái vòng đời token.
 - `{userId}`: UUID định danh người dùng trong database.
 - `{fingerprint}`: Dấu vân tay 32 ký tự hex được băm SHA-256 từ chuỗi Refresh Token gốc:
@@ -42,8 +43,9 @@ Trong đó:
   }
   ```
 
-> **Tại sao phải dùng Fingerprint thay vì lưu trực tiếp toàn bộ token vào Redis key?**  
-> 1. **Tiết kiệm dung lượng RAM**: Khóa ngắn gọn 32 ký tự giúp Redis cluster tiết kiệm bộ nhớ khi quản lý hàng triệu phiên.  
+> **Tại sao phải dùng Fingerprint thay vì lưu trực tiếp toàn bộ token vào Redis key?**
+>
+> 1. **Tiết kiệm dung lượng RAM**: Khóa ngắn gọn 32 ký tự giúp Redis cluster tiết kiệm bộ nhớ khi quản lý hàng triệu phiên.
 > 2. **Bảo mật tối thượng**: Ngay cả khi quản trị viên dump dữ liệu Redis hoặc bộ nhớ cache bị rò rỉ, kẻ tấn công cũng **không thể khôi phục ra chuỗi Refresh Token gốc** để giả mạo phiên của người dùng.
 
 ---
@@ -116,10 +118,12 @@ public async rotate(refreshToken: string): Promise<{ accessToken: string; refres
 ## 4. Giải quyết Các Bài toán Hóc búa về Xác thực
 
 ### 4.1. Bài toán Race Condition khi Mở Nhiều Tab (Multi-Tab Concurrency)
+
 - **Vấn đề trước đây**: Khi Access Token hết hạn, nếu người dùng mở 3 tab trình duyệt, cả 3 tab đồng thời gửi `POST /auth/refresh`. Tab đến trước xóa ngay token cũ trong Redis, khiến 2 tab đến sau bị báo lỗi `401 Phiên đã hết hạn` và người dùng bị **văng ra màn hình đăng nhập (Forced Logout)** bất công.
 - **Giải pháp Tomato Cinema**: Nhờ cơ chế **Grace Period 30 giây**, trong vòng 30s sau khi xoay vòng, mọi request gửi cùng token cũ đều nhận lại bản sao token mới nhất. Trải nghiệm người dùng hoàn toàn liền mạch, không còn tình trạng gián đoạn phiên.
 
 ### 4.2. Bài toán Đánh cắp Token (Token Theft & Replay Attack Defense)
+
 - **Vấn đề**: Kẻ tấn công đánh cắp được chuỗi Refresh Token trong quá trình truyền tải.
 - **Giải pháp Tomato Cinema**:
   - Nếu kẻ tấn công dùng token trước $\rightarrow$ Người dùng hợp lệ dùng lại sau đó $\rightarrow$ Hệ thống phát hiện Token Reuse, **ngay lập tức hủy toàn bộ phiên của cả hai bên**. Kẻ tấn công bị đá văng khỏi hệ thống.
@@ -130,16 +134,19 @@ public async rotate(refreshToken: string): Promise<{ accessToken: string; refres
 ## 5. Xử lý Đăng xuất & Thu hồi Toàn bộ Thiết bị
 
 ### 5.1. Đăng xuất phiên đơn lẻ (`POST /auth/logout`)
+
 1. Gateway bóc tách cookie `refreshToken`.
 2. Gửi gRPC sang `auth-service` để xóa sạch các khóa `rt`, `rt_grace`, `rt_revoked` tương ứng khỏi Redis.
 3. Gateway gửi header hủy cookie về trình duyệt (`expires: new Date(0)`).
 
 ### 5.2. Thu hồi toàn bộ phiên đăng nhập (Global Revocation)
+
 Được kích hoạt tự động trong các trường hợp sau:
+
 1. **Người dùng Đổi mật khẩu thành công** (`AccountService.confirmPasswordChange`).
 2. **Người dùng Đặt lại mật khẩu qua Email OTP** (`ForgotPasswordService.resetPassword`).
 3. **Hệ thống phát hiện xâm nhập** (Token Reuse Detection kích hoạt trong `TokenService.rotate`).
-4. **Quản trị viên khóa tài khoản** hoặc người dùng chọn *"Đăng xuất khỏi tất cả thiết bị"*.
+4. **Quản trị viên khóa tài khoản** hoặc người dùng chọn _"Đăng xuất khỏi tất cả thiết bị"_.
 
 Để tránh làm nghẽn Redis khi quét nhiều session, hàm `revokeAllRefreshTokens` sử dụng con trỏ `SCAN` thay vì lệnh `KEYS`:
 
@@ -175,15 +182,15 @@ public async revokeAllRefreshTokens(userId: string): Promise<void> {
 
 ## 6. Bảng Ma trận So sánh Access Token vs. Refresh Token
 
-| Tiêu chí | Access Token | Refresh Token |
-| :--- | :--- | :--- |
-| **Bản chất lưu trữ** | **Stateless** (Chỉ xác thực chữ ký HMAC trong RAM) | **Stateful** (Lưu vết session trong Redis) |
-| **Thời hạn sống (TTL)** | 1 giờ (3,600 giây) | 24 giờ đến 30 ngày |
-| **Vị trí lưu trữ phía Client** | Response Body (Frontend lưu trong bộ nhớ RAM JS) | Cookie `HttpOnly: true`, `SameSite=Lax`, `Secure` |
-| **HMAC Domain** | `PassportAccessToken/v1` | `PassportRefreshToken/v1` |
-| **Nơi thẩm định** | API Gateway (`AuthGuard`) | Auth Service (`TokenService` + Redis) |
-| **Cơ chế đặc thù** | Zero-I/O Verification (độ trễ < 0.05ms) | Token Rotation + Grace Period 30s + Reuse Detection |
-| **Khả năng thu hồi tức thì** | Theo hạn sống (hoặc Blacklist) | Thu hồi tức thì bằng lệnh `DEL` Redis |
+| Tiêu chí                       | Access Token                                       | Refresh Token                                       |
+| :----------------------------- | :------------------------------------------------- | :-------------------------------------------------- |
+| **Bản chất lưu trữ**           | **Stateless** (Chỉ xác thực chữ ký HMAC trong RAM) | **Stateful** (Lưu vết session trong Redis)          |
+| **Thời hạn sống (TTL)**        | 1 giờ (3,600 giây)                                 | 24 giờ đến 30 ngày                                  |
+| **Vị trí lưu trữ phía Client** | Response Body (Frontend lưu trong bộ nhớ RAM JS)   | Cookie `HttpOnly: true`, `SameSite=Lax`, `Secure`   |
+| **HMAC Domain**                | `PassportAccessToken/v1`                           | `PassportRefreshToken/v1`                           |
+| **Nơi thẩm định**              | API Gateway (`AuthGuard`)                          | Auth Service (`TokenService` + Redis)               |
+| **Cơ chế đặc thù**             | Zero-I/O Verification (độ trễ < 0.05ms)            | Token Rotation + Grace Period 30s + Reuse Detection |
+| **Khả năng thu hồi tức thì**   | Theo hạn sống (hoặc Blacklist)                     | Thu hồi tức thì bằng lệnh `DEL` Redis               |
 
 ---
 
@@ -212,6 +219,24 @@ Khi mở công cụ quản lý Redis (như Redis Commander hoặc Redis GUI), b�
        ân hạn mà token này bị dùng lại -> Kích hoạt Reuse Detection thu hồi toàn bộ session.
 ```
 
-> 📄 **Tài liệu PDF Chuyên sâu**: Bạn có thể tải bản in tài liệu PDF kiến trúc chi tiết tại:  
-> [`/docs/token-rotation-redis-architecture.pdf`](/docs/token-rotation-redis-architecture.pdf) hoặc xem file gốc tại thư mục dự án: `apps/docs/docs_md/token-rotation-redis-architecture.pdf`.
+### 🏨 7.1. Mô hình Ví von Đời thường: "Hệ thống thẻ từ khách sạn thông minh"
 
+Để hình dung trực quan cơ chế hoạt động của 3 chiếc chìa khóa Redis trên:
+
+1. **Khóa `rt` = "Chiếc Thẻ Phòng VIP Hợp Lệ Duy Nhất"**:
+   - Thẻ chính chủ bạn đang giữ để mở cửa phòng xem phim và xuất trình khi muốn đổi thẻ mới. Mỗi thiết bị tại một thời điểm chỉ có duy nhất 1 thẻ hoạt động.
+2. **Khóa `rt_grace` = "Chiếc Thẻ Thay Thế Tạm Thời Trong 30 Giây"**:
+   - Khi bạn vừa đổi thẻ mới tại quầy, lễ tân dặn: _"Trong 30 giây tới, nếu bạn hoặc người thân lỡ quẹt thẻ cũ vào cửa, máy vẫn mở cửa và tự động nhả thẻ mới ra"_. Cứu tinh giúp người dùng mở nhiều tab cùng lúc không bị văng ra ngoài.
+3. **Khóa `rt_revoked` = "Sổ Đen & Bẫy Bắt Kẻ Trộm"**:
+   - Sau 30 giây ân hạn, thẻ cũ bị đưa vào danh sách thẻ đã hủy. Nếu sau đó có kẻ gian (Hacker) nhặt được thẻ cũ đem quẹt vào cửa ➔ **Chuông báo động reo lên!** Hệ thống lập tức khóa toàn bộ phòng, hủy luôn thẻ mới và bắt buộc đăng nhập lại từ đầu.
+
+### 📊 7.2. Bảng Trực quan 3 Kịch bản Tình huống Thực tế
+
+| Tình huống xảy ra                               | Chuyện gì diễn ra bên trong Redis?                                                                                                 | Trải nghiệm & Kết quả                                                                              |
+| :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| **1. Dùng bình thường** _(1 tab)_               | Khóa `rt` cũ bị xóa, khóa `rt` mới được tạo. Bản sao token mới lưu vào `rt_grace` (30s) và đánh dấu `rt_revoked` (24h).            | **Thành công:** Tiếp tục xem phim liền mạch, không hề gián đoạn.                                   |
+| **2. Mở nhiều tab cùng lúc** _(Race Condition)_ | Tab 1 xoay token xong. Các tab 2, 3, 4 gửi token cũ tới sau vài giây ➔ **Trúng ngay `rt_grace`** ➔ Trả ngay cặp token mới lưu sẵn. | **Ân hạn mượt mà:** Cả 4 tab đều nhận token mới, không có tab nào bị logout oan.                   |
+| **3. Kẻ gian tấn công** _(Dùng lại token cũ)_   | Hacker dùng token cũ sau 30 giây (`rt_grace` đã hết hạn). Request va phải **`rt_revoked`** ➔ **Phát hiện Reuse Attack!**           | **Báo động đỏ:** Thu hồi sạch toàn bộ session của tài khoản trên Redis. Hacker bị đá văng tức thì! |
+
+> 📄 **Tài liệu PDF Chuyên sâu**: Bạn có thể tải bản in tài liệu PDF kiến trúc chi tiết tại:  
+> [`/docs/token-rotation-redis-architecture.pdf`](/docs/token-rotation-redis-architecture.pdf) hoặc xem phiên bản HTML xem trước tại: [`/docs/token-rotation-redis-architecture.html`](/docs/token-rotation-redis-architecture.html).

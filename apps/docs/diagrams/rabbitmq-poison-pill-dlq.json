@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Cơ chế Kháng Poison Pill & Xử lý Deadlock RabbitMQ",
+    "output": "apps/docs/public/diagrams/rabbitmq-poison-pill-dlq.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-flow",
+        "label": "Toàn cảnh luồng xử lý và phòng vệ",
+        "focus": ["otp_req", "otp_queue", "aop_guard", "err_classify", "send_success", "transient_retry", "dlx_quarantine", "audit_alert"],
+        "note": "AOP Interceptor phân loại lỗi tạm thời và lỗi vĩnh viễn, ngăn chặn hoàn toàn vòng lặp vô tận."
+      },
+      {
+        "id": "poison-defense",
+        "label": "Nhánh kháng độc Poison Pill qua DLQ",
+        "focus": ["otp_queue", "aop_guard", "err_classify", "dlx_quarantine", "audit_alert"],
+        "note": "Khi phát hiện payload hỏng hoặc lỗi vĩnh viễn, NACK requeue=false đẩy tin nhắn sang DLQ."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "producer", "label": "Auth Service (Producer)" },
+    { "id": "broker", "label": "RabbitMQ Broker" },
+    { "id": "worker", "label": "AOP Interceptor & Worker" },
+    { "id": "dlq_lane", "label": "Dead Letter Queue & SRE", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "ingest", "label": "Phát tán & Xếp hàng", "fromCol": 0, "toCol": 1 },
+    { "id": "dispatch", "label": "AOP Đánh chặn & Phân loại", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "resolve", "label": "Xác nhận hoặc Cách ly DLQ", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["otp_req", "otp_queue", "aop_guard", "send_success", "ack_finish"],
+  "nodes": [
+    { "id": "otp_req", "lane": "producer", "col": 0, "type": "backend", "label": "Yêu cầu OTP", "sublabel": "auth.otp.requested", "width": 140 },
+    { "id": "otp_queue", "lane": "broker", "col": 1, "type": "messagebus", "label": "Hàng đợi Chính", "sublabel": "notifications_queue", "tag": "prefetch=1", "brand": "rabbitmq", "width": 140 },
+    { "id": "aop_guard", "lane": "worker", "col": 2, "type": "security", "label": "AOP Interceptor", "sublabel": "bọc quanh Message Handler", "tag": "RxJS Pipe", "width": 140 },
+    { "id": "err_classify", "lane": "worker", "col": 3, "type": "backend", "label": "Phân loại Lỗi", "sublabel": "transient hay fatal?", "tag": "Định tuyến lỗi", "width": 140 },
+    { "id": "send_success", "lane": "worker", "col": 4, "type": "external", "label": "Gửi Mail / SMS", "sublabel": "SMTP Gmail / Exolve", "tag": "200 OK", "width": 140 },
+    { "id": "transient_retry", "lane": "worker", "col": 5, "type": "backend", "label": "Backoff Retry", "sublabel": "tối đa 3 lần có giãn cách", "width": 140 },
+    { "id": "ack_finish", "lane": "broker", "col": 5, "type": "messagebus", "label": "Xác nhận ACK", "sublabel": "xóa message khỏi queue", "tag": "Thành công", "width": 140 },
+    { "id": "dlx_quarantine", "lane": "dlq_lane", "col": 4, "type": "security", "label": "NACK requeue:false", "sublabel": "chuyển sang DLX", "tag": "Kháng độc", "width": 140 },
+    { "id": "audit_alert", "lane": "dlq_lane", "col": 5, "type": "database", "label": "DLQ & Cảnh báo SRE", "sublabel": "lưu vết và thông báo Slack", "tag": "Cách ly an toàn", "width": 140 }
+  ],
+  "edges": [
+    { "id": "pub_to_queue", "from": "otp_req", "to": "otp_queue", "label": "publish event", "variant": "emphasis" },
+    { "id": "queue_to_guard", "from": "otp_queue", "to": "aop_guard", "label": "consume msg", "variant": "emphasis" },
+    { "id": "guard_to_handler", "from": "aop_guard", "to": "send_success", "label": "next.handle()", "variant": "emphasis" },
+    { "id": "handler_to_classify", "from": "send_success", "to": "err_classify", "label": "gặp lỗi exception", "variant": "security" },
+    { "id": "classify_to_retry", "from": "err_classify", "to": "transient_retry", "label": "lỗi tạm thời (503/timeout)", "variant": "dashed" },
+    { "id": "classify_to_dlx", "from": "err_classify", "to": "dlx_quarantine", "label": "poison pill (sai cú pháp)", "variant": "security" },
+    { "id": "success_to_ack", "from": "send_success", "to": "ack_finish", "label": "tap() -> ack", "variant": "emphasis" },
+    { "id": "dlx_to_audit", "from": "dlx_quarantine", "to": "audit_alert", "label": "định tuyến vào DLQ", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Chủ động NACK requeue: false",
+      "items": [
+        "Loại bỏ triệt để hiện tượng Deadlock và vòng lặp vô hạn đẩy CPU lên 100%",
+        "Hàng đợi chính luôn được thông suốt, đảm bảo SLA gửi OTP dưới 200ms cho mọi người dùng khác"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Dead Letter Queue (DLQ) & Audit",
+      "items": [
+        "Toàn bộ Poison Pill được RabbitMQ chuyển tự động sang notifications.dlq",
+        "Lập trình viên và SRE dễ dàng kiểm tra payload lỗi, lập báo cáo giám sát mà không làm sập worker"
+      ]
+    }
+  ]
+}
