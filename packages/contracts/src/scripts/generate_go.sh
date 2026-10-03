@@ -6,12 +6,16 @@ if ! command -v protoc-gen-go >/dev/null 2>&1 || ! command -v protoc-gen-go-grpc
     exit 0
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$ROOT_DIR"
+
 echo "Tạo protobuf Go (media)..."
 
 protoc -I ./proto \
-    --go_out=./gen/go \
+    --go_out=. \
     --go_opt=module=github.com/tomatocinema/contracts \
-    --go-grpc_out=./gen/go \
+    --go-grpc_out=. \
     --go-grpc_opt=module=github.com/tomatocinema/contracts \
     ./proto/media.proto
 

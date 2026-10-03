@@ -3,7 +3,7 @@ syntax = "proto3";
 // Khai báo namespace định danh cho media service v1
 package media.v1;
 
-option go_package = "github.com/tomatocinema/contracts/media/v1;mediav1";
+option go_package = "github.com/tomatocinema/contracts/gen/go/media/v1;mediav1";
 option java_multiple_files = true;
 
 // ============================================================================

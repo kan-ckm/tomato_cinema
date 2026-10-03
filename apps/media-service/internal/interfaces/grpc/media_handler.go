@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	pb "github.com/tomatocinema/contracts/gen/go/media"
+	pb "github.com/tomatocinema/contracts/gen/go/media/v1"
 	"github.com/tomatocinema/media-service/internal/application/dto"
 	"github.com/tomatocinema/media-service/internal/application/usecases"
 )

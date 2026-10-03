@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	pb "github.com/tomatocinema/contracts/gen/go/media"
+	pb "github.com/tomatocinema/contracts/gen/go/media/v1"
 	"github.com/tomatocinema/media-service/internal/application/usecases"
 	"github.com/tomatocinema/media-service/internal/config"
 	"github.com/tomatocinema/media-service/internal/infrastructure/images"

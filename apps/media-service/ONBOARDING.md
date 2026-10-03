@@ -125,7 +125,7 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 - **Vị trí file:** [`internal/interfaces/grpc/media_handler.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go)
 - **Nhiệm vụ:**
-  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `tomatocinema/contracts/gen/go/media`.
+  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `github.com/tomatocinema/contracts/gen/go/media/v1`.
   - Phương thức [`Upload`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L38): Nhận `req.Data` ([]byte), đóng gói thành `bytes.NewReader(req.Data)` để thành `io.Reader`, sau đó chuyển giao cho [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13).
 
 ---

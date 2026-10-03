@@ -63,7 +63,7 @@ _Chi tiết 2 luồng xử lý chính theo phong cách nét vẽ (Hand-drawn ske
 
 ### 3.1. gRPC Server (`:50059`)
 
-Được đăng ký thông qua `contracts` protobuf (`tomatocinema/contracts/gen/go/media`):
+Được đăng ký thông qua `contracts` protobuf (`github.com/tomatocinema/contracts/gen/go/media/v1`):
 
 - **`Upload(UploadRequest) -> UploadResponse`**:
   - Nhận dữ liệu nhị phân (`Data`), tên file (`FileName`), thư mục phân loại (`Folder`), loại file (`ContentType`).
