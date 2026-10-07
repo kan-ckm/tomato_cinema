@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { PassportModule } from '@tomatocinema/passport'
 import { AccountModule } from '../modules/account/account.module'
 import { AuthModule } from '../modules/auth/auth.module'
+import { MediaModule } from '../modules/media/media.module'
 import { UsersModule } from '../modules/users/users.module'
 import { ObservabilityModule } from '../observability/observability.module'
 import { RateLimitModule } from '../shared/rate-limit/rate-limit.module'
@@ -22,6 +23,7 @@ import { getPassportConfig } from './config'
 		AccountModule,
 		AuthModule,
 		UsersModule,
+		MediaModule,
 		ObservabilityModule,
 		RateLimitModule
 	],

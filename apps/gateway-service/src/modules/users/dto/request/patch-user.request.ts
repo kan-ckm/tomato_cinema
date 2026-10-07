@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsNotEmpty, IsString } from 'class-validator'
+import { IsOptional, IsString } from 'class-validator'
 
 export class PatchUserRequest {
 	@ApiPropertyOptional({
@@ -8,6 +8,15 @@ export class PatchUserRequest {
 		nullable: true
 	})
 	@IsString()
-	@IsNotEmpty()
-	public name: string
+	@IsOptional()
+	public name?: string
+
+	@ApiPropertyOptional({
+		description: 'Đường dẫn/khóa ảnh đại diện',
+		example: 'users/avatar-123.jpg',
+		nullable: true
+	})
+	@IsString()
+	@IsOptional()
+	public avatar?: string
 }
