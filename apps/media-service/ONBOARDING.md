@@ -61,10 +61,10 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 ### Quy tắc định vị mã nguồn:
 
-1. **Lớp ngoài cùng (Outer Layer)**: Chứa [`cmd/main.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/cmd/main.go), các file cấu hình môi trường [`.env.example`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/.env.example) và script chạy dev [`scripts/run_dev.sh`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/scripts/run_dev.sh). Lớp này có nhiệm vụ khởi động và ráp nối các thành phần với nhau.
-2. **Lớp Giao diện (Interface / Inbound Adapters)**: Nằm tại [`internal/interfaces/grpc/`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/). Nhận request từ thế giới bên ngoài (Protobuf RPC), chuyển đổi sang DTO và gọi vào Use Case.
-3. **Lớp Hạ tầng (Infrastructure / Outbound Adapters)**: Nằm tại [`internal/infrastructure/`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/). Chứa triển khai chi tiết cho Storage (S3/MinIO), Image Processor, HTTP Server và gRPC Server.
-4. **Lớp Nghiệp vụ cốt lõi (Core Application Layer)**: Nằm tại [`internal/application/`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/). Chứa các Use Case độc lập (Upload, Get, Delete) và DTOs. Không phụ thuộc vào framework mạng hay thư viện bên thứ ba.
+1. **Lớp ngoài cùng (Outer Layer)**: Chứa [`cmd/main.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/cmd/main.go), các file cấu hình môi trường [`.env.example`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/.env.example) và script chạy dev [`scripts/run_dev.sh`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/scripts/run_dev.sh). Lớp này có nhiệm vụ khởi động và ráp nối các thành phần với nhau.
+2. **Lớp Giao diện (Interface / Inbound Adapters)**: Nằm tại [`internal/interfaces/grpc/`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/interfaces/grpc/). Nhận request từ thế giới bên ngoài (Protobuf RPC), chuyển đổi sang DTO và gọi vào Use Case.
+3. **Lớp Hạ tầng (Infrastructure / Outbound Adapters)**: Nằm tại [`internal/infrastructure/`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/). Chứa triển khai chi tiết cho Storage (S3/MinIO), Image Processor, HTTP Server và gRPC Server.
+4. **Lớp Nghiệp vụ cốt lõi (Core Application Layer)**: Nằm tại [`internal/application/`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/). Chứa các Use Case độc lập (Upload, Get, Delete) và DTOs. Không phụ thuộc vào framework mạng hay thư viện bên thứ ba.
 
 ---
 
@@ -72,12 +72,12 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 ### 4.1. Điểm khởi chạy: `cmd/main.go`
 
-- **Vị trí file:** [`cmd/main.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/cmd/main.go)
+- **Vị trí file:** [`cmd/main.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/cmd/main.go)
 - **Nhiệm vụ:**
-  1. Gọi [`config.Load()`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/config/config.go#L51) để tải biến môi trường.
-  2. Khởi tạo logger qua [`logger.Init()`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/pkg/logger/logger.go#L13).
-  3. Khởi tạo adapter lưu trữ [`storage.NewS3Storage(cfg)`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/s3.go#L35).
-  4. Khởi tạo gRPC Server ([`grpc.NewServer`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/grpc/server.go#L21)) và HTTP Server ([`httpserver.NewServer`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/http/server.go#L29)).
+  1. Gọi [`config.Load()`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/config/config.go#L51) để tải biến môi trường.
+  2. Khởi tạo logger qua [`logger.Init()`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/pkg/logger/logger.go#L13).
+  3. Khởi tạo adapter lưu trữ [`storage.NewS3Storage(cfg)`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/s3.go#L35).
+  4. Khởi tạo gRPC Server ([`grpc.NewServer`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/grpc/server.go#L21)) và HTTP Server ([`httpserver.NewServer`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/http/server.go#L29)).
   5. Dùng 2 Goroutine chạy song song cả 2 server:
      ```go
      go func() { grpcServer.Serve(grpcListener) }()
@@ -89,8 +89,8 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 ### 4.2. Cấu hình tập trung: `internal/config/`
 
-- **Vị trí file:** [`internal/config/config.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/config/config.go)
-- **Nhiệm vụ:** Ánh xạ các biến môi trường thành struct [`Config`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/config/config.go#L9) có cấu trúc tường minh:
+- **Vị trí file:** [`internal/config/config.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/config/config.go)
+- **Nhiệm vụ:** Ánh xạ các biến môi trường thành struct [`Config`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/config/config.go#L9) có cấu trúc tường minh:
   - `App.Env`: Môi trường `development` hoặc `production`.
   - `HTTP.Port` / `HTTP.Host`: Cổng và domain sinh URL file tĩnh (`4200`, `localhost:4200`).
   - `GRPC.Port` / `GRPC.Host`: Cổng tiếp nhận RPC (`50059`, `localhost`).
@@ -103,30 +103,30 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 #### DTOs (Data Transfer Objects)
 
-- **Vị trí file:** [`internal/application/dto/media.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go)
+- **Vị trí file:** [`internal/application/dto/media.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go)
 - **Nhiệm vụ:** Định nghĩa cấu trúc dữ liệu giao tiếp giữa Handler và Use Case:
-  - [`UploadMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L6): Chứa `FileName`, `Folder`, `ContentType`, `Size`, và quan trọng nhất là `Reader io.Reader` (dữ liệu dạng stream).
-  - [`UploadMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L18): Trả về `Key` (đường dẫn định danh file trên bucket).
-  - [`GetMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L23) / [`GetMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L28): Trả về `Reader io.ReadCloser` và `ContentType`.
-  - [`DeleteMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L34) / [`DeleteMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/dto/media.go#L39): Nhận `Key` cần xóa và trả về kết quả `OK`.
+  - [`UploadMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L6): Chứa `FileName`, `Folder`, `ContentType`, `Size`, và quan trọng nhất là `Reader io.Reader` (dữ liệu dạng stream).
+  - [`UploadMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L18): Trả về `Key` (đường dẫn định danh file trên bucket).
+  - [`GetMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L23) / [`GetMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L28): Trả về `Reader io.ReadCloser` và `ContentType`.
+  - [`DeleteMediaRequest`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L34) / [`DeleteMediaResponse`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/dto/media.go#L39): Nhận `Key` cần xóa và trả về kết quả `OK`.
 
 #### Use Cases
 
-- **[`internal/application/usecases/upload.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go)**:
-  - [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13): Tạo đường dẫn phân cấp `fmt.Sprintf("%s/%s", input.Folder, input.FileName)` và đẩy trực tiếp luồng stream vào adapter lưu trữ qua `storage.UploadStream`.
-- **[`internal/application/usecases/fetch.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/fetch.go)**:
-  - [`GetUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/fetch.go#L11): Nhận `Key`, yêu cầu storage trả về luồng `io.ReadCloser` và MIME type tương ứng.
-- **[`internal/application/usecases/delete.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/delete.go)**:
-  - [`DeleteUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/delete.go#L11): Thực hiện thao tác xóa tệp tin trên bucket bằng khóa `Key`.
+- **[`internal/application/usecases/upload.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/upload.go)**:
+  - [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/upload.go#L13): Tạo đường dẫn phân cấp `fmt.Sprintf("%s/%s", input.Folder, input.FileName)` và đẩy trực tiếp luồng stream vào adapter lưu trữ qua `storage.UploadStream`.
+- **[`internal/application/usecases/fetch.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/fetch.go)**:
+  - [`GetUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/fetch.go#L11): Nhận `Key`, yêu cầu storage trả về luồng `io.ReadCloser` và MIME type tương ứng.
+- **[`internal/application/usecases/delete.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/delete.go)**:
+  - [`DeleteUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/delete.go#L11): Thực hiện thao tác xóa tệp tin trên bucket bằng khóa `Key`.
 
 ---
 
 ### 4.4. Tầng tiếp nhận dữ liệu: `internal/interfaces/`
 
-- **Vị trí file:** [`internal/interfaces/grpc/media_handler.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go)
+- **Vị trí file:** [`internal/interfaces/grpc/media_handler.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/interfaces/grpc/media_handler.go)
 - **Nhiệm vụ:**
-  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `github.com/tomatocinema/contracts/gen/go/media/v1`.
-  - Phương thức [`Upload`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L38): Nhận `req.Data` ([]byte), đóng gói thành `bytes.NewReader(req.Data)` để thành `io.Reader`, sau đó chuyển giao cho [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13).
+  - Cài đặt struct [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/interfaces/grpc/media_handler.go#L14) thỏa mãn interface sinh ra từ file protobuf `github.com/tomatocinema/contracts/gen/go/media/v1`.
+  - Phương thức [`Upload`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/interfaces/grpc/media_handler.go#L38): Nhận `req.Data` ([]byte), đóng gói thành `bytes.NewReader(req.Data)` để thành `io.Reader`, sau đó chuyển giao cho [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/upload.go#L13).
 
 ---
 
@@ -134,7 +134,7 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 #### 1. Lưu trữ Object Storage (`storage/`)
 
-- **[`internal/infrastructure/storage/storage.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/storage.go)**: Interface [`Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/storage.go#L17) định nghĩa các phương thức trừu tượng:
+- **[`internal/infrastructure/storage/storage.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/storage.go)**: Interface [`Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/storage.go#L17) định nghĩa các phương thức trừu tượng:
   ```go
   type Storage interface {
       UploadStream(ctx context.Context, key string, reader io.Reader, contentType string) error
@@ -143,28 +143,28 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
       Close() error
   }
   ```
-- **[`internal/infrastructure/storage/s3.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/s3.go)**:
-  - Triển khai [`S3Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/s3.go#L22) sử dụng AWS SDK v2.
+- **[`internal/infrastructure/storage/s3.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/s3.go)**:
+  - Triển khai [`S3Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/s3.go#L22) sử dụng AWS SDK v2.
   - Tự động bật `o.UsePathStyle = true` khi dùng MinIO.
   - Tự động kiểm tra (`HeadBucket`) và khởi tạo bucket mới (`CreateBucket`) nếu chưa tồn tại trong lúc boot service.
-  - Hỗ trợ tạo liên kết tạm có chữ ký [`GetPresignedURL`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/s3.go#L161) cho phương thức `GET` và `PUT`.
+  - Hỗ trợ tạo liên kết tạm có chữ ký [`GetPresignedURL`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/s3.go#L161) cho phương thức `GET` và `PUT`.
 
 #### 2. Xử lý tối ưu hình ảnh (`images/`)
 
-- **[`internal/infrastructure/images/processor.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/images/processor.go)**:
-  - Định nghĩa interface [`Processor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/images/processor.go#L15) và cài đặt mặc định [`NoopProcessor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/images/processor.go#L21) (chuyển tiếp luồng ảnh gốc).
+- **[`internal/infrastructure/images/processor.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/images/processor.go)**:
+  - Định nghĩa interface [`Processor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/images/processor.go#L15) và cài đặt mặc định [`NoopProcessor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/images/processor.go#L21) (chuyển tiếp luồng ảnh gốc).
   - Đây là điểm mở rộng (extension point) để tích hợp nén WebP và resize tự động.
 
 #### 3. Cấu hình gRPC & Middleware (`grpc/`)
 
-- **[`internal/infrastructure/grpc/server.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/grpc/server.go)**: Khởi tạo instance gRPC Server, đăng ký chuỗi Interceptor và khởi tạo các UseCases.
-- **[`internal/infrastructure/grpc/interceptor.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/grpc/interceptor.go)**:
-  - [`RequestLoggerInterceptor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/grpc/interceptor.go#L16): Đo thời gian thực thi (latency) và in log trạng thái của mọi RPC call.
-  - [`TraceIDInterceptor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/grpc/interceptor.go#L38): Đọc `x-trace-id` từ metadata hoặc tự sinh UUID mới gắn vào context, phục vụ Distributed Tracing.
+- **[`internal/infrastructure/grpc/server.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/grpc/server.go)**: Khởi tạo instance gRPC Server, đăng ký chuỗi Interceptor và khởi tạo các UseCases.
+- **[`internal/infrastructure/grpc/interceptor.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/grpc/interceptor.go)**:
+  - [`RequestLoggerInterceptor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/grpc/interceptor.go#L16): Đo thời gian thực thi (latency) và in log trạng thái của mọi RPC call.
+  - [`TraceIDInterceptor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/grpc/interceptor.go#L38): Đọc `x-trace-id` từ metadata hoặc tự sinh UUID mới gắn vào context, phục vụ Distributed Tracing.
 
 #### 4. Phục vụ file qua HTTP Gin (`http/`)
 
-- **[`internal/infrastructure/http/server.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/http/server.go)**:
+- **[`internal/infrastructure/http/server.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/http/server.go)**:
   - Khởi tạo Gin Web Server lắng nghe cổng `:4200`.
   - Route `GET /*key`: Mở stream từ S3 qua `GetStream`, nhận diện MIME bằng thư viện `mimetype.Detect()`, gắn header `Cache-Control: public, max-age=86400` và trả về nhị phân trực tiếp cho client.
 
@@ -172,9 +172,9 @@ Mã nguồn được tổ chức theo triết lý **Clean Architecture (Hexagona
 
 ### 4.6. Thư viện dùng chung & Scripts: `pkg/` & `scripts/`
 
-- **[`pkg/logger/logger.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/pkg/logger/logger.go)**: Cung cấp các hàm in log tiện lợi (`Info`, `Warn`, `Error`, `Fatal`) có cơ chế kiểm tra level trước khi ghi.
-- **[`scripts/run_dev.sh`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/scripts/run_dev.sh)**: Script nạp `.env` và kích hoạt tiện ích `air` để tự động biên dịch lại khi sửa code (live reload).
-- **[`.air.toml`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/.air.toml)**: File cấu hình watcher cho `air`, chỉ định thư mục build `tmp/cmd.exe` và các phần mở rộng cần theo dõi (`.go`).
+- **[`pkg/logger/logger.go`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/pkg/logger/logger.go)**: Cung cấp các hàm in log tiện lợi (`Info`, `Warn`, `Error`, `Fatal`) có cơ chế kiểm tra level trước khi ghi.
+- **[`scripts/run_dev.sh`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/scripts/run_dev.sh)**: Script nạp `.env` và kích hoạt tiện ích `air` để tự động biên dịch lại khi sửa code (live reload).
+- **[`.air.toml`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/.air.toml)**: File cấu hình watcher cho `air`, chỉ định thư mục build `tmp/cmd.exe` và các phần mở rộng cần theo dõi (`.go`).
 
 ---
 
@@ -190,9 +190,9 @@ Dưới đây là chi tiết vòng đời của 2 thao tác quan trọng nhất 
 
 1. Một microservice nội bộ (ví dụ `movie-service` khi tạo phim mới) gọi RPC `Upload(UploadRequest)` với dữ liệu nhị phân của ảnh poster.
 2. `TraceIDInterceptor` gắn TraceID vào context; `RequestLoggerInterceptor` bắt đầu bấm giờ.
-3. `MediaHandler.Upload()` bọc `req.Data` vào `bytes.NewReader` và chuyển tiếp sang [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13).
-4. [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/upload.go#L13) ghép tên tệp với thư mục (`posters/avatar-123.jpg`), đẩy qua bộ xử lý ảnh, rồi gọi `storage.UploadStream`.
-5. [`S3Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/storage/s3.go#L22) đẩy stream thẳng lên S3/MinIO bucket bằng `uploader.Upload`.
+3. `MediaHandler.Upload()` bọc `req.Data` vào `bytes.NewReader` và chuyển tiếp sang [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/upload.go#L13).
+4. [`UploadUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/upload.go#L13) ghép tên tệp với thư mục (`posters/avatar-123.jpg`), đẩy qua bộ xử lý ảnh, rồi gọi `storage.UploadStream`.
+5. [`S3Storage`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/storage/s3.go#L22) đẩy stream thẳng lên S3/MinIO bucket bằng `uploader.Upload`.
 6. Trả về `Key` cho `movie-service` lưu vào cơ sở dữ liệu.
 
 ### 5.2. Luồng 2: Phục vụ xem ảnh trực tiếp qua HTTP (Streaming Flow)
@@ -304,8 +304,8 @@ HTTP đang lắng nghe tại cổng :4200
 
 > [!TIP]
 > **2. Mở rộng Image Processor:**
-> Hiện tại [`images.Processor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/images/processor.go#L15) đang dùng [`NoopProcessor`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/infrastructure/images/processor.go#L21). Trong `go.mod` đã có sẵn thư viện `imaging` và `go-webp`. Bạn có thể hiện thực hóa logic tự động nén ảnh sang định dạng `.webp` trước khi lưu vào S3 để tối ưu dung lượng và băng thông.
+> Hiện tại [`images.Processor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/images/processor.go#L15) đang dùng [`NoopProcessor`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/infrastructure/images/processor.go#L21). Trong `go.mod` đã có sẵn thư viện `imaging` và `go-webp`. Bạn có thể hiện thực hóa logic tự động nén ảnh sang định dạng `.webp` trước khi lưu vào S3 để tối ưu dung lượng và băng thông.
 
 > [!NOTE]
 > **3. Bổ sung gRPC RPC `Get` và `Delete`:**
-> Hai Use Case [`GetUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/fetch.go#L11) và [`DeleteUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/application/usecases/delete.go#L11) đã được xây dựng sẵn trong tầng Application. Khi cần tiếp nhận RPC xóa hoặc lấy metadata tệp qua gRPC, hãy đăng ký bổ sung method tương ứng vào [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/internal/interfaces/grpc/media_handler.go#L14).
+> Hai Use Case [`GetUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/fetch.go#L11) và [`DeleteUseCase`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/application/usecases/delete.go#L11) đã được xây dựng sẵn trong tầng Application. Khi cần tiếp nhận RPC xóa hoặc lấy metadata tệp qua gRPC, hãy đăng ký bổ sung method tương ứng vào [`MediaHandler`](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/internal/interfaces/grpc/media_handler.go#L14).

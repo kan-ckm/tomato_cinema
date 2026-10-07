@@ -107,7 +107,7 @@ Module lưu trữ nằm tại `internal/infrastructure/storage/`:
 
 ## 5. Cấu hình biến môi trường (Environment Variables)
 
-Dịch vụ đọc cấu hình từ file `.env` (tham khảo [.env.example](file:///home/tomato/ssd/data/Projects/tomato_cinema_fork/apps/media-service/.env.example)):
+Dịch vụ đọc cấu hình từ file `.env` (tham khảo [.env.example](file:///home/tomato/ssd/data/Projects/tomato_cinema/apps/media-service/.env.example)):
 
 | Biến môi trường | Mặc định         | Mô tả                                                           |
 | --------------- | ---------------- | --------------------------------------------------------------- |

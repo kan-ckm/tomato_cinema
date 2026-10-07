@@ -1,0 +1,12 @@
+{
+  "name": "media-service",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "bash ./scripts/run_dev.sh",
+    "build": "go build -v -o ./bin/media-service ./cmd"
+  },
+  "dependencies": {
+    "@tomatocinema/contracts": "workspace:*"
+  }
+}
