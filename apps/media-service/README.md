@@ -114,50 +114,62 @@ Dịch vụ đọc cấu hình từ file `.env` (tham khảo [.env.example](file
 | `APP_ENV`       | `development`    | Môi trường chạy (`development` hoặc `production`)               |
 | `HTTP_PORT`     | `4200`           | Cổng HTTP Server phục vụ file trực tiếp                         |
 | `HTTP_HOST`     | `localhost:4200` | Hostname của HTTP Server để sinh public link                    |
-| `GRPC_PORT`     | `50059`          | Cổng tiếp nhận các cuộc gọi gRPC nội bộ                         |
-| `GRPC_HOST`     | `localhost`      | Hostname lắng nghe gRPC                                         |
-| `S3_DRIVER`     | `s3`             | Trình điều khiển lưu trữ                                        |
-| `S3_BUCKET`     | _(Bắt buộc)_     | Tên bucket (ví dụ: `tomato-cinema-media`)                       |
-| `S3_REGION`     | `us-east-1`      | Khu vực S3                                                      |
-| `S3_ENDPOINT`   | _(Tùy chọn)_     | Endpoint S3 tùy biến (ví dụ `http://minio:9000` khi dùng MinIO) |
-| `S3_ACCESS_KEY` | _(Bắt buộc)_     | Access Key kết nối S3/MinIO                                     |
-| `S3_SECRET_KEY` | _(Bắt buộc)_     | Secret Key kết nối S3/MinIO                                     |
-| `S3_PUBLIC_URL` | _(Tùy chọn)_     | URL CDN hoặc Domain công khai của S3                            |
-| `LOG_LEVEL`     | `debug`          | Mức độ ghi log (`debug`, `info`, `warn`, `error`, `fatal`)      |
+| `GRPC_PORT`        | `50059`          | Cổng tiếp nhận các cuộc gọi gRPC nội bộ                         |
+| `GRPC_HOST`        | `localhost`      | Hostname lắng nghe gRPC                                         |
+| `GRPC_MAX_MSG_MB`  | `16`             | Kích thước tối đa của tin nhắn gRPC (MB, mặc định 16MB)         |
+| `S3_DRIVER`        | `s3`             | Trình điều khiển lưu trữ                                        |
+| `S3_BUCKET`        | _(Bắt buộc)_     | Tên bucket (ví dụ: `tomato-cinema-media`)                       |
+| `S3_REGION`        | `auto`           | Khu vực S3 (`auto` cho Cloudflare R2, `us-east-1` cho AWS)      |
+| `S3_ENDPOINT`      | _(Tùy chọn)_     | Endpoint S3 tùy biến (ví dụ `https://<accountid>.r2.cloudflarestorage.com`) |
+| `S3_ACCESS_KEY`    | _(Bắt buộc)_     | Access Key kết nối S3 / Cloudflare R2                           |
+| `S3_SECRET_KEY`    | _(Bắt buộc)_     | Secret Key kết nối S3 / Cloudflare R2                           |
+| `S3_PUBLIC_URL`    | _(Tùy chọn)_     | URL CDN hoặc Domain công khai của S3                            |
+| `LOG_LEVEL`        | `info`           | Mức độ ghi log (`debug`, `info`, `warn`, `error`, `fatal`)      |
 
 ---
 
-## 6. Phân tích hiện trạng mã nguồn & Đánh giá (Current State Assessment)
+## 6. Triển khai với Docker & Docker Compose (Containerization)
 
-### 6.1. Điểm mạnh (Strengths)
+Dịch vụ đã được đóng gói hoàn chỉnh bằng **Multi-Stage Build** kết hợp image nền **Distroless**:
+
+- **Dockerfile:** `docker/media.Dockerfile`
+- **Runner Base:** `gcr.io/distroless/static-debian12:nonroot` (~25-30MB, siêu nhẹ, bảo mật cao, có sẵn CA Certificates chuẩn HTTPS).
+- **Healthcheck CLI:** Tích hợp sẵn lệnh nhị phân `media-service healthcheck` gọi giao thức chuẩn `grpc.health.v1.Health/Check`.
+
+### Chạy qua Docker Compose:
+
+```bash
+# 1. Khởi động toàn bộ hệ thống hoặc riêng media-service
+cd docker && docker compose up -d media-service
+
+# 2. Kiểm tra trạng thái và logs
+docker compose ps media-service
+docker compose logs -f media-service
+
+# 3. Kiểm tra healthcheck thủ công bên trong container
+docker exec media_service_tomato_cinema /media-service healthcheck
+```
+
+---
+
+## 7. Phân tích hiện trạng mã nguồn & Đánh giá (Current State Assessment)
+
+### 7.1. Điểm mạnh (Strengths)
 
 - **Kiến trúc chuẩn Clean Architecture:** Phân tách rõ ràng giữa DTO, UseCase, Storage Adapter và Handler.
 - **Xử lý Stream tối ưu:** Upload và Download đều dùng `io.Reader`/`io.ReadCloser`, tránh tình trạng tràn RAM (Out of Memory) khi xử lý file media lớn.
-- **Quản lý vòng đời tốt (Graceful Shutdown):** Bắt các tín hiệu `SIGINT` / `SIGTERM` và đóng an toàn cả gRPC server, HTTP server và Storage connection trong vòng 10 giây timeout.
-- **Tương thích MinIO cao:** Code đã được viết sẵn cờ `UsePathStyle` và cơ chế auto-create bucket.
-
-### 6.2. Các điểm đang hoàn thiện / Cần cải tiến (Gaps & Todo)
-
-1. **Xử lý ảnh (Image Processor):**
-   - Hiện tại mới chỉ là `NoopProcessor` (trả về luồng ảnh gốc, chưa thực sự resize hay nén).
-   - Mặc dù file `go.mod` đã khai báo thư viện xử lý ảnh mạnh mẽ (`github.com/disintegration/imaging`, `github.com/kolesa-team/go-webp`), cần hoàn thiện logic chuyển đổi định dạng tự động sang **WebP** để tiết kiệm băng thông và tối ưu thời gian tải trang.
-2. **Thiếu Handler gRPC cho `Get` và `Delete`:**
-   - Trong `internal/interfaces/grpc/media_handler.go`, chỉ mới cài đặt phương thức `Upload`.
-   - Tầng UseCase đã có sẵn `GetUseCase` và `DeleteUseCase`, cần đăng ký bổ sung các method tương ứng trong `MediaHandler`.
-3. **Chưa có Dockerfile & tích hợp vào `docker-compose.yml`:**
-   - Hiện tại `media-service` chưa có file `Dockerfile` riêng và chưa được khai báo trong `docker/apps/docker-compose.yml`.
-4. **Chuẩn hóa Observability (Tracing & Logging):**
-   - Dịch vụ đang dùng bộ ghi log dạng text đơn giản (`pkg/logger/logger.go`). Cần bổ sung xuất log JSON để tích hợp Promtail / Grafana Loki như các service khác trong hệ thống.
-   - `TraceIDInterceptor` đang sinh ID thủ công, có thể tích hợp **OpenTelemetry Go SDK** (`go.opentelemetry.io/otel`) để bắn Trace về Jaeger / Tempo đồng bộ với `auth-service` và `gateway-service`.
+- **Quản lý vòng đời tốt (Graceful Shutdown):** Bắt các tín hiệu `SIGINT` / `SIGTERM` và đóng an toàn cả gRPC server, HTTP server và Storage connection với timeout 10 giây (ngay khi hoàn tất sẽ thoát ngay lập tức, không bị giữ block thời gian chờ).
+- **Tương thích Cloudflare R2 & MinIO cao:** Code hỗ trợ cờ `UsePathStyle`, cơ chế retry HeadBucket và tự động nhận diện Region `auto`.
+- **Đóng gói container tối ưu:** Multi-stage build bằng Go 1.24 và Distroless runner siêu nhẹ (~28MB).
 
 ---
 
-## 7. Hướng dẫn chạy và phát triển (Development)
+## 8. Hướng dẫn chạy và phát triển cục bộ (Development)
 
 ### Yêu cầu tiên quyết:
 
 - Go phiên bản **1.24+**
-- Hệ thống Storage (Cloudflare R2 hoặc MinIO container đang hoạt động)
+- Hệ thống Storage (Cloudflare R2 hoặc MinIO)
 
 ### Các lệnh thực thi:
 

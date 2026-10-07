@@ -14,14 +14,24 @@ import (
 	httpserver "github.com/tomatocinema/media-service/internal/infrastructure/http"
 	"github.com/tomatocinema/media-service/internal/infrastructure/storage"
 	"github.com/tomatocinema/media-service/pkg/logger"
+	stdgrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 // Điểm khởi chạy chính của media-service:
-// 1. Tải cấu hình từ biến môi trường (.env)
-// 2. Khởi tạo logger và bộ lưu trữ S3/MinIO
-// 3. Chạy song song cả gRPC Server (nội bộ) và HTTP Server (phục vụ xem file)
-// 4. Lắng nghe tín hiệu hệ điều hành để tắt dịch vụ an toàn (Graceful Shutdown)
+// 1. Hỗ trợ subcommand 'healthcheck' phục vụ Docker container HEALTHCHECK
+// 2. Tải cấu hình từ biến môi trường (.env)
+// 3. Khởi tạo logger và bộ lưu trữ S3/MinIO
+// 4. Chạy song song cả gRPC Server (nội bộ) và HTTP Server (phục vụ xem file)
+// 5. Lắng nghe tín hiệu hệ điều hành để tắt dịch vụ an toàn (Graceful Shutdown)
 func main() {
+	// Kiểm tra nếu gọi subcommand healthcheck từ Docker container HEALTHCHECK
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		runHealthCheck()
+		return
+	}
+
 	// 1. Nạp cấu hình hệ thống
 	cfg := config.Load()
 
@@ -40,7 +50,7 @@ func main() {
 	logger.Info("✅ Kết nối S3 storage thành công (bucket: %s)", cfg.Storage.Bucket)
 
 	// 4. Khởi tạo gRPC Server (giao tiếp nội bộ giữa các microservices)
-	grpcServer := grpc.NewServer(mediaStorage, cfg)
+	grpcServer, healthServer := grpc.NewServer(mediaStorage, cfg)
 	grpcListener, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPC.Port))
 	if err != nil {
 		logger.Fatal("Lỗi lắng nghe cổng gRPC: %v", err)
@@ -71,18 +81,73 @@ func main() {
 	}()
 
 	// 6. Xử lý tắt an toàn (Graceful Shutdown) khi nhận tín hiệu kết thúc từ OS
-	waitForShutdown(func() {
+	waitForShutdown(func(ctx context.Context) {
 		logger.Warn("🛑 Bắt đầu quy trình tắt dịch vụ an toàn (Graceful shutdown)...")
-		grpcServer.GracefulStop()
-		mediaStorage.Close()
-		httpSrv.Stop(context.Background())
+		if healthServer != nil {
+			healthServer.Shutdown()
+		}
+
+		// Dừng gRPC server an toàn với timeout
+		grpcStopped := make(chan struct{})
+		go func() {
+			grpcServer.GracefulStop()
+			close(grpcStopped)
+		}()
+
+		select {
+		case <-grpcStopped:
+			logger.Info("gRPC server đã dừng hoàn tất")
+		case <-ctx.Done():
+			logger.Warn("Quá hạn thời gian chờ gRPC, ngắt kết nối gRPC server ngay lập tức")
+			grpcServer.Stop()
+		}
+
+		if err := httpSrv.Stop(ctx); err != nil {
+			logger.Error("Lỗi dừng HTTP server: %v", err)
+		}
+		if err := mediaStorage.Close(); err != nil {
+			logger.Error("Lỗi đóng Storage: %v", err)
+		}
 		logger.Info("✅ Đã hoàn tất tắt dịch vụ an toàn")
 	})
 }
 
+// runHealthCheck thực hiện gRPC health check tới cổng nội bộ
+func runHealthCheck() {
+	cfg := config.Load()
+	addr := fmt.Sprintf("127.0.0.1:%s", cfg.GRPC.Port)
+
+	conn, err := stdgrpc.NewClient(
+		addr,
+		stdgrpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Lỗi tạo kết nối gRPC health check: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	client := healthpb.NewHealthClient(conn)
+	resp, err := client.Check(ctx, &healthpb.HealthCheckRequest{Service: ""})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Gọi gRPC HealthCheck thất bại: %v\n", err)
+		os.Exit(1)
+	}
+
+	if resp.Status != healthpb.HealthCheckResponse_SERVING {
+		fmt.Fprintf(os.Stderr, "Trạng thái service không sẵn sàng: %v\n", resp.Status)
+		os.Exit(1)
+	}
+
+	os.Exit(0)
+}
+
 // waitForShutdown bắt tín hiệu SIGINT (Ctrl+C) hoặc SIGTERM (từ Docker/K8s)
 // và cung cấp thời gian chờ tối đa 10 giây để hoàn tất các request đang dở
-func waitForShutdown(cleanup func()) {
+func waitForShutdown(cleanup func(ctx context.Context)) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -90,7 +155,5 @@ func waitForShutdown(cleanup func()) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cleanup()
-
-	<-ctx.Done()
+	cleanup(ctx)
 }

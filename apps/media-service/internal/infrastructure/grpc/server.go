@@ -12,14 +12,20 @@ import (
 	handler "github.com/tomatocinema/media-service/internal/interfaces/grpc"
 	"github.com/tomatocinema/media-service/pkg/logger"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 // NewServer khởi tạo và cấu hình gRPC Server:
 // 1. Đăng ký chuỗi Interceptor (Logging đo độ trễ + Bắt TraceID)
-// 2. Khởi tạo các UseCase (Upload, Get, Delete)
-// 3. Đăng ký MediaServiceServer với protobuf gRPC runtime
-func NewServer(storage storage.Storage, cfg *config.Config) *grpc.Server {
+// 2. Thiết lập giới hạn kích thước message MaxRecvMsgSize & MaxSendMsgSize
+// 3. Khởi tạo các UseCase (Upload, Get, Delete)
+// 4. Đăng ký MediaServiceServer và gRPC Health Check Server
+func NewServer(storage storage.Storage, cfg *config.Config) (*grpc.Server, *health.Server) {
+	maxMsgBytes := cfg.GRPC.MaxMsgMB * 1024 * 1024
 	server := grpc.NewServer(
+		grpc.MaxRecvMsgSize(maxMsgBytes),
+		grpc.MaxSendMsgSize(maxMsgBytes),
 		grpc.ChainUnaryInterceptor(
 			RequestLoggerInterceptor,
 			TraceIDInterceptor,
@@ -35,7 +41,13 @@ func NewServer(storage storage.Storage, cfg *config.Config) *grpc.Server {
 	h := handler.NewMediaHandler(uploadUC, getUC, deleteUC)
 	pb.RegisterMediaServiceServer(server, h)
 
-	return server
+	// Đăng ký gRPC Health Checking Protocol chuẩn
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthServer.SetServingStatus("media.v1.MediaService", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(server, healthServer)
+
+	return server, healthServer
 }
 
 // StartGRPC lắng nghe cổng TCP và khởi chạy gRPC server

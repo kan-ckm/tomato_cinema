@@ -73,23 +73,46 @@ func NewS3Storage(c *config.Config) (*S3Storage, error) {
 		presigner:  presigner,
 	}
 
-	// Tự động kiểm tra và khởi tạo Bucket nếu chưa tồn tại
-	ctx := context.Background()
-	_, headErr := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
-	if headErr != nil {
-		_, createErr := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
-			Bucket: aws.String(s.bucket),
-			CreateBucketConfiguration: &s3Types.CreateBucketConfiguration{
-				LocationConstraint: s3Types.BucketLocationConstraint(aws.ToString(&c.Storage.Region)),
-			},
-		})
-		if createErr != nil {
-			return nil, fmt.Errorf("khởi tạo bucket thất bại: %w (lỗi kiểm tra: %v)", createErr, headErr)
+	// Tự động kiểm tra và khởi tạo Bucket nếu chưa tồn tại (kèm retry khi mạng/DNS chưa sẵn sàng)
+	var headErr error
+	for attempt := 1; attempt <= 5; attempt++ {
+		checkCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, headErr = s.client.HeadBucket(checkCtx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
+		cancel()
+		if headErr == nil {
+			break
 		}
-		logger.Info("🪣 Đã tự động tạo S3 bucket: %s", s.bucket)
+		logger.Warn("Thử kiểm tra S3 bucket '%s' lần %d/5 thất bại: %v", s.bucket, attempt, headErr)
+		if attempt < 5 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
 	}
 
-	logger.Info("✅ Đã kết nối S3 bucket: %s (vùng=%s)", s.bucket, c.Storage.Region)
+	if headErr != nil {
+		// Thử tạo bucket nếu chưa có
+		createCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		var createBucketConfig *s3Types.CreateBucketConfiguration
+		// Cloudflare R2 ('auto') và AWS S3 ('us-east-1') không cho phép truyền LocationConstraint
+		if c.Storage.Region != "" && c.Storage.Region != "auto" && c.Storage.Region != "us-east-1" {
+			createBucketConfig = &s3Types.CreateBucketConfiguration{
+				LocationConstraint: s3Types.BucketLocationConstraint(c.Storage.Region),
+			}
+		}
+
+		_, createErr := s.client.CreateBucket(createCtx, &s3.CreateBucketInput{
+			Bucket:                    aws.String(s.bucket),
+			CreateBucketConfiguration: createBucketConfig,
+		})
+		cancel()
+
+		if createErr != nil {
+			logger.Warn("Không thể tự động tạo S3 bucket (có thể bucket đã tồn tại hoặc R2 không cho phép tạo qua API): %v (lỗi HeadBucket: %v)", createErr, headErr)
+		} else {
+			logger.Info("🪣 Đã tự động tạo S3 bucket: %s", s.bucket)
+		}
+	}
+
+	logger.Info("✅ Đã kết nối S3 storage: %s (vùng=%s)", s.bucket, c.Storage.Region)
 	return s, nil
 }
 
