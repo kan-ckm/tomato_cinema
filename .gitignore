@@ -40,3 +40,43 @@ yarn-error.log*
 .DS_Store
 *.pem
 *.tsbuildinfo
+
+# ==============================================================================
+# AI Assistants, Agents & Rules (Chặn tải lên GitHub)
+# ==============================================================================
+# Google Gemini & Antigravity
+GEMINI.md
+**/GEMINI.md
+.gemini/
+.agents/
+
+# Cursor
+.cursorrules
+**/.cursorrules
+.cursor/
+
+# Anthropic Claude
+CLAUDE.md
+**/CLAUDE.md
+.claude/
+
+# Windsurf (Codeium)
+.windsurfrules
+**/.windsurfrules
+.windsurf/
+
+# GitHub Copilot
+.copilot/
+.github/copilot-instructions.md
+
+# Cline & Roo Code
+.clinerules
+**/.clinerules
+.roomodes
+
+# Aider
+.aider*
+
+# OpenAI & General AI
+.openai/
+.ai/
