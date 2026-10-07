@@ -14,7 +14,7 @@ import type {
 	GetMeResponse,
 	PatchUserRequest,
 	PatchUserResponse
-} from '@tomatocinema/contracts/gen/users'
+} from '@tomatocinema/contracts/gen/ts/users'
 import { UsersService } from './users.service'
 
 // gRPC Controller tiếp nhận các yêu cầu từ các microservices khác (như auth-service, gateway)

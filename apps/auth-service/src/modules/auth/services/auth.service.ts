@@ -13,7 +13,7 @@ import {
 	ResendVerificationRequest,
 	ResendVerificationResponse,
 	VerifyEmailRequest
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { RedisService } from '@/infrastructure/redis/redis.service'

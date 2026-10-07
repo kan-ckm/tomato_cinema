@@ -10,7 +10,7 @@ import {
 	InitPasswordChangeRequest,
 	InitPhoneChangeRequest,
 	RoleUser
-} from '@tomatocinema/contracts/gen/account'
+} from '@tomatocinema/contracts/gen/ts/account'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'
 import { HashPasswordService } from '../../shared/hash-password/hash-password.service'

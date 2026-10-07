@@ -4,7 +4,7 @@ import type {
 	CreateUserRequest,
 	CreateUserResponse,
 	UsersServiceClient
-} from '@tomatocinema/contracts/gen/users'
+} from '@tomatocinema/contracts/gen/ts/users'
 import { lastValueFrom } from 'rxjs'
 
 // Client gRPC kết nối từ auth-service sang user-service

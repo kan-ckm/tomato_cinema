@@ -16,7 +16,7 @@ import {
 	ApiOperation,
 	ApiTags
 } from '@nestjs/swagger'
-import { RoleUser } from '@tomatocinema/contracts/gen/account'
+import { RoleUser } from '@tomatocinema/contracts/gen/ts/account'
 import type { Request, Response } from 'express'
 import { CurrentUser, Protected } from '../../../shared/decorators'
 import {

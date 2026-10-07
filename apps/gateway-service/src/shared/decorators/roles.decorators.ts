@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common'
-import { RoleUser } from '@tomatocinema/contracts/gen/account'
+import { RoleUser } from '@tomatocinema/contracts/gen/ts/account'
 
 // tạo thẻ @Roles()
 

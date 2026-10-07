@@ -7,7 +7,7 @@ import {
 	GetMeRequest,
 	GetMeResponse,
 	PatchUserRequest
-} from '@tomatocinema/contracts/gen/users'
+} from '@tomatocinema/contracts/gen/ts/users'
 import { AccountClientGrpc } from 'src/infrastructure/grpc/clients/account.client'
 import { UserRepository } from 'src/shared/repository'
 
@@ -63,7 +63,7 @@ export class UsersService {
 	}
 
 	public async updateUser(data: PatchUserRequest) {
-		const { userId, name } = data
+		const { userId, name, avatar } = data
 
 		const user = await this.userRepository.findById(userId)
 
@@ -74,7 +74,8 @@ export class UsersService {
 			})
 
 		await this.userRepository.update(user.id, {
-			...(name !== undefined && { name })
+			...(name !== undefined && { name }),
+			...(avatar !== undefined && { avatar })
 		})
 
 		return { ok: true }

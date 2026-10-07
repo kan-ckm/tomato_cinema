@@ -8,7 +8,7 @@ import type {
 	TelegramInitResponse,
 	TelegramVerifyRequest,
 	TelegramVerifyResponse
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { TelegramService } from './telegram.service'
 
 // Khai báo đây là một Controller

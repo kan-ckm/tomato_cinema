@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { ClientGrpc } from '@nestjs/microservices'
 import { InjectGrpcClient } from '@tomatocinema/common'
-import { AuthServiceClient } from '@tomatocinema/contracts/gen/auth'
+import { AuthServiceClient } from '@tomatocinema/contracts/gen/ts/auth'
 import { AbstractGrpcClient } from '../../shared/grpc'
 
 @Injectable()

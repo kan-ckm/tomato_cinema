@@ -1,7 +1,7 @@
 import {
 	TelegramCompleteRequest,
 	TelegramCompleteResponse
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { Telegraf } from 'telegraf'
 import { authClient } from '../../../infrastructure/grpc/auth.client'
 import { TelegrafContext } from '../../../shared'

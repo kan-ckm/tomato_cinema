@@ -6,7 +6,7 @@ import {
 	ForgotPasswordResponse,
 	ResetPasswordRequest,
 	ResetPasswordResponse
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { randomInt } from 'crypto'
 import { PinoLogger } from 'nestjs-pino'
 import { MessagingService } from '@/infrastructure/messaging/messaging.service'

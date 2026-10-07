@@ -6,7 +6,7 @@ import {
 	NotFoundException
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import { RoleUser } from '@tomatocinema/contracts/gen/account'
+import { RoleUser } from '@tomatocinema/contracts/gen/ts/account'
 import { AccountClientGrpc } from '../../modules/account/account.grpc'
 import { ROLES_KEY } from '../decorators'
 

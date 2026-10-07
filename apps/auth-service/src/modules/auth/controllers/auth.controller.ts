@@ -16,7 +16,7 @@ import type {
 	ResetPasswordRequest,
 	ResetPasswordResponse,
 	VerifyEmailRequest
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { AuthService } from '../services/auth.service'
 import { ForgotPasswordService } from '../services/forgot-password.service'
 

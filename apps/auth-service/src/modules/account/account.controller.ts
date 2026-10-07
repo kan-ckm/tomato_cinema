@@ -15,7 +15,7 @@ import type {
 	InitPasswordChangeResponse,
 	InitPhoneChangeRequest,
 	InitPhoneChangeResponse
-} from '@tomatocinema/contracts/gen/account'
+} from '@tomatocinema/contracts/gen/ts/account'
 import { AccountService } from './account.service'
 
 @Controller()

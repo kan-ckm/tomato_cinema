@@ -6,7 +6,7 @@ import {
 	TelegramCompleteRequest,
 	TelegramConsumeRequest,
 	TelegramVerifyRequest
-} from '@tomatocinema/contracts/gen/auth'
+} from '@tomatocinema/contracts/gen/ts/auth'
 import { createHash, createHmac, randomBytes } from 'crypto'
 import { PinoLogger } from 'nestjs-pino'
 import { AllConfigs } from '@/config'

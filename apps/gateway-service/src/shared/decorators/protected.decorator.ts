@@ -1,5 +1,5 @@
 import { applyDecorators, UseGuards } from '@nestjs/common'
-import { RoleUser } from '@tomatocinema/contracts/gen/account'
+import { RoleUser } from '@tomatocinema/contracts/gen/ts/account'
 import { AuthGuard, RolesGuard } from '../guards'
 import { Roles } from './roles.decorators'
 

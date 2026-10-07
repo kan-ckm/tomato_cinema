@@ -9,6 +9,10 @@
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
+    "./gen/ts/*": {
+      "types": "./dist/gen/ts/*.d.ts",
+      "default": "./dist/gen/ts/*.js"
+    },
     "./gen/*": {
       "types": "./dist/gen/ts/*.d.ts",
       "default": "./dist/gen/ts/*.js"

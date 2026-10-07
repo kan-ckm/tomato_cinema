@@ -96,7 +96,7 @@ import type {
   AuthServiceController, 
   LoginRequest, 
   AuthResponse 
-} from '@tomatocinema/contracts/gen/auth';
+} from '@tomatocinema/contracts/gen/ts/auth';
 ```
 </Steps>
 
@@ -114,6 +114,10 @@ import type {
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
+    "./gen/ts/*": {
+      "types": "./dist/gen/ts/*.d.ts",
+      "default": "./dist/gen/ts/*.js"
+    },
     "./gen/*": {
       "types": "./dist/gen/ts/*.d.ts",
       "default": "./dist/gen/ts/*.js"
@@ -121,4 +125,4 @@ import type {
   }
 }
 ```
-Nhờ đó, lập trình viên chỉ cần viết `import { ... } from '@tomatocinema/contracts/gen/auth'` rất gọn gàng và chuẩn mực.
+Nhờ đó, lập trình viên chỉ cần viết `import { ... } from '@tomatocinema/contracts/gen/ts/auth'` rất gọn gàng và chuẩn mực.

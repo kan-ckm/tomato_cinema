@@ -4,7 +4,7 @@ import type {
 	AccountServiceClient,
 	GetAccountRequest,
 	GetAccountResponse
-} from '@tomatocinema/contracts/gen/account'
+} from '@tomatocinema/contracts/gen/ts/account'
 import { lastValueFrom } from 'rxjs'
 
 // Client gRPC kết nối từ auth-service sang user-service
