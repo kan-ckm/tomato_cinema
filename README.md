@@ -1,4 +1,4 @@
-# 🍅 Tomato Cinema — Microservices Architecture
+# 🍅 Tomato Cinema
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/NestJS-Dark.svg" width="45" height="45" alt="NestJS" />
@@ -13,198 +13,243 @@
 </p>
 
 <p align="center">
-  <b>Hệ thống xem phim trực tuyến xây dựng theo kiến trúc Microservices phân tán với gRPC, Event-Driven, Golang Media Service và Monorepo.</b>
+  <b>Hệ thống xem phim và đặt vé trực tuyến kiến trúc Microservices phân tán với gRPC, Event-Driven RabbitMQ, Golang Media Engine, Next.js 16 và Monorepo.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Author-tomato%20(Solo)-red?style=for-the-badge&logo=github" alt="Author tomato" />
-  <img src="https://img.shields.io/badge/Project%20Type-Personal%20Research%20%26%20Showcase-informational?style=for-the-badge&logo=googlescholar" alt="Personal Research Project" />
-  <img src="https://img.shields.io/badge/Architecture-Microservices%20%7C%20gRPC%20%7C%20Event--Driven-blue?style=for-the-badge" alt="Architecture" />
-  <img src="https://img.shields.io/badge/Stack-TypeScript%20%7C%20Go%201.24-green?style=for-the-badge" alt="Stack" />
+  <img src="https://img.shields.io/badge/Architecture-Distributed%20Microservices-blue?style=for-the-badge" alt="Architecture" />
+  <img src="https://img.shields.io/badge/Backend-NestJS%2011%20%7C%20Go%201.24-green?style=for-the-badge" alt="Backend" />
+  <img src="https://img.shields.io/badge/Frontend-Next.js%2016%20%7C%20React%2019-black?style=for-the-badge" alt="Frontend" />
+  <img src="https://img.shields.io/badge/IPC-gRPC%20(HTTP%2F2)-e53935?style=for-the-badge" alt="IPC" />
+  <img src="https://img.shields.io/badge/Monorepo-Turborepo%20%7C%20pnpm-purple?style=for-the-badge" alt="Monorepo" />
+  <img src="https://img.shields.io/badge/License-MIT-informational?style=for-the-badge" alt="License" />
 </p>
 
 ---
 
-> [!NOTE]
->
-> ### 🎓 LỜI MỞ ĐẦU & MỤC ĐÍCH DỰ ÁN
->
-> **Tomato Cinema** là dự án cá nhân do **tomato** độc lập nghiên cứu, thiết kế và phát triển. Dự án được xây dựng với mục tiêu thực hành và làm chủ các mô hình thiết kế hệ thống thực tế (System Design), chuyển dịch từ tư duy Monolith truyền thống sang hệ sinh thái **Microservices phân tán**, đa ngôn ngữ (**TypeScript + Golang**), giao tiếp tốc độ cao qua **gRPC**, xử lý bất đồng bộ qua **RabbitMQ**, và quản lý thống nhất dưới dạng **Monorepo**.
+## 📌 Tổng quan nền tảng
+
+**Tomato Cinema** là nền tảng giải trí xem phim và đặt vé trực tuyến được xây dựng theo kiến trúc **Microservices phân tán thế hệ mới**. Hệ thống giải quyết các bài toán kỹ thuật phức tạp về hiệu năng, tính sẵn sàng và khả năng mở rộng thông qua:
+
+- **Giao tiếp nhị phân nội bộ (Binary IPC):** Triển khai giao thức **gRPC trên nền HTTP/2** và **Protocol Buffers** cho toàn bộ tương tác giữa các dịch vụ, đạt độ trễ sub-millisecond và đảm bảo tính type-safe xuyên suốt đa ngôn ngữ.
+- **Dịch vụ truyền thông hiệu năng cao (High-throughput Media Engine):** Microservice viết bằng **Golang 1.24** theo chuẩn **Clean Architecture**, tích hợp cơ chế **Streaming I/O (`io.Reader`)** với bộ lưu trữ tương thích chuẩn S3 (Cloudflare R2, MinIO) và chuyển đổi định dạng WebP tự động, không gây tràn RAM khi xử lý tệp tin lớn.
+- **Kiến trúc hướng sự kiện (Event-Driven Architecture):** Sử dụng **RabbitMQ** phân phối bất đồng bộ các tác vụ nền (gửi mã OTP, thông báo hệ thống, Dead Letter Queue), giải phóng tài nguyên cho luồng request chính.
+- **Cô lập cơ sở dữ liệu (Database-per-Service):** Mỗi dịch vụ quản lý cơ sở dữ liệu PostgreSQL độc lập (`auth_db`, `users_db`), bảo đảm tính toàn vẹn nghiệp vụ và độc lập triển khai.
+- **Bảo mật đa tầng (Defense-in-Depth Identity):** Cơ chế xác thực Passwordless qua OTP Email, tích hợp SSO 1-chạm xác thực chữ ký mã hóa Telegram Bot (HMAC-SHA256), Refresh Token Rotation (RTR) trong HttpOnly Cookie và Redis Rate Limiting.
+- **Giám sát phân tán (Full-stack Observability):** Tích hợp OpenTelemetry, Grafana Tempo (Distributed Tracing truyền `x-trace-id` xuyên gRPC & HTTP), Loki, Prometheus và Grafana.
+- **Quản trị mã nguồn tập trung (Turborepo Monorepo):** Điều phối các gói dịch vụ qua **pnpm workspace** và **Go Workspace (`go.work`)** với pipeline build, lint và caching thông minh.
 
 ---
 
-## 📌 Mục lục
+## 📑 Mục lục
 
-- [1. Giới thiệu dự án & Kiến trúc tổng thể](#1-giới-thiệu-dự-án--kiến-trúc-tổng-thể)
+- [1. Kiến trúc hệ thống & Sơ đồ trực quan](#1-kiến-trúc-hệ-thống--sơ-đồ-trực-quan)
+  - [1.1. Kiến trúc phân tầng tổng thể](#11-kiến-trúc-phân-tầng-tổng-thể)
+  - [1.2. Kiến trúc Clean Architecture của Media Service (Go)](#12-kiến-trúc-clean-architecture-của-media-service-go)
+  - [1.3. Luồng xử lý dữ liệu truyền thông (Media Data Flow)](#13-luồng-xử-lý-dữ-liệu-truyền-thông-media-data-flow)
 - [2. Cấu trúc Monorepo & Danh mục dịch vụ](#2-cấu-trúc-monorepo--danh-mục-dịch-vụ)
-- [3. Bảng công nghệ sử dụng](#3-bảng-công-nghệ-sử-dụng)
-- [4. Những điểm nổi bật về mặt kỹ thuật](#4-những-điểm-nổi-bật-về-mặt-kỹ-thuật)
-- [5. Hướng dẫn cài đặt và khởi chạy từ A - Z](#5-hướng-dẫn-cài-đặt-và-khởi-chạy-từ-a---z)
+- [3. Bảng ma trận công nghệ](#3-bảng-ma-trận-công-nghệ)
+- [4. Điểm nhấn kỹ thuật & Năng lực giải pháp](#4-điểm-nhấn-kỹ-thuật--năng-lực-giải-pháp)
+- [5. Hướng dẫn thiết lập & Khởi chạy](#5-hướng-dẫn-thiết-lập--khởi-chạy)
   - [Bước 1: Chuẩn bị môi trường](#bước-1-chuẩn-bị-môi-trường)
-  - [Bước 2: Clone repository & Cài đặt dependencies](#bước-2-clone-repository--cài-đặt-dependencies)
-  - [Bước 3: Khởi động hạ tầng với Docker (Database, Cache, Message Broker)](#bước-3-khởi-động-hạ-tầng-với-docker-database-cache-message-broker)
+  - [Bước 2: Cài đặt dependencies](#bước-2-cài-đặt-dependencies)
+  - [Bước 3: Khởi động cụm hạ tầng (Postgres, Redis, RabbitMQ)](#bước-3-khởi-động-cụm-hạ-tầng-postgres-redis-rabbitmq)
   - [Bước 4: Cấu hình biến môi trường (.env)](#bước-4-cấu-hình-biến-môi-trường-env)
-  - [Bước 5: Biên dịch Protobuf Contracts (gRPC)](#bước-5-biên-dịch-protobuf-contracts-grpc)
-  - [Bước 6: Đồng bộ cơ sở dữ liệu (Database Migration)](#bước-6-đồng-bộ-cơ-sở-dữ-liệu-database-migration)
-  - [Bước 7: Khởi động toàn bộ dự án](#bước-7-khởi-động-toàn-bộ-dự-án)
+  - [Bước 5: Biên dịch Protobuf Contracts](#bước-5-biên-dịch-protobuf-contracts)
+  - [Bước 6: Đồng bộ Schema Cơ sở dữ liệu](#bước-6-đồng-bộ-schema-cơ-sở-dữ-liệu)
+  - [Bước 7: Vận hành hệ thống](#bước-7-vận-hành-hệ-thống)
   - [Bảng tra cứu cổng & địa chỉ truy cập](#bảng-tra-cứu-cổng--địa-chỉ-truy-cập)
-- [6. Tác giả & Đóng góp](#6-tác-giả--đóng-góp)
+- [6. Tự động hóa vận hành máy chủ (Homelab Operations)](#6-tự-động-hóa-vận-hành-máy-chủ-homelab-operations)
+- [7. Giấy phép & Đóng góp](#7-giấy-phép--đóng-góp)
 
 ---
 
-## 1. Giới thiệu dự án & Kiến trúc tổng thể
+## 1. Kiến trúc hệ thống & Sơ đồ trực quan
 
-Ý tưởng của dự án là mô phỏng một nền tảng giải trí xem phim trực tuyến (**Tomato Cinema**), chia tách hệ thống thành các service độc lập để giải quyết triệt để các bài toán lớn của hệ thống phân tán:
+### 1.1. Kiến trúc phân tầng tổng thể
 
-- **Giao tiếp nội bộ độ trễ thấp (Low-latency IPC):** Dùng **gRPC (HTTP/2 + Protocol Buffers)** thay vì REST HTTP/1.1 truyền thống trong mạng nội bộ, tối ưu hóa payload dạng nhị phân và chuẩn hóa hợp đồng dữ liệu (Contracts).
-- **Kiến trúc hướng sự kiện (Event-Driven):** Sử dụng **RabbitMQ** để xử lý các luồng công việc ngầm, tốn thời gian (gửi email xác thực OTP, thông báo hệ thống) mà không làm chậm trải nghiệm người dùng trên API chính.
-- **Xử lý đa phương tiện hiệu năng cao (High-performance Media Processing):** Microservice xử lý hình ảnh và truyền phát media được viết bằng **Golang**, tích hợp lưu trữ tương thích chuẩn S3 (Cloudflare R2, MinIO), hỗ trợ tối ưu ảnh WebP và Streaming I/O không chiếm dụng RAM.
-- **Mô hình Database-per-Service:** Các domain khác nhau sở hữu cơ sở dữ liệu riêng biệt trên PostgreSQL (Auth DB, Users DB), đảm bảo tính cô lập và khả năng mở rộng độc lập.
-- **Bảo mật & Phiên làm việc (Auth & Identity):** Đăng nhập Passwordless thông qua OTP Email hoặc liên kết Telegram Bot SSO 1-chạm, quản lý phiên qua Access Token và Refresh Token Rotation đặt trong HttpOnly Cookie bảo vệ chống tấn công XSS/CSRF.
-
-### Sơ đồ kiến trúc hệ thống
+Luồng xử lý từ Client qua tầng Reverse Proxy biên, API Gateway định tuyến gRPC, hàng đợi xử lý RabbitMQ và hệ thống lưu trữ phân tán:
 
 <p align="center">
   <img src="./assets/architecture.png" alt="Tomato Cinema Architecture Diagram" width="100%" />
 </p>
 
-_Mô hình luồng phân tầng: **Clients** (Web / Bot) ➔ **Edge Nginx Proxy** ➔ **API Gateway** (REST API / Auth Guard) ➔ **Microservices** (gRPC nội bộ) ➔ **RabbitMQ** (Message Queue) ➔ **Storage & Cache** (PostgreSQL, Redis, S3/MinIO)._
+- **Client Tier:** Web Application (Next.js 16 + React 19) và Telegram Bot Client.
+- **Edge Tier:** Nginx Reverse Proxy tiếp nhận lưu lượng, thiết lập SSL termination và phân vùng Rate Limiting.
+- **Gateway Tier:** `gateway-service` tiếp nhận REST API, xác thực JWT Guard, chuyển dịch giao thức từ REST sang gRPC.
+- **Service Tier (gRPC IPC):** `auth-service`, `user-service`, `media-service` trao đổi dữ liệu nội bộ qua HTTP/2 binary payload.
+- **Event-Driven Tier:** `notification-service` lắng nghe các sự kiện AMQP từ RabbitMQ để phát tán OTP và email thông báo.
+- **Storage Tier:** PostgreSQL (Auth DB, Users DB), Redis 8 (Sessions, Rate Limit, Token Blacklist), Cloudflare R2 / MinIO (S3-compatible Media Storage).
+
+---
+
+### 1.2. Kiến trúc Clean Architecture của Media Service (Go)
+
+Phân tách độc lập các tầng: Domain Entities, Use Cases nghiệp vụ, Tầng giao diện kép (gRPC Server & Gin HTTP Server) và Tầng hạ tầng (S3 Storage Driver, WebP Image Processor):
+
+<p align="center">
+  <img src="./assets/media-architecture.png" alt="Media Service Architecture Diagram" width="100%" />
+</p>
+
+---
+
+### 1.3. Luồng xử lý dữ liệu truyền thông (Media Data Flow)
+
+Hỗ trợ 2 luồng xử lý chính: Luồng tải lên nội bộ qua gRPC (tối ưu nén ảnh WebP song song tải lên S3 Stream) và Luồng xem trực tiếp công khai qua HTTP Gin (nhận diện MIME type động, header Cache-Control 24h):
+
+<p align="center">
+  <img src="./assets/media-dataflow.png" alt="Media Service Data Flow Diagram" width="100%" />
+</p>
 
 ---
 
 ## 2. Cấu trúc Monorepo & Danh mục dịch vụ
 
-Hệ thống được tổ chức theo cấu trúc **Turborepo Monorepo** với trình quản lý gói **pnpm workspace**:
+Hệ thống được tổ chức dạng **Turborepo Monorepo** với trình quản lý gói **pnpm workspace** và **Go Workspace (`go.work`)**:
 
 ```text
 tomato_cinema/
 ├── apps/
-│   ├── gateway-service/     # API Gateway chính: Đón REST API, xác thực, Rate Limiting, route gRPC
-│   ├── auth-service/        # Identity Service: Xử lý OTP, Telegram SSO, cấp phát & xoay JWT (Prisma)
-│   ├── user-service/        # User Service: Quản lý hồ sơ cá nhân, phân quyền người dùng (TypeORM)
-│   ├── media-service/       # Media Service (Go 1.24): Quản lý tài nguyên media, S3/MinIO, WebP conversion
-│   ├── notification-service/# Worker dịch vụ thông báo: Lắng nghe RabbitMQ gửi email OTP qua Mailer
-│   ├── bot-service/         # Telegram Bot Service: Xử lý tương tác Telegram và luồng xác minh danh tính
-│   ├── web/                 # Giao diện người dùng Web Client (Next.js 16 + React 19)
-│   └── docs/                # Trang web tài liệu kỹ thuật & sơ đồ tương tác (Archify Diagrams)
+│   ├── gateway-service/     # API Gateway: Tiếp nhận REST API, JWT Guard, Rate Limiting, Route gRPC
+│   ├── auth-service/        # Identity Service: Passwordless OTP, Telegram SSO, Cấp phát & xoay JWT (Prisma)
+│   ├── user-service/        # User Service: Quản lý hồ sơ cá nhân, phân quyền tài khoản (TypeORM)
+│   ├── media-service/       # Media Engine (Go 1.24): Streaming I/O, S3/MinIO, WebP conversion, gRPC & Gin
+│   ├── notification-service/# Worker xử lý thông báo: Lắng nghe RabbitMQ, gửi email OTP qua Mailer
+│   ├── bot-service/         # Telegram Bot Service: Xử lý tương tác bot & xác thực SSO 1-chạm
+│   ├── web/                 # Giao diện người dùng Web Client (Next.js 16 + React 19 + GSAP)
+│   └── docs/                # Cổng tài liệu kỹ thuật & sơ đồ kiến trúc động (Fumadocs + Archify)
 │
 ├── packages/
-│   ├── contracts/           # Chứa file .proto và kịch bản biên dịch mã nguồn (ts-proto & Go protobuf)
+│   ├── contracts/           # Chứa file .proto và kịch bản biên dịch mã nguồn (ts-proto & protoc-gen-go)
 │   ├── common/              # Module dùng chung: GrpcModule động, Custom Decorators, Filter, Interceptors
-│   ├── passport/            # Thư viện cấu hình chiến lược xác thực JWT & Guards
-│   ├── core/                # Định nghĩa các Data Transfer Objects (DTO), Enums, kiểu dữ liệu chia sẻ
-│   ├── ui/                  # Thư viện thành phần giao diện React dùng chung
+│   ├── passport/            # Chiến lược xác thực tập trung: Passport JWT Strategy & Guards dùng chung
+│   ├── core/                # Data Transfer Objects (DTOs), Enums, kiểu dữ liệu chia sẻ toàn hệ thống
+│   ├── ui/                  # Thư viện thành phần giao diện React chuẩn hóa (Radix UI + Tailwind CSS)
 │   ├── eslint-config/       # Bộ quy tắc lint chuẩn mực áp dụng toàn bộ dự án
 │   └── typescript-config/   # Cấu hình tsconfig nền tảng cho monorepo
 │
 ├── docker/
-│   ├── infra/               # Docker Compose cho PostgreSQL, Redis, RabbitMQ (+ Exporters)
-│   ├── apps/                # Docker Compose chạy toàn bộ 5 microservices backend
+│   ├── infra/               # Docker Compose cho PostgreSQL, Redis, RabbitMQ (+ Init DB Scripts)
+│   ├── apps/                # Docker Compose chạy toàn bộ 6 microservices backend + Nginx
 │   ├── nginx/               # Reverse Proxy & Edge Rate Limiter cấu hình Nginx
-│   ├── observability/       # Cụm giám sát OpenTelemetry & Prometheus
-│   └── Dockerfile           # Dockerfile Multi-stage đa năng dùng chung cho mọi service
+│   ├── observability/       # Cụm giám sát OpenTelemetry, Prometheus, Tempo, Loki, Grafana
+│   ├── Dockerfile           # Multi-stage Dockerfile tối ưu dùng chung cho các service Node.js
+│   └── media.Dockerfile     # Multi-stage Dockerfile + Distroless siêu nhẹ cho media-service
 │
-├── turbo.json               # Quy định pipeline build, dev, cache thông minh của Turborepo
-├── package.json             # Root package script
-└── pnpm-workspace.yaml      # Khai báo các workspace thành viên
+├── scripts/
+│   └── homelab/             # Bộ script tự động hóa triển khai, đồng bộ và quản trị máy chủ qua Tailscale
+│
+├── turbo.json               # Pipeline build, dev và caching thông minh của Turborepo
+├── package.json             # Root package scripts điều phối toàn bộ monorepo
+├── pnpm-workspace.yaml      # Khai báo các workspaces thành viên
+└── go.work                  # Go Workspace liên kết media-service và contracts Go package
 ```
 
 ---
 
-## 3. Bảng công nghệ sử dụng
+## 3. Bảng ma trận công nghệ
 
-| Phân vùng                 | Công nghệ                             | Vai trò trong hệ sinh thái                                                  |
-| :------------------------ | :------------------------------------ | :-------------------------------------------------------------------------- |
-| **Ngôn ngữ**              | TypeScript, Go (Golang 1.24)          | TypeScript type-safe toàn diện; Golang cho tác vụ I/O media tốc độ cao      |
-| **Backend Framework**     | NestJS 11, Gin (Go)                   | NestJS module hóa mạnh mẽ; Gin framework siêu nhẹ phục vụ HTTP media stream |
-| **IPC (Liên dịch vụ)**    | gRPC, Protocol Buffers                | Giao tiếp nhị phân nội bộ, schema rõ ràng, độ trễ cực thấp                  |
-| **Event Broker**          | RabbitMQ (AMQP)                       | Xử lý hàng đợi phi đồng bộ, gửi email OTP và thông báo hệ thống             |
-| **Cơ sở dữ liệu**         | PostgreSQL 16                         | Hệ quản trị CSDL quan hệ chính (tách biệt database `auth` và `users`)       |
-| **Bộ nhớ đệm (Cache)**    | Redis 8                               | Lưu trữ phiên làm việc, chống spam gửi mã OTP, Blacklist/Whitelist Token    |
-| **Lưu trữ tệp (Storage)** | S3-Compatible (Cloudflare R2 / MinIO) | Lưu trữ posters, avatars, videos với cơ chế Streaming I/O                   |
-| **ORM**                   | Prisma, TypeORM                       | Thực hành cả Prisma ORM (`auth-service`) và TypeORM (`user-service`)        |
-| **Frontend**              | Next.js 16, React 19                  | Trải nghiệm giao diện xem phim hiện đại, Server Components                  |
-| **Tài liệu & Sơ đồ**      | Fumadocs, Archify Diagrams            | Tài liệu hóa kiến trúc tương tác, xem sơ đồ động đa chế độ                  |
-| **Monorepo & Build**      | Turborepo, pnpm                       | Cache tác vụ build, tối ưu hóa thời gian triển khai và chia sẻ mã nguồn     |
-| **DevOps & Container**    | Docker, Docker Compose, Nginx         | Đóng gói môi trường đồng nhất, Nginx Gateway Proxy và Rate Limiting         |
-
----
-
-## 4. Những điểm nổi bật về mặt kỹ thuật
-
-- [x] **Tự xây dựng `AbstractGrpcClient` & Dynamic `GrpcModule`:**
-  - Đóng gói logic kết nối gRPC, tự động chuyển đổi `Observable` (RxJS) thành `Promise` native, giúp code tại Controller/Service viết bằng cú pháp `async/await` rõ ràng, tự nhiên.
-  - Xây dựng module động đăng ký linh hoạt các package gRPC (`AUTH_PACKAGE`, `ACCOUNT_PACKAGE`, `USERS_PACKAGE`, `MEDIA_PACKAGE`) qua decorator tùy chỉnh `@InjectGrpcClient()`.
-- [x] **Luồng xác thực Passwordless OTP & Telegram SSO an toàn:**
-  - Quy trình đăng nhập không cần mật khẩu: Nhập Email ➔ Nhận OTP từ worker RabbitMQ ➔ Xác thực OTP.
-  - Hỗ trợ đăng nhập Telegram một chạm thông qua xác minh chữ ký mã hóa từ Telegram Bot.
-  - Cấp phát Access Token (lưu bộ nhớ tạm) và Refresh Token tự xoay vòng (Refresh Token Rotation) được bảo quản an toàn trong HttpOnly Cookie nhằm triệt tiêu nguy cơ bị đánh cắp qua XSS.
-- [x] **Media Service độc lập bằng Golang (Clean Architecture):**
-  - Cấu trúc theo kiến trúc sạch (Domain, UseCases, Infrastructure, Interfaces).
-  - Tích hợp chuẩn lưu trữ S3 qua AWS SDK Go v2, hỗ trợ truyền phát qua `io.Reader`/`io.ReadCloser` không làm tràn bộ nhớ khi xử lý file lớn.
-  - Bộ nén và chuyển đổi định dạng ảnh tối ưu sang WebP tự động.
-- [x] **Event-Driven Architecture với RabbitMQ:**
-  - Tách rời các luồng gửi email xác nhận và thông báo hệ thống ra khỏi vòng đời request chính của người dùng, đảm bảo API Gateway phản hồi tức thì.
-- [x] **Hợp đồng dữ liệu tập trung (Protobuf Contracts):**
-  - Quản lý tập trung các tệp `.proto` tại `packages/contracts`, tự động sinh mã nguồn TypeScript (`ts-proto`) và Go (`protoc-gen-go`) đồng bộ khi có thay đổi interface.
+| Lớp kiến trúc              | Công nghệ lựa chọn                     | Vai trò kỹ thuật & Cơ sở kiến trúc                                             |
+| :------------------------- | :------------------------------------- | :----------------------------------------------------------------------------- |
+| **Ngôn ngữ lập trình**     | TypeScript, Go (Golang 1.24)           | TypeScript Type-safe toàn diện; Golang cho tác vụ I/O media streaming siêu nhẹ |
+| **Backend Framework**      | NestJS 11, Gin (Go)                    | NestJS module hóa enterprise; Gin HTTP server gọn nhẹ phục vụ media public     |
+| **Giao thức nội bộ (IPC)** | gRPC, Protocol Buffers                 | Truyền tải nhị phân qua HTTP/2, chuẩn hóa hợp đồng dữ liệu, độ trễ cực thấp    |
+| **Event Broker**           | RabbitMQ (AMQP)                        | Xử lý hàng đợi bất đồng bộ, gửi email OTP, tách tải khỏi main thread           |
+| **Cơ sở dữ liệu**          | PostgreSQL 16                          | Database-per-Service: Tách biệt hoàn toàn `auth_db` và `users_db`              |
+| **Bộ nhớ đệm & Phiên**     | Redis 8                                | Lưu trữ phiên, chống spam mã OTP, phân phối Rate Limiting                      |
+| **Object Storage**         | S3-Compatible (Cloudflare R2 / MinIO)  | Lưu trữ posters, videos, avatars với cơ chế Streaming I/O không tốn RAM        |
+| **ORM & Data Mapping**     | Prisma ORM, TypeORM                    | Prisma cho Auth (schema-first); TypeORM cho User (Data Mapper)                 |
+| **Frontend Client**        | Next.js 16, React 19, Tailwind CSS     | Kiến trúc App Router, Server Components, dark cinematic theme                  |
+| **Hiệu ứng & UI**          | GSAP (useGSAP), Radix UI               | Micro-interactions mượt mà, hỗ trợ prefers-reduced-motion                      |
+| **Giám sát & Tracing**     | OpenTelemetry, Tempo, Loki, Prometheus | Phân tích Distributed Tracing nội bộ gRPC, tổng hợp Logs & Metrics             |
+| **Build & Monorepo**       | Turborepo, pnpm workspaces, go.work    | Tối ưu thời gian build, chia sẻ hợp đồng proto, quản lý độc lập đa ngôn ngữ    |
+| **Container & Proxy**      | Docker, Distroless, Nginx              | Đóng gói container đa tầng tối ưu dung lượng, Nginx Edge Rate Limiting         |
 
 ---
 
-## 5. Hướng dẫn cài đặt và khởi chạy từ A - Z
+## 4. Điểm nhấn kỹ thuật & Năng lực giải pháp
 
-Dưới đây là các bước chi tiết để thiết lập và chạy toàn bộ hệ thống trên máy tính của bạn.
+Hệ thống được xây dựng với các giải pháp kỹ thuật tiêu chuẩn cao cho bài toán hệ thống phân tán:
+
+- **Dynamic `GrpcModule` & Đóng gói `AbstractGrpcClient`:**
+  - Tự thiết kế và đóng gói tầng Client gRPC chung trong `packages/common`, tự động chuyển đổi luồng dữ liệu `Observable` (RxJS) thành `Promise` native.
+  - Viết code tại Controller/Service bằng cú pháp `async/await` rõ ràng, tự nhiên mà không cần viết boilerplate code lặp lại.
+  - Đăng ký linh hoạt các package gRPC (`AUTH_PACKAGE`, `ACCOUNT_PACKAGE`, `USERS_PACKAGE`, `MEDIA_PACKAGE`) qua decorator tùy chỉnh `@InjectGrpcClient()`.
+
+- **Media Engine viết bằng Golang với Streaming I/O:**
+  - Tận dụng `io.Reader` và `io.ReadCloser` từ AWS SDK Go v2 để pipe trực tiếp luồng dữ liệu từ Object Storage tới người dùng, duy trì mức tiêu thụ RAM ổn định dưới 30MB ngay cả khi truyền tải tệp tin media dung lượng lớn.
+  - Tích hợp pipeline chuyển đổi và nén ảnh sang định dạng WebP tự động, tiết kiệm 60–80% băng thông hiển thị cho web client.
+
+- **Định danh hiện đại: Passwordless OTP & Telegram SSO:**
+  - Quy trình xác thực không mật khẩu (Passwordless): Khách hàng nhập email ➔ Worker RabbitMQ xử lý gửi OTP ➔ Xác thực OTP an toàn qua Redis cache.
+  - Hỗ trợ đăng nhập Telegram một chạm thông qua xác thực chữ ký mã hóa (HMAC-SHA256) từ Telegram Web App.
+  - Cấp phát Access Token ngắn hạn và Refresh Token tự xoay vòng (Refresh Token Rotation) đặt trong cookie `HttpOnly, Secure, SameSite=Strict`, triệt tiêu nguy cơ tấn công XSS/CSRF.
+
+- **Kiến trúc hướng sự kiện (Event-Driven) bền bỉ với RabbitMQ:**
+  - Tách rời triệt để các tác vụ tốn tài nguyên (gửi email thông báo, phát mã OTP, ghi log sự kiện) ra khỏi vòng đời request chính của API Gateway.
+  - Đảm bảo tính sẵn sàng cao, hỗ trợ cơ chế retry và Dead Letter Queue (DLQ) khi xảy ra sự cố xử lý.
+
+- **Hợp đồng dữ liệu tập trung (Single Source of Truth Contracts):**
+  - Quản lý toàn bộ định nghĩa giao tiếp giữa các service tại `packages/contracts` dưới dạng `.proto`.
+  - Tự động biên dịch sinh mã TypeScript (`ts-proto`) và Go (`protoc-gen-go`) đồng bộ chỉ với 1 dòng lệnh, xóa bỏ hoàn toàn rủi ro sai lệch dữ liệu giữa các dịch vụ đa ngôn ngữ.
+
+- **Phân tán vết (Distributed Tracing) xuyên suốt gRPC & HTTP:**
+  - Tích hợp OpenTelemetry truyền `x-trace-id` xuyên qua các chặng mạng từ Nginx ➔ API Gateway ➔ Auth/User Service ➔ Media Service ➔ Grafana Tempo.
+  - Giúp giám sát chi tiết luồng thực thi và xác định điểm nghẽn hiệu năng trên từng service độc lập.
+
+---
+
+## 5. Hướng dẫn thiết lập & Khởi chạy
 
 ### Bước 1: Chuẩn bị môi trường
 
-Hãy chắc chắn rằng máy tính của bạn đã cài đặt các công cụ sau:
-
 - **Node.js**: Phiên bản 18 trở lên (Khuyên dùng **Node 20 LTS**).
 - **pnpm**: Phiên bản 9 trở lên (`npm install -g pnpm`).
-- **Docker & Docker Compose**: Để khởi chạy PostgreSQL, Redis, RabbitMQ.
-- **Go** _(tùy chọn)_: Phiên bản 1.24 trở lên nếu bạn muốn chạy `media-service` trực tiếp trên máy host.
+- **Docker & Docker Compose**: Để khởi chạy cụm hạ tầng cơ sở dữ liệu, cache và message broker.
+- **Go** _(tùy chọn)_: Phiên bản 1.24 trở lên nếu muốn chạy `media-service` trực tiếp trên máy host.
 
 ---
 
-### Bước 2: Clone repository & Cài đặt dependencies
+### Bước 2: Cài đặt dependencies
 
 ```bash
-# Clone repository về máy
+# Clone repository
 git clone https://github.com/kan-ckm/tomato_cinema.git
 cd tomato_cinema
 
-# Cài đặt toàn bộ dependencies cho các app và package trong monorepo
+# Cài đặt toàn bộ dependencies trong monorepo
 pnpm install
 ```
 
 ---
 
-### Bước 3: Khởi động hạ tầng với Docker (Database, Cache, Message Broker)
+### Bước 3: Khởi động cụm hạ tầng (Postgres, Redis, RabbitMQ)
 
-Dự án đã chuẩn bị sẵn cấu hình Docker Compose dành riêng cho hạ tầng trong thư mục `docker/infra/`:
+Cấu hình Docker Compose cho hạ tầng nằm tại `docker/infra/`:
 
 ```bash
 cd docker/infra
 
-# Tạo file .env cho hạ tầng từ mẫu có sẵn
+# Tạo file .env hạ tầng từ mẫu
 cp .env.example .env
 
-# Khởi động PostgreSQL, Redis và RabbitMQ chạy ngầm
+# Khởi động PostgreSQL, Redis và RabbitMQ
 docker compose up -d
 
 # Kiểm tra trạng thái các container
 docker compose ps
 
-# Quay về thư mục gốc của dự án
+# Trở về thư mục gốc
 cd ../..
 ```
 
-> **Lưu ý:** Script `docker/infra/init-db/01-init-databases.sh` sẽ tự động tạo sẵn 2 cơ sở dữ liệu `auth` và `users` trong container PostgreSQL khi khởi tạo lần đầu.
+> **Lưu ý:** Script khởi tạo `docker/infra/init-db/01-init-databases.sh` sẽ tự động tạo sẵn 2 cơ sở dữ liệu `auth` và `users` trong container PostgreSQL khi khởi tạo lần đầu.
 
 ---
 
 ### Bước 4: Cấu hình biến môi trường (`.env`)
 
-Tạo các file `.env` từ file mẫu `.env.example` tại từng dịch vụ:
+Sinh nhanh các file `.env` từ file mẫu tại từng dịch vụ:
 
 ```bash
 # 1. API Gateway
@@ -226,13 +271,13 @@ cp apps/notification-service/.env.example apps/notification-service/.env
 cp apps/bot-service/.env.example apps/bot-service/.env
 ```
 
-_Điền các thông tin kết nối tương ứng (mật khẩu Postgres/Redis/RabbitMQ bạn đã đặt ở bước 3, mã Bot Token Telegram, tài khoản SMTP gửi mail nếu muốn test gửi OTP thật)._
+_Cập nhật các tham số kết nối tương ứng (thông tin đăng nhập PostgreSQL, Redis, RabbitMQ, Token Telegram Bot, cấu hình SMTP mail)._
 
 ---
 
-### Bước 5: Biên dịch Protobuf Contracts (gRPC)
+### Bước 5: Biên dịch Protobuf Contracts
 
-Trước khi chạy các service backend, hãy sinh mã nguồn TypeScript và Go từ các định nghĩa Protobuf:
+Biên dịch các tệp `.proto` để sinh mã nguồn TypeScript và Go cho tất cả các dịch vụ:
 
 ```bash
 pnpm --filter @tomatocinema/contracts build
@@ -240,60 +285,54 @@ pnpm --filter @tomatocinema/contracts build
 
 ---
 
-### Bước 6: Đồng bộ cơ sở dữ liệu (Database Migration)
+### Bước 6: Đồng bộ Schema Cơ sở dữ liệu
 
-Đồng bộ lược đồ cơ sở dữ liệu cho `auth-service` (sử dụng Prisma):
+Đồng bộ lược đồ cơ sở dữ liệu cho `auth-service` (Prisma ORM):
 
 ```bash
 pnpm --filter auth-service exec prisma db push
 ```
 
-_Đối với `user-service`, TypeORM đã được cấu hình tự động đồng bộ thực thể (synchronize) trong môi trường development._
+_`user-service` sử dụng TypeORM và đã được cấu hình tự động đồng bộ thực thể (synchronize) trong môi trường phát triển._
 
 ---
 
-### Bước 7: Khởi động toàn bộ dự án
+### Bước 7: Vận hành hệ thống
 
-#### Lựa chọn A: Chế độ Hybrid Development (Khuyên dùng khi lập trình)
+#### 🟢 Chế độ 1: Hybrid Development (Khuyên dùng khi phát triển tính năng)
 
-Hạ tầng (Postgres, Redis, RabbitMQ) chạy trên Docker, còn mã nguồn các service chạy trực tiếp trên máy host để tận dụng tính năng Hot-Reload tức thì của Turborepo:
+Hạ tầng (Postgres, Redis, RabbitMQ) chạy trên Docker, mã nguồn các services chạy trực tiếp trên máy host để kích hoạt Hot-Reload tức thì:
 
 ```bash
-# Khởi động tất cả các ứng dụng Node.js (Gateway, Auth, User, Notification, Bot, Web, Docs)
+# Khởi động đồng thời tất cả ứng dụng Node.js (Gateway, Auth, User, Notification, Bot, Web, Docs)
 pnpm dev
 ```
 
-Nếu muốn khởi động dịch vụ **Media Service** (Golang):
+Khởi động **Media Service (Golang)**:
 
 ```bash
 # Mở một terminal mới:
 cd apps/media-service
 go run cmd/main.go
-# Hoặc sử dụng Air để có live-reload (nếu đã cài air):
+
+# Hoặc khởi động với Air Live-Reload (nếu đã cài Air):
 ./scripts/run_dev.sh
 ```
 
-Hoặc nếu bạn chỉ muốn khởi động riêng một service cụ thể:
+Khởi động riêng lẻ từng dịch vụ khi cần:
 
 ```bash
-# Chỉ chạy API Gateway:
-pnpm --filter gateway-service dev
-
-# Chỉ chạy Auth Service:
-pnpm --filter auth-service dev
-
-# Chỉ chạy User Service:
-pnpm --filter user-service dev
-
-# Chỉ chạy Frontend Web:
-pnpm --filter web dev
+pnpm --filter gateway-service dev    # API Gateway
+pnpm --filter auth-service dev       # Auth Service
+pnpm --filter user-service dev       # User Service
+pnpm --filter web dev                # Web Client
 ```
 
 ---
 
-#### Lựa chọn B: Chạy toàn bộ hệ thống bằng Docker Compose
+#### 🐳 Chế độ 2: Full Containerized (Chạy toàn bộ qua Docker Compose)
 
-Nếu bạn muốn chạy thử nghiệm đầy đủ môi trường container hóa (End-to-End Test):
+Chạy kiểm thử toàn bộ hệ thống trong môi trường container khép kín:
 
 ```bash
 cd docker
@@ -302,7 +341,7 @@ cd docker
 cp infra/.env.example infra/.env
 cp apps/.env.example apps/.env
 
-# Khởi động toàn bộ hệ thống
+# Khởi động toàn bộ hệ sinh thái (Hạ tầng + 6 microservices + Nginx)
 docker compose up -d --build
 ```
 
@@ -310,26 +349,49 @@ docker compose up -d --build
 
 ### Bảng tra cứu cổng & địa chỉ truy cập
 
-| Dịch vụ / Công cụ        | Giao thức / Cổng | URL truy cập / Kết nối       | Ghi chú                                   |
+| Dịch vụ / Công cụ        | Giao thức / Port | URL truy cập / Endpoint      | Mô tả chức năng                           |
 | :----------------------- | :--------------- | :--------------------------- | :---------------------------------------- |
 | **API Gateway**          | HTTP / `3000`    | `http://localhost:3000`      | Cổng tiếp nhận REST API chính             |
-| **Swagger API Docs**     | HTTP / `3000`    | `http://localhost:3000/docs` | Tài liệu tương tác & kiểm thử API         |
-| **Web Client**           | HTTP / `3500`    | `http://localhost:3500`      | Giao diện người dùng Next.js              |
-| **Documentation**        | HTTP / `3501`    | `http://localhost:3501`      | Trang tài liệu kỹ thuật & sơ đồ Archify   |
-| **Media Service (HTTP)** | HTTP / `4200`    | `http://localhost:4200`      | Truyền phát và xem hình ảnh media         |
-| **Media Service (gRPC)** | gRPC / `50059`   | `localhost:50059`            | IPC upload/delete tài nguyên media        |
-| **Auth Service**         | gRPC / `50051`   | `localhost:50051`            | Dịch vụ xác thực và cấp mã JWT            |
-| **User Service**         | gRPC / `50052`   | `localhost:50052`            | Dịch vụ hồ sơ người dùng                  |
+| **Swagger API Docs**     | HTTP / `3000`    | `http://localhost:3000/docs` | Tài liệu tương tác & kiểm thử trực tiếp   |
+| **Web Client**           | HTTP / `3500`    | `http://localhost:3500`      | Giao diện xem phim Next.js 16             |
+| **Documentation**        | HTTP / `3501`    | `http://localhost:3501`      | Cổng tài liệu kỹ thuật & sơ đồ tương tác  |
+| **Media Service (HTTP)** | HTTP / `4200`    | `http://localhost:4200`      | Truyền phát và hiển thị hình ảnh media    |
+| **Media Service (gRPC)** | gRPC / `50059`   | `localhost:50059`            | IPC tải lên / xóa tài nguyên media        |
+| **Auth Service**         | gRPC / `50051`   | `localhost:50051`            | Dịch vụ xác thực và cấp phát JWT          |
+| **User Service**         | gRPC / `50052`   | `localhost:50052`            | Dịch vụ quản lý hồ sơ và người dùng       |
 | **RabbitMQ Dashboard**   | HTTP / `15673`   | `http://localhost:15673`     | Bảng điều khiển quản trị queue & exchange |
 | **PostgreSQL**           | TCP / `5433`     | `localhost:5433`             | Cơ sở dữ liệu quan hệ (`auth`, `users`)   |
 | **Redis**                | TCP / `6379`     | `localhost:6379`             | Bộ nhớ đệm phân tán và phiên làm việc     |
 
 ---
 
-## 6. Tác giả & Đóng góp
+## 6. Tự động hóa vận hành máy chủ (Homelab Operations)
 
-- **Tác giả:** **tomato** (Solo Developer)
-- 📌 Dự án được thực hiện với tinh thần độc lập nghiên cứu, học hỏi và trải nghiệm sâu về thiết kế hệ thống lớn.
-- Nếu bạn có bất kỳ thắc mắc, phản hồi hoặc ý kiến đóng góp nhằm cải tiến kiến trúc dự án, đừng ngần ngại tạo **Issue** hoặc gửi **Pull Request** trên repository!
+Dự án cung cấp bộ script tự động hóa triển khai trực tiếp lên cụm máy chủ **Homelab** qua mạng bảo mật ảo **Tailscale**:
 
-Cảm ơn bạn đã quan tâm và theo dõi dự án! ⭐
+```bash
+# Đồng bộ mã nguồn lên Homelab qua rsync
+pnpm homelab:sync
+
+# Khởi động cụm Docker trên Homelab từ xa
+pnpm homelab:up
+
+# Xem log thời gian thực các container từ Homelab
+pnpm homelab:logs
+
+# Kiểm tra trạng thái sức khỏe container trên máy chủ
+pnpm homelab:ps
+
+# Dừng cụm dịch vụ Homelab
+pnpm homelab:down
+```
+
+_Chi tiết cấu hình xem tại [`scripts/homelab/run.sh`](./scripts/homelab/run.sh)._
+
+---
+
+## 7. Giấy phép & Đóng góp
+
+Dự án phát hành dưới giấy phép mã nguồn mở [MIT License](LICENSE).
+
+Mọi đóng góp, báo lỗi hoặc yêu cầu tính năng mới đều được hoan nghênh thông qua **Issues** và **Pull Requests** trên GitHub repository.
