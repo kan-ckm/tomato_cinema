@@ -33,6 +33,9 @@ test
 docker
 apps/docs
 apps/media-service
+apps/web
+**/bin
+**/tmp
 scripts/homelab
 .github
 .husky
