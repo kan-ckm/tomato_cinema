@@ -1,22 +1,83 @@
 ---
-title: Quy trình xử lý Media (Media & Streaming Pipeline)
-description: Luồng xử lý tải lên, chuyển mã định dạng HLS/DASH và phân phối video trailer, poster phim.
+title: Quy trình Xử lý & Phân phối Đa phương tiện (Media & Streaming Pipeline)
+description: Chu trình tiếp nhận dữ liệu nhị phân qua gRPC, nén ảnh tự động WebP, lưu trữ Cloudflare R2/MinIO và phân phối tốc độ cao qua Nginx Caching.
 ---
 
-`media-service` chịu trách nhiệm toàn bộ chu trình xử lý tập tin đa phương tiện trong Tomato Cinema, từ hình ảnh độ phân giải cao cho poster đến video trailer chuẩn thích ứng (Adaptive Bitrate Streaming).
+Trong hệ thống đặt vé và thông tin rạp chiếu phim **Tomato Cinema**, tài nguyên đa phương tiện (Media) đóng vai trò quyết định đến trải nghiệm người dùng và tỷ lệ chuyển đổi. Từ các poster phim độ phân giải cao, banner màn ảnh rộng 21:9 đến hàng triệu ảnh đại diện (avatar) của thành viên, hệ thống đòi hỏi một pipeline xử lý I/O mạnh mẽ, có độ trễ cực thấp và tối ưu chi phí lưu trữ trên mây.
 
-## Sơ đồ Pipeline Xử lý Video
+---
+
+## 1. Sơ đồ Chu trình Dữ liệu (Media Dataflow)
 
 <DiagramViewer
   src="/diagrams/media-streaming.html"
-  title="Pipeline Xử lý Video & Streaming HLS (Archify Dataflow)"
-  description="Chu trình tiếp nhận video thô, chuyển mã đa bitrate (HLS) qua FFmpeg worker và phân phối bằng CDN."
+  title="Pipeline Xử lý Video & Media (Archify Interactive Dataflow)"
+  description="Chu trình tiếp nhận tệp tin nhị phân qua gRPC, nén hình ảnh WebP, lưu trữ tại Cloudflare R2 và cơ chế đệm phân phối tĩnh qua Nginx Caching."
   height="600px"
 />
 
+---
 
-## Đặc tả kỹ thuật
+## 2. Kiến trúc Hai Chiều: Tiếp nhận (Ingestion) vs Phân phối (Distribution)
 
-- **Chuẩn nén:** H.264 (AVC) / H.265 (HEVC) + AAC Audio.
-- **Giao thức phân phối:** Apple HLS (`.m3u8` playlist và các segments `.ts`/`.m4s`).
-- **Tối ưu hình ảnh Poster:** Tự động nén WebP/AVIF đa kích thước (thumbnail, banner, mobile).
+Hệ thống phân tách rạch ròi giữa hai luồng dữ liệu độc lập:
+
+### 2.1. Luồng Tiếp nhận Dữ liệu (Ingestion Pipeline)
+
+1. **Khởi tạo Request**: Người dùng tải ảnh đại diện hoặc Admin tải poster phim lên thông qua API Gateway (`gateway-service`).
+2. **Streaming qua gRPC**: Thay vì chuyển tiếp qua giao thức HTTP chậm chạp, API Gateway nạp luồng nhị phân vào bộ nhớ đệm luồng (`Buffer`) và truyền trực tiếp sang `media-service` bằng gRPC Call (`MediaService.Upload`) tại cổng `:50059`.
+3. **Xử lý Ảnh Tự động (Image Processing)**:
+   - Kiểm tra định dạng tệp thông qua Magic Bytes chống giả mạo đuôi file.
+   - Resize ảnh về kích thước chuẩn theo tỷ lệ rạp chiếu phim (Poster chuẩn **2:3**, Banner màn ảnh rộng **16:9** hoặc **21:9**).
+   - Chuyển đổi mã hóa sang định dạng **WebP** với chất lượng nén tối ưu (giảm 60–80% dung lượng so với JPEG/PNG gốc mà không suy hao thị giác).
+4. **Lưu trữ Object Storage**: Đẩy tệp tin vào bucket của Cloudflare R2 hoặc MinIO thông qua AWS SDK for Go v2 và nhận lại Object Key duy nhất (ví dụ: `avatars/1743892011-user.webp`).
+
+### 2.2. Luồng Phân phối Tốc độ cao (Distribution Pipeline)
+
+1. **Truy vấn từ Client**: Trình duyệt hoặc Mobile App gửi request tải ảnh qua đường dẫn chuẩn: `http://localhost:8080/media/avatars/1743892011-user.webp`.
+2. **Bộ đệm Biên Nginx (Edge Nginx Cache)**:
+   - Nginx tại cổng `8080` bắt route `/media/*` và chuyển tiếp đến `media-service:4200/*`.
+   - Áp dụng bộ lọc giới hạn tần suất (`limit_req zone=media_limit burst=50 nodelay`) ở mức **30 requests/giây**, bảo vệ hạ tầng trước các đợt cào dữ liệu (Scraping) hoặc DDoS.
+   - Sử dụng Docker DNS Resolver `127.0.0.11 valid=10s` để tự động cập nhật địa chỉ IP nội bộ của container `media-service` mà không cần reload Nginx.
+3. **HTTP Caching Header**:
+   - `media-service` gắn kèm header tối ưu:
+     ```http
+     Cache-Control: public, max-age=86400, immutable
+     ```
+   - Client và CDN trung gian sẽ lưu trữ bản sao cục bộ trong vòng **24 giờ (86,400 giây)**. Khi chuyển trang hoặc xem lại poster, trình duyệt đọc trực tiếp từ Disk Cache mà không cần gửi lại yêu cầu lên máy chủ.
+
+---
+
+## 3. Cơ chế Streaming Non-Buffering trên Go
+
+Khác với các ứng dụng Node.js thông thường dễ bị nghẽn Event Loop hoặc tràn RAM khi đọc file lớn, `media-service` (Go 1.24) áp dụng cơ chế truyền luồng trực tiếp bằng `io.Reader`:
+
+```go
+// Tải trực tiếp từ Object Storage xuống Response Writer của client
+body, contentType, err := s.storage.Get(ctx, key)
+if err != nil {
+    c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy tệp"})
+    return
+}
+defer body.Close()
+
+// Thiết lập header và stream dữ liệu theo khối nhỏ
+c.Header("Content-Type", contentType)
+c.Header("Cache-Control", "public, max-age=86400, immutable")
+io.Copy(c.Writer, body)
+```
+
+Nhờ mô hình này, dữ liệu được truyền liên tục theo từng đoạn nhỏ (chunks) từ Storage ra mạng, giúp mức tiêu thụ bộ nhớ RAM của `media-service` luôn giữ ổn định ở mức dưới 50MB ngay cả khi phục vụ hàng nghìn kết nối đồng thời.
+
+---
+
+## 4. Đặc tả Quy chuẩn Kích thước Media Điện ảnh
+
+Để đảm bảo giao diện hiển thị đồng nhất và tránh giật khung hình (CLS - Cumulative Layout Shift), mọi hình ảnh hiển thị trên Tomato Cinema phải tuân thủ nghiêm ngặt các tỷ lệ:
+
+| Loại Media | Tỷ lệ chuẩn (Aspect Ratio) | Kích thước đề xuất | Định dạng xuất | Mục đích sử dụng |
+| :--- | :---: | :---: | :---: | :--- |
+| **Movie Poster** | **2:3** | `600 x 900 px` | WebP | Hiển thị thẻ phim trên trang chủ, danh sách phim đang chiếu và lịch chiếu. |
+| **Hero Banner** | **21:9** hoặc **16:9** | `1920 x 820 px` | WebP | Banner quảng bá bom tấn tràn màn hình đầu trang chủ. |
+| **User Avatar** | **1:1** | `256 x 256 px` | WebP | Ảnh đại diện hồ sơ người dùng và bình luận. |
+| **Cinema Hall Map** | **16:9** | `1280 x 720 px` | SVG / WebP | Sơ đồ mặt bằng rạp và bố trí phòng chiếu. |

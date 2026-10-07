@@ -1,12 +1,161 @@
 ---
-title: Bot Service
-description: Trợ lý ảo AI hỗ trợ tra cứu lịch chiếu, giá vé và giải đáp thắc mắc khách hàng.
+title: Bot Service (Dịch vụ Tương tác & Xác thực Telegram)
+description: Vi dịch vụ kết nối Telegram Bot API qua Telegraf, xử lý luồng xác thực một chạm One-Tap Deep Linking, chia sẻ số điện thoại và tích hợp gRPC với Auth Service.
 ---
 
-`bot-service` cung cấp kênh tương tác thông minh qua giao diện Chatbot trên web và mạng xã hội.
+`bot-service` là dịch vụ tích hợp bên ngoài chuyên biệt cho nền tảng **Telegram**, cung cấp tính năng xác thực không cần mật khẩu (Passwordless Authentication) và liên kết số điện thoại người dùng với tài khoản **Tomato Cinema** thông qua cơ chế **Deep Linking**.
 
-## Các chức năng chính
+---
 
-- Tra cứu lịch chiếu phim theo rạp gần nhất hoặc theo tên phim.
-- Giải đáp chính sách hoàn vé, ưu đãi thành viên và quy định phòng chiếu.
-- Tích hợp mô hình ngôn ngữ lớn (LLM) để phản hồi tự nhiên, chuẩn ngữ cảnh điện ảnh.
+## 1. Kiến trúc & Công nghệ Cốt lõi
+
+- **Framework**: NestJS kết hợp thư viện điều khiển Telegram Bot chính thức **Telegraf** (`telegraf`).
+- **Giao tiếp Microservice**: Kết nối trực tiếp với `auth-service` thông qua giao thức **gRPC** (`authClient.telegramComplete`).
+- **Quản lý Phiên Bot**: Lưu trữ trạng thái phiên xác thực tạm thời (`sessionId`) trong Telegraf Context Session.
+- **Tối ưu Hạ tầng Mạng & DNS**: Cấu hình Node.js runtime với cờ `--dns-result-order=ipv4first` nhằm giải quyết dứt điểm hiện tượng nghẽn phân giải IPv6 khi gọi ra Telegram Bot API (`api.telegram.org`) trên các cụm máy chủ Docker tại Việt Nam.
+
+---
+
+## 2. Quy trình Xác thực Một chạm (Telegram One-Tap Deep Linking)
+
+Luồng xác thực qua Telegram giúp người dùng đăng ký hoặc đăng nhập chỉ trong 3 lượt chạm mà không cần nhập mật khẩu hay chờ đợi mã OTP qua SMS:
+
+```
+[Người dùng trên Web]
+        │
+   (Bấm "Đăng nhập Telegram")
+        │
+        ▼
+   gateway-service ──► auth-service (Sinh sessionId ngẫu nhiên)
+        │
+   Mở Deep Link: https://t.me/TomatoCinemaBot?start=<sessionId>
+        │
+        ▼
+[Ứng dụng Telegram của Khách]
+        │
+   (Bấm nút START)
+        │
+        ▼
+   bot-service: start.handler
+   - Bóc tách startPayload = sessionId
+   - Lưu sessionId vào ctx.session
+   - Hiển thị nút "Chia sẻ số điện thoại" (contactRequest)
+        │
+   (Khách bấm "Chia sẻ số điện thoại")
+        │
+        ▼
+   bot-service: contact.handler
+   - Nhận phone_number từ Telegram
+   - Gọi gRPC authClient.telegramComplete(sessionId, phone)
+   - Trả lời tin nhắn kèm link: https://tomatocinema.vn/auth/tg-finalize?sessionId=...
+        │
+        ▼
+[Khách bấm quay lại Web] ──► Trang Web tự động nhận Token và hoàn tất đăng nhập
+```
+
+---
+
+## 3. Giải phẫu Chi tiết Các Bộ xử lý Sự kiện (Handlers)
+
+### 3.1. Tiếp nhận Lệnh Khởi động (`start.handler.ts`)
+
+Khi người dùng mở bot thông qua đường dẫn giới thiệu:
+
+```typescript
+// apps/bot-service/src/modules/bot/handlers/start.handler.ts
+bot.start(async ctx => {
+  const sessionId = ctx.startPayload;
+
+  // Trường hợp 1: Người dùng tự tìm bot trên Telegram mà không đi từ Web
+  if (!sessionId) {
+    return ctx.reply(
+      'Xin chào! Để tiếp tục, vui lòng đăng nhập vào trang web.',
+      Markup.inlineKeyboard([
+        [Markup.button.url('Tiến hành xác thực', 'https://tomatocinema.vn/auth/login')]
+      ])
+    );
+  }
+
+  // Trường hợp 2: Có Session ID từ Web chuyển sang
+  ctx.session.id = sessionId;
+
+  // Hiển thị nút yêu cầu chia sẻ số điện thoại nguyên bản của Telegram
+  await ctx.reply(
+    'Để hoàn tất đăng ký, vui lòng cung cấp số điện thoại của bạn.',
+    Markup.keyboard([
+      [Markup.button.contactRequest('Chia sẻ số điện thoại')]
+    ])
+  );
+});
+```
+
+### 3.2. Tiếp nhận & Xác thực Số Điện Thoại (`contact.handler.ts`)
+
+Khi người dùng đồng ý chia sẻ thông tin liên lạc, Telegram gửi về đối tượng contact có tính xác thực cao:
+
+```typescript
+// apps/bot-service/src/modules/bot/handlers/contact.handler.ts
+bot.on('contact', async ctx => {
+  const phone = ctx.message.contact.phone_number;
+
+  if (!ctx.chat?.id || !ctx.session?.id) {
+    return ctx.reply('Đã xảy ra lỗi. Vui lòng bắt đầu lại quy trình thông qua trang web.');
+  }
+
+  try {
+    // Gọi sang gRPC Auth Service để hoàn tất liên kết
+    const { sessionId } = await callUnary<TelegramCompleteResponse>(
+      authClient.telegramComplete.bind(authClient),
+      { sessionId: ctx.session.id, phone }
+    );
+
+    // Gửi nút Inline Keyboard điều hướng quay lại website
+    await ctx.reply('Đăng ký đã hoàn tất thành công!', {
+      reply_markup: {
+        inline_keyboard: [
+          [{
+            text: 'Quay lại trang web',
+            url: `https://tomatocinema.vn/auth/tg-finalize?sessionId=${sessionId}`
+          }]
+        ],
+        remove_keyboard: true // Dọn dẹp bàn phím chia sẻ liên hệ
+      }
+    });
+  } catch (error) {
+    await ctx.reply('Hệ thống đang quá tải hoặc bảo trì. Vui lòng thử lại sau ít phút.');
+  }
+});
+```
+
+---
+
+## 4. Cấu trúc Mô-đun & Bố trí Thư mục
+
+```
+apps/bot-service/src/
+├── config/                             # Nạp và kiểm tra các cấu hình Bot Token, gRPC host
+├── infrastructure/
+│   └── grpc/                           # auth.client.ts khởi tạo kết nối gRPC sang auth-service
+├── modules/
+│   └── bot/
+│       ├── bot.factory.ts              # Khởi tạo Telegraf instance và gán middleware
+│       └── handlers/
+│           ├── start.handler.ts        # Tiếp nhận lệnh /start và payload sessionId
+│           └── contact.handler.ts      # Tiếp nhận sự kiện contact và gọi RPC hoàn tất
+├── shared/
+│   ├── interfaces/                     # TelegrafContext với kiểu session tự định nghĩa
+│   └── utils/                          # call-unary.ts chuyển đổi callback gRPC sang Promise
+└── main.ts                             # Điểm khởi chạy ứng dụng NestJS & Bot Polling
+```
+
+---
+
+## 5. Cấu hình Biến Môi trường (`.env`)
+
+| Tên biến | Kiểu giá trị | Mặc định | Mô tả ý nghĩa |
+| :--- | :--- | :--- | :--- |
+| `NODE_ENV` | `development` \| `production` | `development` | Môi trường triển khai của ứng dụng. |
+| `BOT_TOKEN` | Chuỗi bí mật | - | Token xác thực Telegram Bot do `@BotFather` cấp. |
+| `GRPC_AUTH_HOST` | Tên miền / IP | `localhost` | Địa chỉ host của `auth-service` gRPC. |
+| `GRPC_AUTH_PORT` | Số nguyên | `50051` | Cổng gRPC của `auth-service`. |
+| `WEB_URL` | URL | `https://tomatocinema.vn` | Địa chỉ trang web chính để sinh link hoàn tất đăng nhập. |

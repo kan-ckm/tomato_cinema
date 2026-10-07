@@ -1,0 +1,224 @@
+---
+title: "Kiến trúc Docker & Pipeline Đóng gói (Docker Architecture & Multi-Stage Builds)"
+description: "Cơ chế đóng gói container tối ưu trong Monorepo: Shared Builder Pipeline, Turborepo Pruning, Google Distroless Runner và Docker Compose v2 Modular."
+---
+
+Trong một hệ thống Monorepo đa dịch vụ phức tạp kết hợp giữa **Node.js / NestJS** và **Golang** như **Tomato Cinema**, việc đóng gói Docker nếu làm theo cách truyền thống sẽ đối mặt với 3 thách thức lớn:
+1. **Lãng phí thời gian xây dựng (Build Time Explosion)**: Cài đặt dependencies và build lặp lại 5 lần cho 5 microservices NestJS, khiến thời gian build kéo dài hơn 10–15 phút.
+2. **Kích thước Container cồng kềnh (Image Bloat)**: Kéo theo toàn bộ mã nguồn TypeScript, devDependencies và các công cụ dòng lệnh không cần thiết ra môi trường Production.
+3. **Rủi ro an ninh (Security & CVE Vulnerabilities)**: Container chứa shell Linux (`/bin/sh`) và package manager tạo điều kiện cho các lỗ hổng thực thi mã từ xa (RCE).
+
+Tomato Cinema giải quyết triệt để các vấn đề này bằng kiến trúc **Shared Builder Multi-Stage Pipeline** cho NestJS và **Distroless Static Runner** cho Golang Media Service.
+
+---
+
+## 1. Sơ đồ Pipeline Đóng gói Đa tầng (Multi-Stage Pipeline)
+
+```
+[Mã nguồn Monorepo Gốc]
+         │
+         ├──► docker/Dockerfile (NestJS Services)
+         │    ├── Stage 1: Base (Node 22 Alpine + pnpm@9 với cache /root/.npm)
+         │    ├── Stage 2: Pruner (turbo prune [apps] --docker)
+         │    ├── Stage 3: Builder (SHARED BUILDER - Build 1 lần duy nhất cho cả 5 apps)
+         │    ├── Stage 4: Deployer (pnpm deploy --prod trích xuất runtime trong 1s)
+         │    └── Stage 5: Runner (Node 22 Alpine non-root + Tini PID 1 init process)
+         │
+         └──► docker/media.Dockerfile (Golang Media Service)
+              ├── Stage 1: Builder (Go 1.24 Alpine, CGO_ENABLED=0, cache mod & build)
+              └── Stage 2: Runner (gcr.io/distroless/static-debian12:nonroot ~25MB)
+```
+
+---
+
+## 2. Giải phẫu Chi tiết `docker/Dockerfile` (NestJS Services)
+
+Dockerfile tại [`docker/Dockerfile`](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/Dockerfile) được thiết kế theo mô hình 5 tầng:
+
+### Stage 1: Base Runtime & Trình Quản Lý Gói pnpm
+- Sử dụng base image `node:22-alpine` nhỏ gọn và bảo mật.
+- Cài đặt `pnpm@9.0.0` với BuildKit cache mount (`--mount=type=cache,target=/root/.npm`) nhằm không tải lại gói cài đặt qua mạng nếu image base thay đổi.
+- Cố định thư mục lưu trữ cache của pnpm tại `/pnpm/store`.
+
+### Stage 2: Pruner Cắt Tỉa Monorepo Đồng Thời
+- Cài đặt `turbo@2.10.7` với BuildKit cache.
+- Thay vì chỉ prune riêng 1 app, lệnh cắt tỉa được thực thi đồng thời cho toàn bộ 5 backend services:
+  ```dockerfile
+  ARG BACKEND_APPS="auth-service user-service gateway-service notification-service bot-service"
+  RUN turbo prune ${BACKEND_APPS} --docker
+  ```
+- Turborepo sinh ra 2 thư mục:
+  - `/app/out/json/`: Chỉ chứa các file `package.json` và lockfile tối thiểu.
+  - `/app/out/full/`: Chứa mã nguồn thực tế của các app và internal packages liên quan.
+
+### Stage 3: Shared Builder — Biên Dịch Dùng Chung Duy Nhất 1 Lần
+Đây là điểm sáng tạo cốt lõi trong kiến trúc Docker của dự án:
+- **Độc lập với `APP_NAME`**: Stage này hoàn toàn không nhận tham số `APP_NAME`. Do đó, khi chạy build cụm 5 microservices qua Docker Compose, **BuildKit tự động deduplicate và chỉ thực thi Stage này DUY NHẤT 1 LẦN**!
+- Cài đặt các công cụ hệ thống cấp OS với cache apk: `protobuf`, `openssl`, `libc6-compat`.
+- Cài đặt dependencies với dual cache mount:
+  ```dockerfile
+  RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+      --mount=type=cache,id=pnpm-cache,target=/root/.cache/pnpm \
+      pnpm install --frozen-lockfile
+  ```
+- Tự động nhận diện và sinh Prisma Client cho mọi service có schema:
+  ```dockerfile
+  RUN for s in apps/*/prisma/schema.prisma; do \
+        [ -f "$s" ] || continue; \
+        app="$(echo "$s" | cut -d/ -f2)"; \
+        pnpm --filter "${app}" exec prisma generate; \
+      done
+  ```
+- Biên dịch toàn bộ Monorepo song song bằng Turborepo:
+  ```dockerfile
+  RUN --mount=type=cache,id=turbo,target=/app/.turbo pnpm turbo run build
+  ```
+
+### Stage 4: Deployer — Bóc Tách Production Bundle Siêu Tốc
+- Tiếp nhận tham số `ARG APP_NAME`.
+- Sử dụng lệnh `pnpm deploy --prod`:
+  ```dockerfile
+  RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+      --mount=type=cache,id=pnpm-cache,target=/root/.cache/pnpm \
+      pnpm --filter=${APP_NAME} deploy --prod --prefer-offline /prod
+  ```
+  Nhờ cờ `--prefer-offline` kết hợp với cache store đã có ở Stage 3, quá trình trích xuất production `node_modules` chỉ mất vỏn vẹn **1–2 giây**.
+- Dọn dẹp mã nguồn TypeScript thừa (`/prod/src`, `/prod/test`, `tsconfig*.json`).
+- Xóa bỏ các tệp không cần thiết tại môi trường production (`*.map`, `*.md`, `*.tsbuildinfo`) giúp tiết kiệm thêm 20–30% dung lượng đĩa:
+  ```dockerfile
+  RUN find /prod/node_modules -type f \( -name "*.map" -o -name "*.md" -o -name "*.markdown" -o -name "*.tsbuildinfo" \) \
+      ! -iname "*license*" ! -iname "*notice*" -delete
+  ```
+
+### Stage 5: Runner — Container Production Tối Ưu & Tini Init Process
+- **Nguyên tắc Đặc quyền Tối thiểu (Least Privilege)**:
+  ```dockerfile
+  RUN addgroup --system --gid 1001 nodejs && \
+      adduser --system --uid 1001 nestjs
+  USER nestjs
+  ```
+  Container chạy dưới quyền người dùng thông thường `nestjs`, loại bỏ hoàn toàn nguy cơ leo thang đặc quyền root nếu ứng dụng bị xâm nhập.
+- **Tini Init Process (`/sbin/tini`)**:
+  - Trong Linux container, tiến trình chạy lệnh `node` mặc định sẽ nhận mã PID 1. Theo chuẩn POSIX, tiến trình PID 1 không tự động xử lý tín hiệu hệ điều hành mặc định (`SIGTERM`, `SIGINT`), dẫn tới việc khi chạy `docker stop`, container sẽ bị treo 10 giây trước khi bị hệ điều hành cưỡng chế `SIGKILL` (Hard Kill), làm đứt kết nối Database/Redis đang dở dang.
+  - Sử dụng `tini` làm entrypoint:
+    ```dockerfile
+    ENTRYPOINT ["/sbin/tini", "--"]
+    ```
+    Tini đóng vai trò là init process trung gian chuẩn mực: chuyển tiếp ngay lập tức tín hiệu `SIGTERM` tới Node.js runtime để kích hoạt cơ chế **Graceful Shutdown** của NestJS, đồng thời tự động thu dọn các tiến trình con mồ côi (Zombie Processes Reaping).
+
+---
+
+## 3. Giải phẫu `docker/media.Dockerfile` (Golang + Distroless)
+
+Dịch vụ xử lý ảnh và truyền phát đa phương tiện `media-service` được đóng gói qua [`docker/media.Dockerfile`](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/media.Dockerfile):
+
+```dockerfile
+# Stage 1: Biên dịch nhị phân tĩnh
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+ENV CGO_ENABLED=0 GOWORK=off GOFLAGS=-trimpath
+WORKDIR /src
+# Cache phụ thuộc Go module
+COPY packages/contracts/go.mod packages/contracts/go.sum packages/contracts/
+COPY apps/media-service/go.mod apps/media-service/go.sum apps/media-service/
+WORKDIR /src/apps/media-service
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+# Biên dịch tĩnh không phụ thuộc thư viện C (Statically Linked)
+ARG TARGETOS TARGETARCH
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /out/media-service ./cmd
+
+# Stage 2: Distroless Runner siêu nhẹ và bảo mật
+FROM gcr.io/distroless/static-debian12:nonroot AS runner
+WORKDIR /
+COPY --from=builder /out/media-service /media-service
+USER nonroot:nonroot
+EXPOSE 4200 50059
+ENTRYPOINT ["/media-service"]
+```
+
+### Tại sao chọn Google Distroless Static?
+1. **Dung lượng siêu nhỏ**: Kích thước container hoàn chỉnh chỉ khoảng **25–30MB** (so với 300MB–1GB của các container thông thường).
+2. **Triệt tiêu bề mặt tấn công**: Distroless chỉ chứa duy nhất tệp thực thi `media-service` và chứng chỉ SSL gốc. Hoàn toàn không có shell Linux (`/bin/sh`, `/bin/bash`), không có package manager (`apk`, `apt`), kẻ tấn công không thể mở reverse shell hay tải mã độc về container.
+3. **Tích hợp sẵn Root Certificates**: Đảm bảo đàm phán TLS/HTTPS an toàn tuyệt đối khi kết nối với Cloudflare R2 / AWS S3.
+
+---
+
+## 4. Kiến trúc Docker Compose v2 Modular (`include`)
+
+Thay vì gom hàng trăm dòng cấu hình vào một file `docker-compose.yml` khổng lồ gây xung đột khi nhiều lập trình viên cùng làm việc, Tomato Cinema áp dụng tính năng **`include`** chính thức của Docker Compose v2 Specification:
+
+```yaml
+# docker/docker-compose.yml
+name: tomato-cinema
+
+include:
+  - path: ./infra/docker-compose.yml
+    env_file: ./infra/.env
+  - path: ./apps/docker-compose.yml
+    env_file: ./apps/.env
+  - path: ./observability/docker-compose.yml
+    env_file: ./observability/.env
+```
+
+### 3 Khối Thành phần Phân lập:
+1. **`infra/docker-compose.yml`**:
+   - `postgres:16-alpine`: Lưu trữ dữ liệu danh tính và hồ sơ (`postgres_data`).
+   - `redis:8-alpine`: Lưu trữ token phiên, mã OTP và Redlock (`redis_data`).
+   - `rabbitmq:3-management-alpine`: Điều phối hàng đợi Domain Events (`rabbitmq_data`).
+2. **`apps/docker-compose.yml`**:
+   - Khởi chạy 5 vi dịch vụ NestJS (`auth`, `user`, `gateway`, `notification`, `bot`).
+   - Khởi chạy `media-service` (Go 1.24 Distroless).
+   - Khởi chạy `nginx:1.27-alpine` đóng vai trò Edge Ingress.
+   - Sử dụng YAML Anchor `x-logging: &default-logging` giới hạn log xoay vòng tối đa 3 file 10MB, chống tràn đĩa cứng máy chủ.
+3. **`observability/docker-compose.yml`**:
+   - OpenTelemetry Collector, Prometheus, Grafana, Jaeger thu thập traces và metrics.
+
+---
+
+## 5. Cẩm nang Vận hành & Lệnh Điều khiển
+
+<Tabs items={['Khởi chạy Toàn bộ', 'Chỉ chạy Hạ tầng', 'Build Từng Service', 'Dọn dẹp']}>
+  <Tab value="Khởi chạy Toàn bộ">
+    Khởi chạy toàn bộ hệ sinh thái (Hạ tầng + Apps):
+    ```bash
+    cd docker
+    docker compose up -d
+    ```
+    Kiểm tra trạng thái sức khỏe toàn bộ container:
+    ```bash
+    docker compose ps
+    ```
+  </Tab>
+
+  <Tab value="Chỉ chạy Hạ tầng">
+    Phù hợp cho lập trình viên muốn chạy mã nguồn ứng dụng trên máy trạm (Local Dev) nhưng dùng database/cache trên Docker:
+    ```bash
+    cd docker/infra
+    docker compose up -d
+    ```
+  </Tab>
+
+  <Tab value="Build Từng Service">
+    Biên dịch riêng lẻ từng container với BuildKit cache:
+    ```bash
+    # Build Auth Service
+    docker build -f docker/Dockerfile --build-arg APP_NAME=auth-service -t tomato-cinema/auth-service:latest .
+
+    # Build Media Service (Go)
+    docker build -f docker/media.Dockerfile -t tomato-cinema/media-service:latest .
+    ```
+  </Tab>
+
+  <Tab value="Dọn dẹp">
+    Dừng và dọn dẹp tài nguyên khi cần giải phóng đĩa cứng:
+    ```bash
+    # Dừng toàn bộ containers
+    cd docker && docker compose down
+
+    # Dọn dẹp cache build của Docker BuildKit
+    docker builder prune -f
+    ```
+  </Tab>
+</Tabs>

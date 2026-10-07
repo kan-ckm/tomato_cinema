@@ -1,21 +1,98 @@
 ---
-title: Xử lý Webhook thanh toán & Retry (Payment Webhook)
-description: Kỹ thuật xử lý Idempotency, xác thực chữ ký số HMAC và cơ chế Retry lũy tiến (Exponential Backoff).
+title: Xử lý Webhook Thanh toán & Tính Lũy Thừa (Payment Webhook & Idempotency)
+description: "Kỹ thuật xử lý giao dịch tài chính an toàn: xác thực chữ ký số HMAC-SHA256, bảo đảm tính bất biến (Idempotency) và cơ chế bù trừ giao dịch (Compensating Transactions)."
 ---
 
-Các cổng thanh toán (VNPay, Momo, ZaloPay, Stripe) thường gửi Webhook bất đồng bộ để thông báo kết quả giao dịch. Webhook có thể bị gửi lặp lại nhiều lần hoặc bị timeout do nghẽn mạng.
+Các cổng thanh toán trực tuyến (VNPay, MoMo, ZaloPay, Stripe) thường gửi kết quả giao dịch về hệ thống thông qua các cuộc gọi HTTP Webhook bất đồng bộ. Trong môi trường mạng Internet thực tế, Webhook có thể bị gửi lặp lại nhiều lần do timeout, đến không đúng thứ tự thời gian, hoặc bị kẻ xấu cố tình giả mạo dữ liệu.
 
-## Nguyên tắc xử lý cốt lõi
+---
 
-1. **Xác thực chữ ký (Signature Verification)**: Dùng thuật toán HMAC-SHA256 để đảm bảo request xuất phát từ cổng thanh toán, không bị giả mạo hay tấn công Man-in-the-Middle.
-2. **Tính bất biến (Idempotency)**: Đảm bảo dù nhận 10 request giống nhau cho cùng một mã giao dịch, hệ thống chỉ cập nhật vé đúng **1 lần duy nhất**.
-
-## Sơ đồ luồng Idempotency
+## 1. Sơ đồ Luồng Xử lý Webhook & Idempotency (Archify Workflow)
 
 <DiagramViewer
   src="/diagrams/payment-webhook.html"
-  title="Quy trình Xử lý Webhook Thanh toán & Idempotency (Archify Workflow)"
-  description="Xác thực chữ ký HMAC-SHA256, kiểm tra trạng thái giao dịch trước khi cập nhật Database Transaction và phát tán sự kiện RabbitMQ."
+  title="Quy trình Xử lý Webhook Thanh toán & Tính Lũy thừa (Archify Workflow)"
+  description="Xác thực chữ ký số HMAC-SHA256, kiểm tra trạng thái giao dịch trước khi cập nhật Database Transaction và phát tán sự kiện RabbitMQ."
   height="600px"
 />
 
+---
+
+## 2. Ba Trụ Cột Đảm Bảo An Toàn Giao Dịch
+
+### 2.1. Xác thực Chữ ký Số Kháng Tấn công Timing Attack
+
+Mọi request Webhook bắt buộc phải mang theo chữ ký HMAC được tạo từ Secret Key dùng chung giữa Tomato Cinema và đối tác thanh toán.
+
+Để chống lại kỹ thuật tấn công đo độ trễ thời gian (**Timing Attack**), hệ thống không sử dụng toán tử so sánh chuỗi thông thường (`===`) mà dùng hàm so sánh thời gian bất biến (`crypto.timingSafeEqual`):
+
+```typescript
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export function verifyWebhookSignature(
+  rawBody: Buffer,
+  signatureHeader: string,
+  secretKey: string
+): boolean {
+  const computedHash = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('hex');
+
+  const computedBuffer = Buffer.from(computedHash, 'utf8');
+  const signatureBuffer = Buffer.from(signatureHeader, 'utf8');
+
+  if (computedBuffer.length !== signatureBuffer.length) {
+    return false;
+  }
+
+  // So sánh byte theo thời gian bất biến để triệt tiêu Timing Leak
+  return timingSafeEqual(computedBuffer, signatureBuffer);
+}
+```
+
+---
+
+### 2.2. Đảm bảo Tính Lũy Thừa (Idempotency)
+
+Nếu cổng thanh toán gửi lại cùng một Webhook 5 lần do sự cố timeout mạng, hệ thống **bắt buộc chỉ trừ tiền và xuất vé đúng 1 lần duy nhất**:
+
+1. **Khóa Độc quyền Tạm thời**: Ngay khi nhận webhook, Gateway đặt một Redis Lock:
+   ```bash
+   SET lock:webhook:{transactionId} "processing" NX EX 30
+   ```
+   Nếu một request trùng lặp đến cùng thời điểm, nó sẽ bị chặn lại ngay lập tức.
+2. **Kiểm tra Trạng thái Giao dịch Hiện tại**:
+   - Nếu bản ghi giao dịch trong Database đã ở trạng thái kết thúc (`SUCCESS` hoặc `FAILED`): Trả về ngay lập tức HTTP `200 OK` cho cổng thanh toán mà không cập nhật lại dữ liệu.
+   - Nếu giao dịch đang ở trạng thái `PENDING`: Tiến hành mở Transaction xử lý cập nhật trạng thái.
+
+---
+
+### 2.3. Tính Toàn Vẹn ACID trong Cơ sở Dữ liệu
+
+Toàn bộ thao tác cập nhật vé, xuất mã QR và ghi nhận điểm tích lũy thành viên được bọc trong một Database Transaction duy nhất:
+
+```typescript
+await this.dataSource.transaction(async manager => {
+  // 1. Khóa bản ghi giao dịch thanh toán
+  const payment = await manager.findOne(PaymentEntity, {
+    where: { transactionId },
+    lock: { mode: 'pessimistic_write' }
+  });
+
+  if (payment.status === PaymentStatus.SUCCESS) {
+    return; // Đã xử lý trước đó
+  }
+
+  // 2. Cập nhật trạng thái thanh toán
+  payment.status = PaymentStatus.SUCCESS;
+  await manager.save(payment);
+
+  // 3. Đánh dấu ghế chính thức ĐÃ ĐẶT (BOOKED)
+  await manager.update(TicketEntity, { orderId: payment.orderId }, { status: 'BOOKED' });
+
+  // 4. Phát tán sự kiện RabbitMQ để gửi email vé xem phim
+  await this.eventEmitter.emit('booking.confirmed', { orderId: payment.orderId });
+});
+```
+
+Nếu bất kỳ bước nào thất bại, toàn bộ thao tác sẽ bị rollback về trạng thái trước đó, đảm bảo không bao giờ xảy ra tình trạng khách đã bị trừ tiền mà vé lại không được xuất.

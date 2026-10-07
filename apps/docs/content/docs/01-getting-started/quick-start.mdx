@@ -1,29 +1,37 @@
 ---
-title: Khởi động nhanh (Quick Start)
-description: Hướng dẫn cài đặt và khởi chạy toàn bộ hệ thống Tomato Cinema trên môi trường local.
+title: Khởi động Nhanh (Quick Start)
+description: Hướng dẫn cài đặt môi trường, biên dịch Protobuf và khởi chạy toàn bộ hệ thống Tomato Cinema trên môi trường máy trạm nội bộ.
 ---
 
-Tài liệu này hướng dẫn cách chuẩn bị môi trường và chạy toàn bộ monorepo `tomato_cinema`.
+Tài liệu này cung cấp các bước từng bước để thiết lập và khởi chạy toàn bộ hệ sinh thái **Tomato Cinema** — bao gồm Web Client, API Gateway, các vi dịch vụ NestJS, dịch vụ I/O Golang và hạ tầng phân tán.
 
-## Yêu cầu tiên quyết
+---
 
-- **Node.js**: >= 18 (Khuyến nghị Node 20 LTS hoặc 22)
-- **pnpm**: Phiên bản 9.0.0 (Quản lý qua Corepack)
-- **Docker & Docker Compose**: Để chạy PostgreSQL, Redis, RabbitMQ cục bộ
+## 1. Yêu cầu Tiên quyết (Prerequisites)
 
-<Callout type="info" title="Bật Corepack">
-Hệ thống sử dụng Corepack để cố định phiên bản `pnpm@9.0.0`. Chạy lệnh sau nếu máy bạn chưa kích hoạt:
+Trước khi bắt đầu, hãy đảm bảo máy tính phát triển của bạn đã cài đặt các công cụ sau:
+
+- **Node.js**: Phiên bản `>= 20.x LTS` hoặc `22.x`.
+- **pnpm**: Phiên bản `9.0.0` (Quản lý thống nhất qua Corepack).
+- **Go (Golang)**: Phiên bản `>= 1.24` (Bắt buộc để biên dịch và chạy `media-service`).
+- **Docker & Docker Compose**: Để chạy PostgreSQL, Redis, RabbitMQ và MinIO Object Storage.
+
+<Callout type="info" title="Kích hoạt pnpm qua Corepack">
+Dự án sử dụng cơ chế cố định phiên bản gói của Node.js. Chạy lệnh sau để bật Corepack:
 ```bash
 corepack enable
+corepack prepare pnpm@9.0.0 --activate
 ```
 </Callout>
 
-## Các bước cài đặt
+---
+
+## 2. Quy trình Khởi chạy Từng Bước (Steps)
 
 <Steps>
-### Bước 1: Clone kho mã nguồn và cài dependencies
+### Bước 1: Sao chép Mã Nguồn & Cài Đặt Gói Phụ Thuộc
 
-Chạy lệnh cài đặt tại thư mục gốc của repository:
+Thực hiện clone repository và cài đặt toàn bộ dependencies cho Monorepo:
 
 ```bash
 git clone https://github.com/kan-ckm/tomato_cinema.git
@@ -31,35 +39,79 @@ cd tomato_cinema
 pnpm install
 ```
 
-### Bước 2: Khởi động cơ sở dữ liệu & dịch vụ phụ trợ
+### Bước 2: Khởi động Hạ tầng Dữ liệu Cục bộ
 
-Khởi chạy PostgreSQL, Redis, Mailhog bằng Docker Compose:
+Sử dụng Docker Compose để khởi chạy song song PostgreSQL, Redis, RabbitMQ và MinIO:
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-### Bước 3: Chạy toàn bộ services ở chế độ Development
-
-Turborepo sẽ song song khởi động tất cả microservices và web client:
-
+Kiểm tra trạng thái các container:
 ```bash
-pnpm dev
+docker compose -f docker/docker-compose.yml ps
 ```
 
-### Bước 4: Kiểm tra các cổng dịch vụ
+### Bước 3: Biên dịch Hợp đồng Giao tiếp Protobuf
 
-- **Web Client**: `http://localhost:3500`
-- **Documentation**: `http://localhost:3501/docs`
-- **API Gateway**: `http://localhost:3000`
+Trước khi chạy các microservices, cần biên dịch các tệp `.proto` thành mã nguồn TypeScript và Go:
+
+```bash
+pnpm --filter @tomatocinema/contracts build
+```
+
+### Bước 4: Khởi chạy ở Chế độ Phát triển (Development)
+
+Bạn có thể chọn một trong hai phương thức chạy sau:
+
+#### Cách 1: Chạy song song qua Turborepo (Khuyến nghị cho Web & Core Services)
+```bash
+# Khởi chạy tất cả ứng dụng Node.js (Web, Docs, Gateway, Auth, User, Notification, Bot)
+pnpm dev
+
+# Mở một terminal khác để khởi chạy Media Service (Go 1.24)
+cd apps/media-service
+go run cmd/main.go
+```
+
+#### Cách 2: Chạy toàn diện bằng Docker Compose v2 (Mô phỏng Production)
+Nếu bạn muốn kiểm tra toàn bộ hệ thống đóng gói trong các container tối ưu (bao gồm Distroless container và Nginx Reverse Proxy):
+
+```bash
+# Build hệ thống qua Shared Builder Pipeline
+docker compose -f docker/docker-compose.v2.yml build
+
+# Khởi chạy toàn cụm dịch vụ
+docker compose -f docker/docker-compose.v2.yml up -d
+```
 </Steps>
 
-## Lệnh thông dụng trong Monorepo
+---
 
-| Lệnh | Ý nghĩa |
+## 3. Bảng Kiểm Tra Truy Cập Dịch Vụ
+
+Sau khi khởi chạy thành công, bạn có thể truy cập các dịch vụ tại các địa chỉ:
+
+| Thành Phần | Địa Chỉ URL | Tài Khoản Truy Cập | Mục Đích |
+| :--- | :--- | :--- | :--- |
+| **Web Client** | `http://localhost:3500` | - | Giao diện rạp chiếu phim Next.js 16. |
+| **Trang Tài Liệu** | `http://localhost:3501/docs` | - | Trang tài liệu kỹ thuật Fumadocs hiện tại. |
+| **Nginx Edge Ingress** | `http://localhost:8080` | - | Điểm vào chính qua proxy (định tuyến `/api/` và `/media/`). |
+| **API Gateway Trực tiếp**| `http://localhost:3000` | - | Cổng REST API của `gateway-service`. |
+| **Media HTTP Server** | `http://localhost:4200` | - | Cổng phục vụ static media ảnh WebP trực tiếp. |
+| **RabbitMQ Dashboard** | `http://localhost:15672` | `guest` / `guest` | Giám sát hàng đợi sự kiện và tin nhắn AMQP. |
+| **MinIO Console** | `http://localhost:9001` | `minioadmin` / `minioadmin` | Trình quản lý Object Storage cục bộ. |
+
+---
+
+## 4. Các Lệnh Thường Dùng Trong Monorepo
+
+| Câu Lệnh | Mục Đích Sử Dụng |
 | :--- | :--- |
-| `pnpm dev` | Khởi chạy tất cả apps và packages ở chế độ dev |
-| `pnpm build` | Build production toàn bộ hệ thống bằng Turborepo |
-| `pnpm --filter docs dev` | Chỉ chạy riêng ứng dụng tài liệu (Docs) |
-| `pnpm --filter web dev` | Chỉ chạy riêng Web frontend |
-| `pnpm check-types` | Kiểm tra lỗi TypeScript trên toàn bộ repo |
+| `pnpm dev` | Khởi chạy tất cả các ứng dụng TypeScript ở chế độ watch/hot-reload. |
+| `pnpm build` | Biên dịch toàn bộ các ứng dụng và thư viện trong monorepo. |
+| `pnpm --filter web dev` | Chỉ chạy riêng ứng dụng Next.js Web Client. |
+| `pnpm --filter docs dev` | Chỉ chạy riêng ứng dụng tài liệu kỹ thuật (Fumadocs). |
+| `pnpm --filter gateway-service dev` | Chỉ chạy riêng API Gateway. |
+| `pnpm check-types` | Chạy kiểm tra kiểu dữ liệu TypeScript trên toàn bộ repo mà không emit file. |
+| `pnpm lint` | Quét và sửa lỗi chuẩn mã nguồn ESLint / Prettier. |

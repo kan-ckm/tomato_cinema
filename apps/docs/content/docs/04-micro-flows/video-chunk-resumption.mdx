@@ -1,24 +1,81 @@
 ---
-title: Tải lên video phân đoạn (Chunked Upload & Resumption)
-description: Kỹ thuật upload tập tin lớn nhiều Gigabyte với khả năng tiếp tục khi gián đoạn mạng.
+title: Tải lên Phân đoạn & Phục hồi Gián đoạn (Chunked Upload & Resumption)
+description: Kỹ thuật tải lên tệp tin đa phương tiện dung lượng lớn nhiều Gigabyte, xử lý phân mảnh Part 5MB, tính toán ETag và cơ chế tiếp tục tải khi đứt kết nối mạng.
 ---
 
-Khi Admin đăng tải trailer chất lượng 4K (kích thước hàng Gigabyte), việc upload qua một request HTTP thông thường dễ dẫn tới lỗi Timeout hoặc mất trắng tiến trình tải lên nếu kết nối mạng gặp sự cố.
+Khi đội ngũ quản trị viên hoặc đối tác phát hành phim đăng tải các đoạn trailer chất lượng chuẩn 4K hoặc tư liệu quảng bá độ nét cao (dung lượng từ vài trăm Megabyte đến hàng chục Gigabyte), việc tải lên qua một request HTTP đơn lẻ thông thường sẽ tiềm ẩn rủi ro rất cao: dễ bị ngắt kết nối do Timeout, làm tràn bộ đệm RAM của máy chủ trung gian và buộc người dùng phải tải lại từ đầu (0%) nếu mạng bị chập chờn ở giây cuối cùng.
 
-## Quy trình Upload phân đoạn (Multipart Chunking)
+Tomato Cinema áp dụng cơ chế **Tải lên phân đoạn đa phần (Multipart Chunked Upload)** kết hợp khả năng phục hồi gián đoạn (**Resumption**) tương thích hoàn toàn với chuẩn API S3 của Cloudflare R2 và MinIO.
 
-1. Client chia file thành các mảnh cố định (mỗi phần 5MB - 10MB).
-2. Gọi API khởi tạo phiên tải lên (`Initiate Multipart Upload`) để nhận `uploadId`.
-3. Gửi song song các chunks kèm header thứ tự `partNumber`.
-4. Nếu một chunk bị đứt kết nối, client chỉ cần gửi lại riêng chunk đó mà không phải upload lại từ đầu.
-5. Sau khi đủ tất cả chunks, gọi API hoàn tất (`Complete Multipart`) để ghép file trên S3.
+---
 
-## Sơ đồ Sequence
+## 1. Sơ đồ Trình tự Phân mảnh & Khôi phục Tải lên (Archify Sequence)
 
 <DiagramViewer
   src="/diagrams/video-resumption.html"
-  title="Quy trình Tải lên Video Phân đoạn & Phục hồi Gián đoạn (Archify Sequence)"
-  description="Trình tự phân mảnh video 5MB, cấp quyền tải lên trực tiếp S3 Presigned URL và cơ chế gửi bù chỉ riêng phân đoạn bị lỗi mạng."
+  title="Quy trình Tải lên Video Phân đoạn & Phục hồi Lỗi (Archify Sequence)"
+  description="Trình tự phân mảnh video 5MB, cấp quyền tải lên trực tiếp S3 Presigned URL và cơ chế gửi bù chỉ riêng phân đoạn bị gián đoạn mạng."
   height="620px"
 />
 
+---
+
+## 2. Chu trình 5 Bước của Quy trình Multipart Upload
+
+Quy trình được thực thi theo mô hình phân tách quyền hạn an toàn giữa API Gateway, Media Service và Object Storage:
+
+### Bước 1: Khởi tạo Phiên Tải lên (`Initiate Multipart Upload`)
+Client gửi thông tin tệp tin (`fileName`, `fileSize`, `contentType`) lên hệ thống:
+```http
+POST /api/v1/media/multipart/initiate
+```
+`media-service` tương tác với Object Storage tạo một phiên tải lên và trả về:
+- `uploadId`: Chuỗi định danh duy nhất của phiên multipart.
+- `key`: Object Key dự kiến sẽ lưu trên Cloudflare R2.
+
+### Bước 2: Phân mảnh Tệp tin (Chunk Partitioning)
+Phía Client (Trình duyệt) sử dụng API JavaScript `File.slice()` để chia tệp tin thành các khối dữ liệu cố định:
+- **Kích thước mỗi chunk**: Mặc định **5MB** (đây là ngưỡng kích thước tối thiểu theo chuẩn S3 Multipart Upload cho các part trung gian).
+- **Đánh số thứ tự (`partNumber`)**: Từ `1` đến `N`.
+
+### Bước 3: Tải lên Song song các Chunks qua Presigned URLs
+Client yêu cầu Presigned URL cho từng part hoặc đẩy chunk qua endpoint upload của hệ thống:
+- Client có thể tải lên đồng thời 3–4 chunks để tận dụng tối đa băng thông kết nối mạng.
+- Khi một chunk được lưu trữ thành công, Object Storage phản hồi header `ETag` (chuỗi mã hash MD5/SHA256 của khối dữ liệu đó).
+- Client ghi nhận lại cặp `{ PartNumber, ETag }`.
+
+### Bước 4: Khôi phục Khi Gặp Lỗi Mạng (Fault Recovery & Resumption)
+Nếu trong quá trình truyền dữ liệu, kết nối mạng bị gián đoạn ở chunk thứ 7:
+1. Client tạm dừng và thử kết nối lại sau vài giây (Exponential Backoff).
+2. Client gọi API `ListParts` với `uploadId` để truy vấn danh sách các chunk mà Storage đã nhận trọn vẹn:
+   ```http
+   GET /api/v1/media/multipart/parts?uploadId=...&key=...
+   ```
+3. Hệ thống trả về danh sách các chunks từ `1` đến `6` đã an toàn.
+4. Client **chỉ cần tải bù lại từ chunk số 7 trở đi** mà không phải tốn thời gian tải lại 6 chunk đầu tiên.
+
+### Bước 5: Hoàn tất & Ghép Tệp Tin (`Complete Multipart Upload`)
+Khi toàn bộ các chunks đã được tải lên thành công, Client gửi danh sách tổng hợp:
+
+```json
+POST /api/v1/media/multipart/complete
+{
+  "uploadId": "upload_abc123",
+  "key": "trailers/avatar-3-trailer-4k.mp4",
+  "parts": [
+    { "partNumber": 1, "eTag": "\"d41d8cd98f00b204e9800998ecf8427e\"" },
+    { "partNumber": 2, "eTag": "\"78e731027d8fd50ed642340b7c9a63b3\"" },
+    { "partNumber": 3, "eTag": "\"9f3b18c0a2e5d8a9b4c3e2f1d0a5b6c7\"" }
+  ]
+}
+```
+
+Object Storage sẽ tự động ghép các phân đoạn thành một tệp hoàn chỉnh duy nhất tại tầng lưu trữ mà không tiêu tốn tài nguyên CPU của máy chủ ứng dụng.
+
+---
+
+## 3. Quản lý Hủy bỏ & Dọn dẹp Dung lượng Rác (`Abort Multipart`)
+
+Nếu người dùng bấm nút Hủy (Cancel) hoặc quá 24 giờ mà phiên multipart không được hoàn tất:
+- Client hoặc Cronjob hệ thống sẽ gọi lệnh `AbortMultipartUpload`.
+- Storage sẽ ngay lập tức xóa bỏ toàn bộ các khối chunks dang dở, giải phóng hoàn toàn dung lượng lưu trữ trên bucket và tránh phát sinh chi phí lưu trữ tệp rác.

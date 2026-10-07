@@ -1,39 +1,74 @@
 ---
-title: Xử lý tranh chấp khóa ghế (Seat Locking & Concurrency)
-description: Luồng nhỏ chi tiết cách giải quyết Race Condition khi nhiều người cùng chọn một ghế bằng Redis Distributed Lock (Redlock).
+title: Xử lý Tranh chấp Khóa ghế (Seat Locking & Concurrency Control)
+description: Kỹ thuật phân xử Race Condition khi hàng nghìn người cùng chọn một vị trí ghế trong cùng một mili-giây bằng Redis Distributed Lock (SET NX EX) và Lua Script nguyên tử.
 ---
 
-Khi các bộ phim bom tấn mở bán vé, hàng nghìn người dùng có thể nhấp chọn cùng một ghế (ví dụ ghế VIP `H12`) tại cùng một mili-giây. Nếu chỉ dùng SQL `UPDATE`, hệ thống rất dễ bị Deadlock hoặc Double-Booking.
+Trong các thời điểm mở bán vé cho các suất chiếu bom tấn (như suất chiếu sớm IMAX vào dịp lễ), hàng nghìn người dùng có thể nhấp chọn cùng một vị trí ghế VIP (ví dụ ghế `H12`) tại cùng một thời điểm. Nếu chỉ dựa vào câu lệnh SQL truyền thống (`UPDATE seats SET status = 'LOCKED' WHERE id = 'H12'`), cơ sở dữ liệu sẽ phải chịu tải Deadlock nặng nề hoặc gặp hiện tượng **Double-Booking** (đặt trùng vé) do độ trễ transaction.
 
-## Giải pháp kỹ thuật
+---
 
-Hệ thống sử dụng kỹ thuật **Redis Distributed Lock với lệnh nguyên tử `SET NX EX`** kết hợp kiểm tra Lua Script để giải phóng khóa an toàn.
-
-## Sơ đồ thuật toán xử lý
+## 1. Sơ đồ Trình tự Phân xử Tranh chấp (Archify Sequence)
 
 <DiagramViewer
   src="/diagrams/seat-locking.html"
-  title="Trình tự Tranh chấp Khóa ghế (Archify Sequence)"
-  description="Mô phỏng 2 khách hàng gửi yêu cầu khóa ghế cùng một mili-giây và cơ chế phân xử nguyên tử bằng Redis SET NX EX."
+  title="Trình tự Tranh chấp Khóa ghế Thời gian thực (Archify Sequence)"
+  description="Mô phỏng 2 khách hàng gửi yêu cầu khóa ghế cùng mili-giây và cơ chế phân xử nguyên tử bằng Redis SET NX EX."
   height="620px"
 />
 
+---
 
-## Mã giả Lua Script giải phóng khóa an toàn
+## 2. Giải pháp Kỹ thuật: Redis Distributed Lock Nguyên tử
 
-Khi khách hàng hoàn tất thanh toán hoặc tự tay hủy chọn ghế, việc mở khóa phải đảm bảo **chính chủ** (tránh trường hợp Client A giải phóng khóa của Client B sau khi lock của A đã hết hạn TTL):
+Hệ thống đưa toàn bộ tầng kiểm tra trạng thái và giữ chỗ ghế ra bộ nhớ đệm **Redis InMemory** với độ trễ dưới 1 mili-giây:
+
+### 2.1. Cấu trúc Khóa Giữ Ghế (Lock Key)
+
+- **Định dạng Key**: `lock:showtime:{showtimeId}:seat:{seatId}` (ví dụ: `lock:showtime:ST-20261007:seat:H12`).
+- **Giá trị Value**: `userId:bookingSessionId` (Chuỗi định danh duy nhất của người dùng đang thực hiện phiên giữ chỗ).
+- **Thời gian hiệu lực (TTL)**: **600 giây (10 phút)**.
+
+### 2.2. Lệnh Khóa Nguyên tử (`SET NX EX`)
+
+```bash
+SET lock:showtime:ST-20261007:seat:H12 "user_99a:sess_xyz" NX EX 600
+```
+
+- **`NX` (Not Exists)**: Lệnh chỉ thiết lập key thành công nếu key **chưa từng tồn tại**. Nếu ghế đã bị người khác khóa trước dù chỉ 1 micro-giây, Redis lập tức trả về `nil`.
+- **`EX 600` (Expire)**: Gán hạn sử dụng 10 phút ngay trong cùng một thao tác đơn lẻ, ngăn chặn hoàn toàn rủi ro khóa vĩnh viễn (Deadlock) nếu server bị mất điện đột ngột ngay sau khi tạo lock.
+
+---
+
+## 3. Giải phóng Khóa An Toàn bằng Lua Script
+
+Khi người dùng tự hủy chọn ghế hoặc thanh toán thất bại, việc mở khóa **bắt buộc phải đảm bảo chính chủ**. 
+
+Nếu chỉ gọi lệnh `DEL lockKey`, một kịch bản Race Condition nguy hiểm có thể xảy ra:
+1. Client A giữ ghế nhưng bị nghẽn mạng quá 10 phút $\rightarrow$ Khóa của A hết hạn.
+2. Client B ngay lập tức nhảy vào khóa ghế thành công.
+3. Client A hoàn tất việc hủy và gửi lệnh `DEL` $\rightarrow$ Vô tình **xóa luôn khóa hợp lệ của Client B**!
+
+### Triển khai Lua Script Nguyên tử:
 
 ```lua
--- KEYS[1]: lock key (vd: lock:show:101:seat:H12)
--- ARGV[1]: lock value (vd: userId hoặc unique booking token)
+-- KEYS[1]: lock:showtime:{showtimeId}:seat:{seatId}
+-- ARGV[1]: {userId}:{bookingSessionId}
 
 if redis.call("get", KEYS[1]) == ARGV[1] then
+    -- Đúng chính chủ đang giữ khóa -> tiến hành xóa an toàn
     return redis.call("del", KEYS[1])
 else
+    -- Khóa đã thuộc về người khác hoặc đã hết hạn -> không can thiệp
     return 0
 end
 ```
 
-<Callout type="warn" title="Lưu ý về TTL">
-Khóa chỉ tồn tại tối đa 600 giây (10 phút). Nếu sau thời gian này người dùng không thanh toán, Redis sẽ tự động tiêu hủy key (Key Expiration), ghế sẽ tự động trở về trạng thái trống mà không cần can thiệp thủ công từ cơ sở dữ liệu.
-</Callout>
+Toàn bộ script trên được Redis thực thi đơn luồng (Single-threaded), đảm bảo tính nguyên tử tuyệt đối (Atomicity) mà không cần cơ chế khóa bảng phức tạp.
+
+---
+
+## 4. Tự động Trả Ghế khi Hết Hạn (Auto Expiration)
+
+Nhờ cơ chế TTL của Redis:
+- Nếu khách hàng đóng tab trình duyệt, mất mạng hoặc quá 10 phút không hoàn tất thanh toán, Redis sẽ **tự động xóa key** (`Expired`).
+- Vị trí ghế lập tức mở ra trạng thái sẵn sàng cho những khách hàng khác đặt mua mà không cần bất kỳ tiến trình Cronjob quét dọn cơ sở dữ liệu định kỳ nào.

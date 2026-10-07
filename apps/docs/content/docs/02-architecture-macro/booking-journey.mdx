@@ -1,29 +1,81 @@
 ---
-title: Hành trình đặt vé xem phim (Booking Journey)
-description: Luồng nghiệp vụ cốt lõi từ chọn rạp, chọn suất chiếu, giữ chỗ thời gian thực đến thanh toán và xuất vé.
+title: Hành trình Đặt vé Xem phim (Booking Journey)
+description: Luồng nghiệp vụ cốt lõi từ khám phá lịch chiếu, giữ chỗ thời gian thực trên Redis, thanh toán bảo mật đến sinh mã QR vé và thông báo đa kênh.
 ---
 
-Đặt vé là luồng nghiệp vụ quan trọng nhất trong nền tảng Tomato Cinema, đòi hỏi tính nhất quán dữ liệu cao (Data Consistency) và độ trễ thấp khi có lượng người dùng truy cập đột biến.
+Đặt vé xem phim là hành trình nghiệp vụ trọng tâm mang lại doanh thu cốt lõi trong hệ sinh thái **Tomato Cinema**. Quy trình này đòi hỏi tính nhất quán dữ liệu tuyệt đối (Data Consistency), khả năng xử lý tranh chấp ghế thời gian thực (Real-time Concurrency) và độ trễ thấp ngay cả trong các dịp cao điểm mở bán vé sớm.
 
-## Sơ đồ Quy trình Đặt vé & Giữ chỗ
+---
+
+## 1. Sơ đồ Quy trình Đặt vé Toàn diện (Booking Workflow)
 
 <DiagramViewer
   src="/diagrams/booking-workflow.html"
-  title="Quy trình Đặt vé & Giữ chỗ Thời gian thực (Archify Workflow)"
-  description="Lanes phân định rõ ràng ranh giới Client, API Gateway, Dịch vụ Đặt vé và Cổng Thanh toán."
-  height="580px"
+  title="Quy trình Đặt vé & Giữ chỗ Thời gian thực (Archify Interactive Workflow)"
+  description="Lanes phân định rạch ròi trách nhiệm giữa Client, API Gateway, Dịch vụ Đặt vé, Cổng Thanh toán và Broker Sự kiện."
+  height="600px"
 />
 
-## Các giai đoạn then chốt
+---
 
-<Tabs items={['1. Giữ chỗ (Hold)', '2. Thanh toán (Payment)', '3. Hoàn tất (Fulfill)']}>
-  <Tab value="1. Giữ chỗ (Hold)">
-    Khi người dùng nhấp chọn ghế, hệ thống kích hoạt **Distributed Lock** trên Redis với thời gian hết hạn (TTL) là 10 phút. Trạng thái ghế chuyển sang `HOLDING` và thông báo tới các client khác qua WebSocket.
+## 2. Giải phẫu Chi tiết 5 Giai đoạn Cốt lõi
+
+<Tabs items={['1. Chọn Suất & Ghế', '2. Khóa Ghế Tạm', '3. Thanh Toán', '4. Xuất Vé & QR', '5. Hủy & Bù Trừ']}>
+  <Tab value="1. Chọn Suất & Ghế">
+    ### Giai đoạn 1: Khám phá Lịch Chiếu & Ma Trận Ghế (Seat Matrix)
+    - Người dùng duyệt danh mục phim đang chiếu, chọn cụm rạp, định dạng phòng chiếu (2D, 3D, IMAX Laser, Dolby Atmos) và khung giờ chiếu.
+    - Web Client gọi API lấy sơ đồ bố trí ghế của phòng chiếu.
+    - Trạng thái ghế hiển thị trực quan theo 5 phân loại:
+      - **Ghế Thường (Standard)**: Màu trung tính.
+      - **Ghế VIP**: Vị trí trung tâm màn ảnh, màu vàng kim.
+      - **Ghế Đôi (Sweetbox)**: Hàng ghế cuối, đặt theo cặp.
+      - **Ghế Đang Giữ Chỗ (Holding)**: Đang trong phiên giao dịch của người khác, hiển thị xám mờ.
+      - **Ghế Đã Bán (Booked)**: Đã thanh toán, khóa vĩnh viễn.
   </Tab>
-  <Tab value="2. Thanh toán (Payment)">
-    Hệ thống tạo yêu cầu thanh toán (Payment Order) gửi tới cổng thanh toán (VNPay, Momo, Stripe). Client được điều hướng sang trang xác nhận thanh toán an toàn.
+
+  <Tab value="2. Khóa Ghế Tạm">
+    ### Giai đoạn 2: Giữ Chỗ Tạm Thời Nguyên Tử (Atomic Seat Holding)
+    - Khi người dùng nhấp chọn ghế, một yêu cầu giữ chỗ được gửi đến API Gateway.
+    - Hệ thống áp dụng **Redis Distributed Lock (`SET NX EX 600`)** với thời gian giữ chỗ nghiêm ngặt **10 phút (600 giây)**.
+    - Một bộ đếm ngược thời gian (Countdown Timer) 10:00 hiển thị trên màn hình của khách hàng.
+    - Nếu khách hàng khác cố tình chọn cùng ghế đó, hệ thống lập tức từ chối với lỗi `409 Conflict - Ghế đã được giữ bởi người khác`.
   </Tab>
-  <Tab value="3. Hoàn tất (Fulfill)">
-    Sau khi nhận được Webhook thanh toán thành công, hệ thống chuyển trạng thái vé sang `PAID`, phát sinh mã QR vé lưu vào cơ sở dữ liệu và bắn event `BookingCompletedEvent` vào Message Queue.
+
+  <Tab value="3. Thanh Toán">
+    ### Giai đoạn 3: Khởi Tạo Đơn Hàng & Cổng Thanh Toán
+    - Hệ thống tính toán tổng giá trị đơn hàng: `Tiền vé + Combo bắp nước - Mã giảm giá (Voucher)`.
+    - Tạo một bản ghi đơn hàng với trạng thái `PENDING_PAYMENT`.
+    - Tạo yêu cầu thanh toán chuyển hướng sang cổng đối tác (VNPay, MoMo, ZaloPay, Stripe) kèm theo chữ ký số bảo mật HMAC-SHA256.
+    - Trình duyệt khách hàng chuyển hướng tới trang thanh toán bảo mật của ngân hàng/ví điện tử.
+  </Tab>
+
+  <Tab value="4. Xuất Vé & QR">
+    ### Giai đoạn 4: Hoàn Tất Giao Dịch & Phát Hành Vé Số
+    - Cổng thanh toán gửi Webhook thông báo thành công về API Gateway.
+    - Hệ thống thẩm định tính hợp lệ của chữ ký Webhook và thực hiện **Database Transaction**:
+      1. Cập nhật đơn hàng sang trạng thái `PAID`.
+      2. Chuyển trạng thái các ghế trong suất chiếu sang `BOOKED`.
+      3. Giải phóng Redis Lock tương ứng.
+      4. Sinh chuỗi mã vé số bảo mật và mã vạch QR Code chứa thông tin soát vé điện tử.
+    - Bắn sự kiện `booking.confirmed` vào RabbitMQ để:
+      - `notification-service`: Soạn thảo và gửi email hóa đơn vé điện tử kèm mã QR.
+      - `user-service`: Tích lũy điểm thưởng thành viên (Tomato Points).
+  </Tab>
+
+  <Tab value="5. Hủy & Bù Trừ">
+    ### Giai đoạn 5: Hết Hạn Giữ Chỗ & Bù Trừ Tự Động (Compensating Actions)
+    - **Hết hạn 10 phút**: Nếu người dùng không hoàn tất thanh toán trước khi bộ đếm ngược chạm mốc `00:00`, khóa Redis tự động tiêu hủy (`Key Expiration`). Ghế lập tức trở về trạng thái trống cho khách hàng khác mua.
+    - **Giao dịch bị hủy**: Nếu khách hàng chủ động bấm hủy thanh toán trên cổng VNPay/MoMo, hệ thống chạy Lua Script giải phóng khóa ghế tức thì mà không cần chờ hết 10 phút.
   </Tab>
 </Tabs>
+
+---
+
+## 3. Các Chỉ số Đảm bảo Trải nghiệm Người dùng (SLAs)
+
+| Chỉ số Hiệu năng | Cam kết SLA | Cơ chế Đạt được |
+| :--- | :---: | :--- |
+| **Thời gian phản hồi khóa ghế** | `< 15ms` | Xử lý hoàn toàn trong bộ nhớ đệm Redis Single-thread. |
+| **Độ trễ cập nhật trạng thái phòng chiếu** | `< 100ms` | Đồng bộ thời gian thực cho hàng nghìn người cùng xem sơ đồ. |
+| **Tỷ lệ Double-Booking (Trùng ghế)** | **0.00%** | Khóa nguyên tử `SET NX EX` triệt tiêu mọi khả năng xung đột. |
+| **Thời gian xuất vé sau khi trừ tiền** | `< 2.5s` | Xử lý hàng đợi bất đồng bộ qua RabbitMQ tách biệt khỏi luồng HTTP. |

@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kiến Trúc Phiên và Xoay Vòng Token Trên Redis - Tomato Cinema</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap");
+
+      @page {
+        size: A4;
+        margin: 12mm 14mm 12mm 14mm;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-size: 10pt;
+        line-height: 1.5;
+        color: #1e293b;
+        background: #ffffff;
+      }
+
+      /* Quy tắc ngắt trang thông minh */
+      h2,
+      h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .no-break,
+      table,
+      pre,
+      .ascii-box,
+      .analogy-card,
+      .callout {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .page-break {
+        break-before: page;
+        page-break-before: always;
+      }
+
+      /* Header tài liệu */
+      .doc-header {
+        border-bottom: 2px solid #e11d48;
+        padding-bottom: 10px;
+        margin-bottom: 16px;
+      }
+
+      .doc-badge {
+        display: inline-block;
+        background: #fff1f2;
+        color: #e11d48;
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        border: 1px solid #fecdd3;
+      }
+
+      .doc-title {
+        font-size: 16pt;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.25;
+        margin-bottom: 4px;
+      }
+
+      .doc-subtitle {
+        font-size: 10pt;
+        color: #475569;
+        font-weight: 500;
+        margin-bottom: 10px;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        background: #f8fafc;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        font-size: 8pt;
+      }
+
+      .meta-item strong {
+        display: block;
+        color: #64748b;
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .meta-item span {
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      /* Headings */
+      h2 {
+        font-size: 12pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 14px;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      h3 {
+        font-size: 10.5pt;
+        font-weight: 600;
+        color: #1e293b;
+        margin-top: 10px;
+        margin-bottom: 5px;
+      }
+
+      p {
+        margin-bottom: 6px;
+        text-align: justify;
+      }
+
+      ul,
+      ol {
+        margin-left: 18px;
+        margin-bottom: 8px;
+      }
+
+      li {
+        margin-bottom: 3px;
+      }
+
+      /* Callout Boxes */
+      .callout {
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 8px 0;
+        font-size: 9pt;
+        line-height: 1.45;
+      }
+
+      .callout-info {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        color: #1e40af;
+      }
+
+      .callout strong {
+        font-weight: 700;
+      }
+
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 8.5pt;
+      }
+
+      th,
+      td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 8px;
+        text-align: left;
+      }
+
+      th {
+        background: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+      }
+
+      tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+
+      /* Code Blocks */
+      pre,
+      code {
+        font-family: "Fira Code", Consolas, Monaco, monospace;
+      }
+
+      code {
+        background: #f1f5f9;
+        color: #e11d48;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 8pt;
+      }
+
+      pre {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 8pt;
+        line-height: 1.4;
+        overflow-x: auto;
+        margin: 8px 0;
+        border: 1px solid #334155;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        border-radius: 0;
+        font-size: inherit;
+      }
+
+      .code-comment {
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .code-keyword {
+        color: #f43f5e;
+        font-weight: 600;
+      }
+      .code-func {
+        color: #38bdf8;
+      }
+      .code-string {
+        color: #34d399;
+      }
+      .code-type {
+        color: #fbbf24;
+      }
+
+      /* ASCII Diagram Box */
+      .ascii-box {
+        background: #0f172a;
+        color: #38bdf8;
+        padding: 10px;
+        border-radius: 6px;
+        font-family: "Fira Code", Consolas, monospace;
+        font-size: 7.5pt;
+        line-height: 1.3;
+        margin: 8px 0;
+        white-space: pre;
+      }
+
+      /* Analogy Cards */
+      .analogy-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      }
+
+      .analogy-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 3px;
+      }
+
+      .analogy-card-title {
+        font-weight: 700;
+        font-size: 9.5pt;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .tag {
+        font-size: 7pt;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+
+      .tag-active {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .tag-grace {
+        background: #fef3c7;
+        color: #b45309;
+      }
+      .tag-revoked {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      /* Footer */
+      .doc-footer {
+        margin-top: 15px;
+        padding-top: 8px;
+        border-top: 1px solid #cbd5e1;
+        display: flex;
+        justify-content: space-between;
+        font-size: 7.5pt;
+        color: #64748b;
+        break-inside: avoid;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ==================== TRANG 1 ==================== -->
+    <div class="doc-header">
+      <div class="doc-badge">Security & Architecture Whitepaper</div>
+      <div class="doc-title">
+        KIẾN TRÚC PHIÊN VÀ CƠ CHẾ XOAY VÒNG TOKEN TRÊN REDIS
+      </div>
+      <div class="doc-subtitle">
+        Chuyên sâu về Token Rotation, Grace Period Đa Tab và Phát Hiện Xâm Nhập
+        (Reuse Detection)
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <strong>Hệ thống</strong>
+          <span>Tomato Cinema</span>
+        </div>
+        <div class="meta-item">
+          <strong>Chuyên đề</strong>
+          <span>Security & Session Mgmt</span>
+        </div>
+        <div class="meta-item">
+          <strong>Tiêu chuẩn</strong>
+          <span>OAuth 2.0 BCP (RFC 6749)</span>
+        </div>
+        <div class="meta-item">
+          <strong>Phiên bản</strong>
+          <span>v1.2.0 (Deep-Dive Edition)</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>1. Tổng quan Kiến trúc Xác thực Hybrid (Stateless vs. Stateful)</h2>
+    <p>
+      Hệ thống <strong>Tomato Cinema</strong> áp dụng mô hình xác thực lai
+      (Hybrid Token Authentication) kết hợp ưu điểm của cả hai thế giới:
+    </p>
+    <ul>
+      <li>
+        <strong>Access Token là Stateless:</strong> Hoàn toàn không lưu trữ
+        trong Redis hay Cơ sở dữ liệu, giúp thẩm định chữ ký với độ trễ cực
+        thấp.
+      </li>
+      <li>
+        <strong>Refresh Token là Stateful:</strong> Được giám sát, lưu vết và
+        kiểm soát vòng đời chặt chẽ trên bộ nhớ đệm phân tán Redis.
+      </li>
+    </ul>
+
+    <div class="ascii-box">
+      ┌────────────────────────────────────────────────────────────────────────┐
+      │ TRÌNH DUYỆT / CLIENT WEB │
+      └───────────────────┬────────────────────────────────┬───────────────────┘
+      │ (1) Request API thông thường │ (2) Khi Access Token hết hạn │ Header:
+      Bearer &lt;accessToken&gt; │ Cookie HttpOnly: &lt;refreshToken&gt; ▼ ▼
+      ┌───────────────────────┐ ┌───────────────────────┐ │ API GATEWAY │ │ AUTH
+      SERVICE │ └───────────┬───────────┘ └───────────┬───────────┘ │ │ ▼ ▼ Xác
+      thực HMAC trong RAM Kiểm tra &amp; Xoay vòng Token Độ trễ &lt; 0.05ms
+      (Không Redis) TRÊN BỘ NHỚ ĐỆM REDIS │ │ ▼ ▼ ┌───────────────────────┐
+      ┌───────────────────────┐ │ INTERNAL SERVICES │ │ REDIS CLUSTER │ │ (User,
+      Cinema, Media) │ │ (rt, rt_grace, rev) │ └───────────────────────┘
+      └───────────────────────┘
+    </div>
+
+    <h2>2. Tại sao Access Token tuyệt đối KHÔNG lưu trong Redis?</h2>
+    <p>
+      Một thắc mắc kinh điển của các kỹ sư backend:
+      <em
+        >"Tại sao khi kiểm tra Redis lại không thấy bất kỳ Access Token
+        nào?"</em
+      >. Đây là quyết định kiến trúc có tính toán kỹ lưỡng:
+    </p>
+    <ol>
+      <li>
+        <strong>Hiệu năng cực đại (Zero-I/O Verification):</strong> Nếu lưu
+        Access Token vào Redis, mỗi request từ client (hàng chục nghìn req/giây)
+        đều phải tốn một round-trip mạng tới Redis. Tại Tomato Cinema, Access
+        Token được ký bằng HMAC SHA-256 qua gói
+        <code>@tomatocinema/passport</code>. API Gateway chỉ cần thẩm định chữ
+        ký toán học ngay trên RAM Node.js với độ trễ
+        <strong>&lt; 0.05ms</strong>.
+      </li>
+      <li>
+        <strong>Thời gian sống ngắn (Short-lived):</strong> Access Token chỉ có
+        thời hạn 1 giờ (3,600s). Nếu lỡ bị lộ, thời gian hacker có thể lợi dụng
+        là rất ngắn.
+      </li>
+      <li>
+        <strong>Bảo vệ dung lượng RAM Cache:</strong> Giúp Redis không bị phình
+        to bởi hàng triệu token ngắn hạn, dành trọn vẹn RAM cho các tác vụ quan
+        trọng như Session, Seat Locking (khóa ghế xem phim) và Cache danh mục
+        phim.
+      </li>
+    </ol>
+
+    <!-- ==================== TRANG 2 ==================== -->
+    <div class="page-break"></div>
+
+    <h2>3. Cơ chế 3 Nhóm Khóa Refresh Token trong Redis</h2>
+    <p>
+      Refresh Token có thời hạn dài (24 giờ đến 30 ngày) nên bắt buộc phải được
+      quản lý trạng thái (Stateful) để hỗ trợ thu hồi tức thì và phát hiện xâm
+      nhập. Nhằm bảo mật tối đa, hệ thống băm SHA-256 lấy 32 ký tự đầu làm dấu
+      vân tay (<code>{fingerprint}</code>):
+    </p>
+
+    <pre><code><span class="code-keyword">const</span> fingerprint = createHash(<span class="code-string">'sha256'</span>).update(refreshToken).digest(<span class="code-string">'hex'</span>).slice(<span class="code-keyword">0</span>, <span class="code-keyword">32</span>);</code></pre>
+
+    <div class="callout callout-info">
+      <strong>💡 Lợi ích:</strong> Chuỗi token thô không bao giờ nằm trong
+      Redis. Ngay cả khi hacker dump được RAM Redis, chúng cũng không thể suy
+      ngược ra Refresh Token gốc của người dùng.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 28%">Khóa Redis</th>
+          <th style="width: 18%">Thời gian (TTL)</th>
+          <th style="width: 32%">Mục đích kỹ thuật</th>
+          <th style="width: 22%">Dung lượng &amp; Dữ liệu</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>rt:{userId}:{fp}</code></td>
+          <td><strong>24 giờ / 30 ngày</strong></td>
+          <td>
+            <strong>Active Session:</strong> Phiên Refresh Token hợp lệ duy nhất
+            đang hoạt động.
+          </td>
+          <td><code>{"userId":"...", ...}</code><br /><em>(~181 Bytes)</em></td>
+        </tr>
+        <tr>
+          <td><code>rt_grace:{userId}:{fp}</code></td>
+          <td><strong>30 giây</strong></td>
+          <td>
+            <strong>Grace Period (Cửa sổ Ân hạn):</strong> Lưu cặp token mới xử
+            lý Race Condition khi mở nhiều tab.
+          </td>
+          <td>
+            <code>{"accessToken":"...", ...}</code><br /><em>(~491 Bytes)</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>rt_revoked:{userId}:{fp}</code></td>
+          <td><strong>24 giờ</strong></td>
+          <td>
+            <strong>Revocation Tracking:</strong> Lưu vết token đã xoay vòng để
+            bắt tấn công tái sử dụng (Reuse Detection).
+          </td>
+          <td>Chuỗi <code>"1"</code><br /><em>(~109 Bytes)</em></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>
+      ⭐ 3.1. Mô hình Ví von Đời thường: "Hệ Thống Thẻ Từ Khách Sạn Thông Minh"
+    </h2>
+    <p>
+      Để trực quan hóa cơ chế vận hành của 3 chiếc chìa khóa trên, hãy tưởng
+      tượng hệ thống bảo mật này như
+      <strong>Hệ thống quản lý thẻ từ thông minh tại một khách sạn 5 sao</strong
+      >:
+    </p>
+
+    <div class="analogy-card" style="border-left: 4px solid #22c55e">
+      <div class="analogy-card-header">
+        <div class="analogy-card-title">
+          🏨 1. Khóa <code>rt</code> = "Thẻ Từ Phòng Khách Sạn VIP Đang Hiệu
+          Lực"
+        </div>
+        <span class="tag tag-active">Active Key</span>
+      </div>
+      <p style="font-size: 9.5pt; color: #334155; margin-bottom: 0">
+        Đây là chiếc thẻ phòng chính chủ duy nhất bạn đang giữ trong tay. Thẻ
+        này cho phép bạn mở cửa vào phòng xem phim và dùng để xuất trình cho
+        nhân viên lễ tân khi bạn muốn xin đổi thẻ mới. Mỗi phòng/thiết bị tại
+        một thời điểm chỉ có <strong>duy nhất 1 chiếc thẻ VIP</strong> có giá
+        trị.
+      </p>
+    </div>
+
+    <div class="analogy-card" style="border-left: 4px solid #f59e0b">
+      <div class="analogy-card-header">
+        <div class="analogy-card-title">
+          ⏳ 2. Khóa <code>rt_grace</code> = "Chiếc Thẻ Thay Thế Tạm Thời Trong
+          30 Giây"
+        </div>
+        <span class="tag tag-grace">Grace Period</span>
+      </div>
+      <p style="font-size: 9.5pt; color: #334155; margin-bottom: 0">
+        Khi bạn vừa đổi thẻ mới tại quầy, lễ tân chu đáo dặn:
+        <em
+          >"Trong vòng 30 giây tới, nếu bạn hoặc người thân của bạn lỡ quẹt
+          chiếc thẻ cũ vào cửa phòng, máy quét vẫn mở cửa và tự động nhả ra
+          chiếc thẻ mới cho bạn"</em
+        >. Nhờ cơ chế này, nếu bạn mở cùng lúc 3 hay 5 tab trình duyệt, các tab
+        phụ gửi yêu cầu trễ vài giây vẫn nhận được token mới ngon lành mà không
+        bị lễ tân đuổi ra ngoài!
+      </p>
+    </div>
+
+    <div class="analogy-card" style="border-left: 4px solid #ef4444">
+      <div class="analogy-card-header">
+        <div class="analogy-card-title">
+          🚨 3. Khóa <code>rt_revoked</code> = "Sổ Đen &amp; Bẫy Chuông Báo Động
+          Bắt Kẻ Trộm"
+        </div>
+        <span class="tag tag-revoked">Reuse Trap</span>
+      </div>
+      <p style="font-size: 9.5pt; color: #334155; margin-bottom: 0">
+        Sau khi hết 30 giây ân hạn, chiếc thẻ cũ bị vô hiệu hóa hoàn toàn và số
+        serial của nó được ghi vào <strong>Sổ Đen (rt_revoked)</strong> trong 24
+        giờ. Nếu sau đó có kẻ gian (Hacker) nhặt được thẻ cũ đem quẹt vào cửa
+        phòng ➔ <strong>CHUÔNG BÁO ĐỘNG REO LÊN!</strong> Đội bảo vệ lập tức
+        khóa toàn bộ cửa phòng, hủy luôn cả chiếc thẻ mới của bạn và yêu cầu chủ
+        nhân phòng trình diện căn cước để mở lại. Kẻ trộm bị chặn đứng 100%.
+      </p>
+    </div>
+
+    <!-- ==================== TRANG 3 ==================== -->
+    <div class="page-break"></div>
+
+    <h2>4. Phân tích Dữ liệu Thực tế trên Redis (Deep-Dive Case Study)</h2>
+    <p>
+      Dưới đây là dữ liệu thực tế thu thập từ giao diện Redis Commander của
+      phiên người dùng <code>bff2dc4d-d60e-444b-9e0a-54b7649b7838</code>:
+    </p>
+
+    <pre><code>1. Nhóm Active Refresh Token (rt):
+   └── rt:bff2dc4d-d60e-444b-9e0a-54b7649b7838:ec524309067f0a92ff98a91dc55a067f
+       TTL: 23 h | Dung lượng: 181 B  (Token mới nhất đang hoạt động)
+
+2. Nhóm Cửa sổ Ân hạn (rt_grace):
+   ├── rt_grace:...:0be92051a829f1381ea0f8b9580a4a9e (TTL: 25 s | 491 B)
+   ├── rt_grace:...:62592a2ad1cb8f07722522b326606990 (TTL: -2 s | Vừa hết hạn)
+   └── rt_grace:...:a8793ff75be4a208fe64a70e14319797 (TTL: 11 s | 491 B)
+
+3. Nhóm Lịch sử Thu hồi (rt_revoked):
+   ├── rt_revoked:...:0be92051a829f1381ea0f8b9580a4a9e (TTL: 23 h | 109 B | Value: "1")
+   ├── rt_revoked:...:62592a2ad1cb8f07722522b326606990 (TTL: 23 h | 109 B | Value: "1")
+   └── rt_revoked:...:a8793ff75be4a208fe64a70e14319797 (TTL: 23 h | 109 B | Value: "1")</code></pre>
+
+    <h3>Hiện tượng gì vừa diễn ra trong hệ thống?</h3>
+    <p>
+      Người dùng (hoặc trình duyệt có nhiều tab) vừa thực hiện
+      <strong>3 lần xoay vòng token liên tiếp</strong> trong vòng chưa đầy 30
+      giây qua:
+    </p>
+    <ul>
+      <li>
+        <strong>Lần 1:</strong> Sử dụng token <code>62592a2a...</code> ➔ Sinh ra
+        token mới. Token cũ chuyển vào <code>rt_grace</code> (nay đã quá 30s nên
+        TTL hiển thị -2s) và lưu vết vào <code>rt_revoked</code>.
+      </li>
+      <li>
+        <strong>Lần 2:</strong> Sử dụng token <code>a8793ff7...</code> ➔ Sinh ra
+        token mới. Token cũ vào <code>rt_grace</code> (còn 11s) và ghi vết vào
+        <code>rt_revoked</code>.
+      </li>
+      <li>
+        <strong>Lần 3:</strong> Sử dụng token <code>0be92051...</code> ➔ Cấp ra
+        token <code>ec524309...</code> (đang Active trong <code>rt</code>, TTL
+        23h). Token <code>0be92051...</code> vào <code>rt_grace</code> (còn 25s)
+        và ghi vết vào <code>rt_revoked</code>.
+      </li>
+    </ul>
+
+    <div class="callout callout-info">
+      <p>
+        <strong
+          >❓ Tại sao <code>rt_grace</code> có dung lượng 491 Bytes?</strong
+        ><br />
+        Vì <code>rt_grace</code> lưu trọn bộ cả cặp
+        <code>{ accessToken, refreshToken }</code> mới dạng chuỗi JSON nén, sẵn
+        sàng phản hồi ngay lập tức cho bất kỳ tab nào gửi lại token cũ trong
+        vòng 30s.
+      </p>
+      <p style="margin-top: 6px">
+        <strong>❓ Tại sao <code>rt_revoked</code> chỉ có 109 Bytes?</strong
+        ><br />
+        Vì <code>rt_revoked</code> chỉ lưu giá trị chuỗi <code>"1"</code> làm cờ
+        đánh dấu (Tombstone Flag). Khi có hàng triệu người dùng, điều này giúp
+        tiết kiệm tối đa bộ nhớ RAM của Redis.
+      </p>
+    </div>
+
+    <h2>⭐ 4.1. Bảng Trực Quan 3 Tình Huống Kịch Bản Đời Thường</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%">Tình huống xảy ra</th>
+          <th style="width: 40%">Chuyện gì diễn ra bên trong Redis?</th>
+          <th style="width: 35%">Trải nghiệm &amp; Kết quả</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>1. Dùng bình thường</strong><br /><em
+              >(Mở 1 tab duy nhất)</em
+            >
+          </td>
+          <td>
+            Khóa <code>rt</code> cũ bị xóa, khóa <code>rt</code> mới được tạo.
+            Bản sao token mới lưu vào <code>rt_grace</code> (30s) và đánh dấu
+            <code>rt_revoked</code> (24h).
+          </td>
+          <td>
+            <span class="tag tag-active">Thành công</span> Người dùng tiếp tục
+            xem phim liền mạch, không hề nhận thấy gián đoạn.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <strong>2. Mở nhiều tab cùng lúc</strong><br /><em
+              >(Race Condition)</em
+            >
+          </td>
+          <td>
+            Tab 1 xoay token xong. Các tab 2, 3, 4 gửi token cũ tới sau vài giây
+            ➔ <strong>Trúng ngay <code>rt_grace</code></strong> ➔ Redis trả ngay
+            cặp token mới lưu sẵn.
+          </td>
+          <td>
+            <span class="tag tag-grace">Ân hạn mượt mà</span> Cả 4 tab đều nhận
+            token mới, không có tab nào bị lỗi hoặc văng ra màn hình đăng nhập.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <strong>3. Kẻ gian tấn công</strong><br /><em
+              >(Hacker dùng token cũ)</em
+            >
+          </td>
+          <td>
+            Hacker dùng token cũ sau 30 giây (<code>rt_grace</code> đã hết hạn).
+            Request va phải <strong><code>rt_revoked</code></strong> ➔
+            <strong>Phát hiện Reuse Attack!</strong>
+          </td>
+          <td>
+            <span class="tag tag-revoked">Báo động đỏ</span> Hệ thống xóa sạch
+            toàn bộ session của tài khoản trên Redis. Hacker bị đá văng tức thì!
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== TRANG 4 ==================== -->
+    <div class="page-break"></div>
+
+    <h2>5. Thuật toán Xoay Vòng và Phòng Vệ Chuyên Sâu</h2>
+    <p>
+      Dưới đây là mã nguồn lõi của phương thức
+      <code>rotate(refreshToken)</code> trong <code>TokenService</code> của
+      <code>auth-service</code>:
+    </p>
+
+    <pre><code><span class="code-keyword">public async</span> <span class="code-func">rotate</span>(refreshToken: <span class="code-type">string</span>): <span class="code-type">Promise</span>&lt;{ accessToken: <span class="code-type">string</span>; refreshToken: <span class="code-type">string</span> }&gt; {
+  <span class="code-comment">// 1. Thẩm định chữ ký HMAC SHA-256 của chuỗi Token</span>
+  <span class="code-keyword">const</span> result = <span class="code-keyword">this</span>.passportService.verify(refreshToken, <span class="code-string">'refresh'</span>);
+  <span class="code-keyword">if</span> (!result.valid) {
+    <span class="code-keyword">throw new</span> <span class="code-func">RpcException</span>({ code: RpcStatus.UNAUTHENTICATED, details: result.reason });
+  }
+
+  <span class="code-keyword">const</span> { userId } = result;
+  <span class="code-keyword">const</span> fingerprint = <span class="code-keyword">this</span>.computeFingerprint(refreshToken);
+
+  <span class="code-comment">// 2. BƯỚC CỨU TINH ĐA TAB (Grace Period 30s)</span>
+  <span class="code-keyword">const</span> graceKey = <span class="code-string">`rt_grace:${userId}:${fingerprint}`</span>;
+  <span class="code-keyword">const</span> graceSession = <span class="code-keyword">await this</span>.redisService.get(graceKey);
+  <span class="code-keyword">if</span> (graceSession) {
+    <span class="code-keyword">return</span> JSON.parse(graceSession); <span class="code-comment">// Trả ngay cặp token mới sinh cho các tab khác</span>
+  }
+
+  <span class="code-comment">// 3. BƯỚC BẮT KẺ TRỘM (Token Reuse Detection)</span>
+  <span class="code-keyword">const</span> revokedKey = <span class="code-string">`rt_revoked:${userId}:${fingerprint}`</span>;
+  <span class="code-keyword">const</span> isReused = <span class="code-keyword">await this</span>.redisService.get(revokedKey);
+  <span class="code-keyword">if</span> (isReused) {
+    <span class="code-comment">// Tín hiệu báo động đỏ: Có kẻ đang dùng lại token cũ ngoài 30s!</span>
+    <span class="code-keyword">await this</span>.revokeAllRefreshTokens(userId);
+    <span class="code-keyword">throw new</span> <span class="code-func">RpcException</span>({
+      code: RpcStatus.UNAUTHENTICATED,
+      details: <span class="code-string">'Phát hiện tái sử dụng token bất thường. Toàn bộ phiên đã bị thu hồi!'</span>
+    });
+  }
+
+  <span class="code-comment">// 4. Kiểm tra Active Session trong Redis</span>
+  <span class="code-keyword">const</span> redisKey = <span class="code-string">`rt:${userId}:${fingerprint}`</span>;
+  <span class="code-keyword">const</span> session = <span class="code-keyword">await this</span>.redisService.get(redisKey);
+  <span class="code-keyword">if</span> (!session) {
+    <span class="code-keyword">throw new</span> <span class="code-func">RpcException</span>({ code: RpcStatus.UNAUTHENTICATED, details: <span class="code-string">'Phiên không hợp lệ hoặc đã hết hạn'</span> });
+  }
+
+  <span class="code-comment">// 5. Cấp cặp Token mới</span>
+  <span class="code-keyword">const</span> newTokens = <span class="code-keyword">await this</span>.generate(userId);
+
+  <span class="code-comment">// 6. Cập nhật Redis nguyên tử bằng Pipeline (Atomic Execution)</span>
+  <span class="code-keyword">const</span> pipeline = <span class="code-keyword">this</span>.redisService.pipeline();
+  pipeline.del(redisKey);                                     <span class="code-comment">// Xóa active cũ</span>
+  pipeline.set(graceKey, JSON.stringify(newTokens), <span class="code-string">'EX'</span>, <span class="code-keyword">30</span>); <span class="code-comment">// Ân hạn 30s</span>
+  pipeline.set(revokedKey, <span class="code-string">'1'</span>, <span class="code-string">'EX'</span>, <span class="code-keyword">86400</span>);                   <span class="code-comment">// Lưu vết 24h</span>
+  <span class="code-keyword">await</span> pipeline.exec();
+
+  <span class="code-keyword">return</span> newTokens;
+}</code></pre>
+
+    <!-- ==================== TRANG 5 ==================== -->
+    <div class="page-break"></div>
+
+    <h2>6. Hai Bài Toán Kinh Điển Được Giải Quyết Triệt Để</h2>
+
+    <h3>6.1. Bài toán Race Condition khi Mở Nhiều Tab Trình Duyệt</h3>
+    <ul>
+      <li>
+        <strong>Tình huống:</strong> Người dùng mở đồng thời 5 tab xem phim trên
+        Tomato Cinema. Sau 1 giờ, Access Token ở cả 5 tab cùng hết hạn. Trình
+        duyệt gửi đồng thời 5 request <code>POST /auth/refresh</code>.
+      </li>
+      <li>
+        <strong>Cách xử lý:</strong> Tab đầu tiên đến Auth Service xoay vòng
+        token thành công, lưu bản sao vào <code>rt_grace</code> trong 30s. 4 Tab
+        tiếp theo đến sau vài chục mili-giây, cầm token cũ hỏi hệ thống ➔ Khớp
+        ngay trong <code>rt_grace</code> ➔ Cả 4 tab đều nhận được token mới.
+      </li>
+      <li>
+        <strong>Kết quả:</strong> Không có bất kỳ tab nào bị gián đoạn hay bị
+        văng ra màn hình đăng nhập (Zero Disruption).
+      </li>
+    </ul>
+
+    <h3>6.2. Bài toán Chống Kẻ Gian Đánh Cắp Token (Replay Attack)</h3>
+    <ul>
+      <li>
+        <strong>Tình huống:</strong> Kẻ tấn công bằng cách nào đó đã trộm được
+        chuỗi Refresh Token cũ của người dùng.
+      </li>
+      <li>
+        <strong>Cách xử lý:</strong> Token cũ sau 30 giây đã hết hạn trong
+        <code>rt_grace</code>. Khi hacker cố dùng token này để refresh lấy
+        Access Token mới ➔ Vướng ngay vào chiếc bẫy <code>rt_revoked</code>.
+      </li>
+      <li>
+        <strong>Phản ứng của hệ thống:</strong> Ngay lập tức gọi hàm
+        <code>revokeAllRefreshTokens(userId)</code> quét sạch tất cả các session
+        của userId đó trên Redis bằng lệnh <code>SCAN</code>.
+      </li>
+      <li>
+        <strong>Kết quả:</strong> Cả hacker lẫn phiên đăng nhập hiện tại đều bị
+        đá văng tức thì. Tài khoản người dùng được bảo vệ 100% trước nguy cơ bị
+        chiếm quyền âm thầm.
+      </li>
+    </ul>
+
+    <h2>7. Bảng Ma Trận So Sánh Tổng Kết</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%">Tiêu chí so sánh</th>
+          <th style="width: 35%">Access Token</th>
+          <th style="width: 40%">Refresh Token</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Bản chất lưu trữ</strong></td>
+          <td><strong>Stateless</strong> (Tự chứa thông tin)</td>
+          <td><strong>Stateful</strong> (Quản lý trạng thái trên Redis)</td>
+        </tr>
+        <tr>
+          <td><strong>Nơi lưu trữ Server</strong></td>
+          <td>Không lưu trên Server (RAM Client)</td>
+          <td>
+            Redis Cache (<code>rt</code>, <code>rt_grace</code>,
+            <code>rt_revoked</code>)
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Thời hạn sống (TTL)</strong></td>
+          <td>Ngắn hạn (1 giờ)</td>
+          <td>Dài hạn (24 giờ đến 30 ngày)</td>
+        </tr>
+        <tr>
+          <td><strong>Vị trí phía Client</strong></td>
+          <td>Header <code>Authorization: Bearer &lt;at&gt;</code></td>
+          <td>
+            Cookie <code>HttpOnly: true</code>, <code>SameSite=Lax</code>,
+            <code>Secure</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Chi phí thẩm định</strong></td>
+          <td>Cực thấp (&lt; 0.05ms trong RAM)</td>
+          <td>Trung bình (1 lần truy vấn Redis qua Pipeline)</td>
+        </tr>
+        <tr>
+          <td><strong>Khả năng thu hồi</strong></td>
+          <td>Hết hạn tự nhiên theo thời gian</td>
+          <td>Thu hồi tức thì bằng lệnh <code>DEL</code> trong Redis</td>
+        </tr>
+        <tr>
+          <td><strong>Phòng vệ đặc thù</strong></td>
+          <td>Thời gian sống ngắn hạn chế rủi ro</td>
+          <td>Token Rotation + Grace Period 30s + Reuse Detection</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="doc-footer">
+      <span>Tomato Cinema Security Technical Document</span>
+      <span>Bản quyền © 2026 Tomato Cinema — Lưu hành kỹ thuật nội bộ</span>
+      <span>Trang 5 / 5</span>
+    </div>
+  </body>
+</html>

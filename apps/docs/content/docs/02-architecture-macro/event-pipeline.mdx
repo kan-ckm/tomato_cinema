@@ -1,25 +1,81 @@
 ---
-title: Hàng đợi sự kiện (Event-Driven Pipeline)
-description: Kiến trúc giao tiếp bất đồng bộ qua Message Broker (RabbitMQ) và quản lý sự kiện hệ thống.
+title: Hàng đợi Sự kiện & Khả năng Chịu lỗi (Event-Driven Pipeline & DLQ)
+description: Kiến trúc giao tiếp bất đồng bộ qua RabbitMQ, quản lý phân phối sự kiện, xử lý lỗi nghẽn thông điệp Poison Pill và cơ chế Dead Letter Queue (DLQ).
 ---
 
-Để đảm bảo hiệu năng cao và tính độc lập (Loose Coupling) giữa các microservices, hệ thống sử dụng Message Broker để phát và tiêu thụ các Domain Events.
+Để duy trì hiệu năng cao, giảm độ trễ phản hồi của API Gateway và đảm bảo tính độc lập (**Loose Coupling**) giữa các vi dịch vụ, hệ thống **Tomato Cinema** sử dụng giao thức AMQP 0-9-1 thông qua cụm **RabbitMQ Message Broker**. Các tác vụ tốn thời gian như gửi email, gửi tin nhắn SMS hoặc khởi tạo hồ sơ người dùng đều được chuyển hóa thành các Domain Event xử lý bất đồng bộ.
 
-## Danh sách Domain Events chính
+---
 
-| Sự kiện (Event Name) | Service phát ra (Producer) | Service tiếp nhận (Consumer) | Mục đích |
-| :--- | :--- | :--- | :--- |
-| `user.registered` | `auth-service` | `notification-service`, `user-service` | Gửi email kích hoạt & khởi tạo profile |
-| `booking.confirmed` | `gateway-service` | `notification-service`, `user-service` | Gửi vé QR & cộng điểm thành viên |
-| `media.transcoded` | `media-service` | `gateway-service` | Cập nhật URL trailer vào catalog phim |
-| `payment.failed` | `gateway-service` | `notification-service` | Báo khách hàng thanh toán chưa hoàn tất |
-
-## Mô hình Pub/Sub với RabbitMQ
+## 1. Sơ đồ Cấu trúc Phân phối Sự kiện (Event Pipeline)
 
 <DiagramViewer
   src="/diagrams/event-pipeline.html"
-  title="Kiến trúc Hàng đợi Sự kiện RabbitMQ (Archify Architecture)"
-  description="Mô hình Topic Exchange định tuyến thông điệp bất đồng bộ tới các consumer độc lập."
+  title="Kiến trúc Phân tán Hàng đợi Sự kiện RabbitMQ (Archify Interactive)"
+  description="Mô hình Topic Exchange định tuyến thông điệp dựa trên Routing Key tới các hàng đợi riêng biệt của từng vi dịch vụ."
   height="600px"
 />
 
+---
+
+## 2. Ma trận Sự kiện Nghiệp vụ (Domain Events Matrix)
+
+Các sự kiện trong hệ thống được định danh theo quy tắc phân cấp `<domain>.<thực_thể>.<hành_động>`:
+
+| Tên Sự Kiện (Routing Key) | Service Phát tán (Producer) | Service Tiêu thụ (Consumer) | Dữ liệu Kèm theo (Payload) | Nghiệp vụ Kích hoạt |
+| :--- | :--- | :--- | :--- | :--- |
+| `auth.account.registered` | `auth-service` | `user-service` | `{ accountId }` | Tự động khởi tạo bản ghi `UserEntity` trong cơ sở dữ liệu `user_db`. |
+| `auth.password_reset.requested` | `auth-service` | `notification-service` | `{ email, otp, expiresIn }` | Soạn thảo và gửi email chứa mã OTP khôi phục mật khẩu. |
+| `auth.password.changed` | `auth-service` | `notification-service` | `{ email, timestamp, ip }` | Gửi email thông báo cảnh báo mật khẩu đã được cập nhật thành công. |
+| `auth.otp.requested` | `auth-service` | `notification-service` | `{ email, otp, type }` | Gửi mã OTP xác nhận địa chỉ email khi đăng ký tài khoản mới. |
+| `account.email.changed` | `auth-service` | `notification-service` | `{ oldEmail, newEmail }` | Gửi thông báo đến cả hai email nhằm minh bạch lịch sử thay đổi. |
+| `account.phone.changed` | `auth-service` | `notification-service` | `{ userId, newPhone, otp }` | Kích hoạt cổng Exolve gửi tin nhắn SMS chứa mã OTP tới số mới. |
+
+---
+
+## 3. Các Nguyên tắc Vận hành Đảm bảo Tin cậy
+
+Để không làm thất lạc dữ liệu ngay cả khi container bị sập nguồn hoặc tái khởi động, hệ thống áp dụng bộ quy chuẩn cấu hình:
+
+1. **Hàng đợi Bền vững (Durable Queues & Persistent Messages)**:
+   - Tất cả hàng đợi (`user_queue`, `notification_queue`) đều khai báo `durable: true`.
+   - Mọi thông điệp được publish với cờ `persistent: true` (Delivery mode = 2), buộc RabbitMQ phải ghi vào bộ nhớ đệm đĩa cứng.
+2. **Xác nhận Thủ công (Manual Acknowledgment - `noAck: false`)**:
+   - Consumer không tự động xóa tin nhắn khi vừa nhận.
+   - Chỉ khi nào logic xử lý (gửi email, ghi database) hoàn tất mà không văng lỗi, Consumer mới gọi lệnh `channel.ack(msg)`.
+3. **Điều tiết Lưu lượng (Fair Dispatch - `prefetchCount: 1`)**:
+   - Giúp phân bổ đều tải giữa các container replicas. Một worker đang bận gửi email sẽ không bị dồn ứ thêm tin nhắn mới.
+4. **Tính Lũy Thừa (Idempotent Consumers)**:
+   - Các Consumer được thiết kế để dù nhận cùng một thông điệp nhiều lần, kết quả cuối cùng vẫn không bị sai lệch (ví dụ: `UsersService.createIfNotExists` kiểm tra tồn tại trước khi chèn mới).
+
+---
+
+## 4. Xử lý Lỗi Nghẽn Thông Điệp Độc (Poison Pill & Dead Letter Queue)
+
+Trong môi trường thực tế, một số thông điệp có thể chứa dữ liệu sai lệch không thể phân tích cú pháp (Malformatted JSON), hoặc địa chỉ email người nhận vĩnh viễn không hợp lệ. Nếu gặp lỗi mà Consumer cứ `nack` kèm theo lệnh yêu cầu đưa lại vào hàng đợi (`requeue: true`), thông điệp lỗi đó sẽ bị đẩy lại đầu hàng đợi và văng lỗi vĩnh viễn trong vòng lặp vô tận. Hiện tượng này gọi là **Poison Pill** (Viên thuốc độc), khiến toàn bộ các tin nhắn hợp lệ xếp phía sau bị nghẽn tắc hoàn toàn.
+
+### Sơ đồ Cơ chế Phòng vệ Dead Letter Queue (DLQ)
+
+<DiagramViewer
+  src="/diagrams/rabbitmq-poison-pill-dlq.html"
+  title="Cơ chế Cô lập Poison Pill & Dead Letter Queue (Archify Workflow)"
+  description="Quy trình phát hiện lỗi nghiêm trọng, từ chối đưa lại hàng đợi và cách ly thông điệp vào Dead Letter Queue để điều tra độc lập."
+  height="600px"
+/>
+
+### Chiến lược Xử lý Cụ thể trong Code:
+
+Khi gặp lỗi không thể khắc phục (Non-retryable Error), Consumer thực hiện:
+
+```typescript
+try {
+  await this.mailService.sendEmail(payload);
+  channel.ack(msg);
+} catch (error) {
+  this.logger.error(`Lỗi nghiêm trọng khi xử lý event: ${error.message}`);
+  // nack với requeue = false: RabbitMQ sẽ lập tức chuyển thông điệp sang DLX/DLQ
+  channel.nack(msg, false, false);
+}
+```
+
+Các thông điệp trong Dead Letter Queue sẽ được lưu trữ độc lập để các kỹ sư hệ thống kiểm tra, viết bản vá lỗi hoặc gửi lại (Replay) sau khi sự cố bên thứ ba được giải quyết.

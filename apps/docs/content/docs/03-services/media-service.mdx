@@ -1,13 +1,175 @@
 ---
-title: Media Service
-description: Quản lý tập tin đa phương tiện, tích hợp Cloudflare R2/MinIO và chuyển mã video HLS.
+title: Media Service (Dịch vụ Xử lý & Phân phối Đa phương tiện)
+description: Vi dịch vụ hiệu năng cao viết bằng Go 1.24 quản lý tập trung tài nguyên hình ảnh poster, avatar, video trailer, tích hợp Cloudflare R2/MinIO và kiến trúc Dual-Protocol gRPC & HTTP.
 ---
 
-`media-service` cung cấp API chuyên dụng cho việc lưu trữ, xử lý hình ảnh và video trailer.
+`media-service` là vi dịch vụ xử lý I/O chuyên sâu được xây dựng hoàn toàn bằng **Go (Golang 1.24)**, chịu trách nhiệm lưu trữ, nén ảnh, tạo thumbnail và phân phối trực tiếp toàn bộ tài nguyên đa phương tiện (ảnh đại diện, poster phim, banner rạp, tư liệu sự kiện) trong hệ sinh thái **Tomato Cinema**.
 
-## Trách nhiệm chính
+---
 
-- Nhận upload tập tin lớn với cơ chế Chunked Upload (Multipart).
-- Tích hợp dịch vụ lưu trữ Cloudflare R2 hoặc MinIO tương thích chuẩn S3 API.
-- Xử lý nén ảnh tự động sang định dạng WebP/AVIF để tối ưu tốc độ tải trang client.
-- Tạo presigned URLs cho phép client upload trực tiếp lên cloud storage mà không nghẽn server.
+## 1. Kiến trúc & Công nghệ Cốt lõi
+
+- **Ngôn ngữ & Runtime**: Go (Golang 1.24+) biên dịch binary tĩnh (Statically linked), thực thi trên container **Google Distroless Static** siêu nhẹ và bảo mật.
+- **Mô hình Giao thức Kép (Dual-Protocol Server)**:
+  - **gRPC Server (`:50059`)**: Tiếp nhận các tác vụ ghi nhị phân nội bộ từ các microservices (`gateway-service`, `user-service`) qua Protocol Buffers.
+  - **HTTP Server (`:4200`)**: Phục vụ người dùng và trình duyệt tải ảnh tĩnh tốc độ cao với bộ đệm HTTP Caching (`Cache-Control: public, max-age=86400`).
+- **Lưu trữ Object Storage**: AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`), tương thích hoàn toàn với **Cloudflare R2** (Production) và **MinIO** (Local Development).
+- **Cơ chế Streaming Non-Buffering**: Sử dụng `io.Reader` / `io.ReadCloser` truyền trực tiếp dữ liệu từ Object Storage đến HTTP response stream mà không cần nạp toàn bộ file vào RAM, giữ mức tiêu thụ bộ nhớ luôn dưới 50MB ngay cả khi tải file lớn.
+- **Xử lý Ảnh Đa Kích thước**: Tự động chuyển đổi và nén tối ưu sang định dạng WebP, tạo ảnh đại diện và poster với tỷ lệ chuẩn quốc tế.
+- **Tiêu chuẩn Giám sát (Observability)**: Tích hợp gRPC Health Checking Protocol (`grpc_health_probe`) và cấu trúc Log có ngữ cảnh TraceID.
+
+---
+
+## 2. Kiến trúc Phân tầng Clean Architecture
+
+Mã nguồn của `media-service` tuân thủ nghiêm ngặt nguyên lý **Clean Architecture (Hexagonal / Ports & Adapters)**. Chiều phụ thuộc luôn hướng từ hạ tầng bên ngoài vào miền nghiệp vụ cốt lõi:
+
+```
+apps/media-service/
+├── cmd/
+│   └── main.go                         # Điểm khởi chạy: nạp cấu hình, DI và khởi động song song 2 server
+├── internal/
+│   ├── config/                         # Nạp và thẩm định biến môi trường (App, HTTP, gRPC, Storage)
+│   ├── application/                    # Tầng nghiệp vụ thuần túy (Core Use Cases & DTOs)
+│   │   ├── dto/                        # UploadInput, FileOutput, StorageResult
+│   │   └── usecases/                   # UploadUseCase, GetUseCase, DeleteUseCase
+│   ├── interfaces/                     # Inbound Adapters (Tiếp nhận yêu cầu từ bên ngoài)
+│   │   └── grpc/                       # MediaGrpcHandler triển khai protobuf rpc
+│   └── infrastructure/                 # Outbound Adapters (Triển khai kỹ thuật chi tiết)
+│       ├── grpc/                       # Khởi tạo gRPC Server, đăng ký Healthcheck & Interceptors
+│       ├── http/                       # Gin Engine HTTP Server phục vụ static files & Cache headers
+│       ├── images/                     # Bộ vi xử lý ảnh WebP, resize & thumbnail
+│       └── storage/                    # S3Storage adapter tương thích AWS S3, Cloudflare R2 & MinIO
+└── pkg/
+    └── logger/                         # Logger có cấu trúc phân tầng (Debug, Info, Warn, Error)
+```
+
+---
+
+## 3. Danh mục Giao diện gRPC (`media.proto`)
+
+`media-service` triển khai `MediaService` theo định nghĩa hợp đồng tại `@tomatocinema/contracts/proto/media.proto`:
+
+| Tên RPC Method | Tham số Request | Dữ liệu Response | Mục đích nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| `Upload` | `UploadRequest` | `UploadResponse` | Tải dữ liệu nhị phân lên bucket, tự động nén/resize nếu có yêu cầu và trả về Object Key duy nhất. |
+| `Get` | `GetRequest` | `GetResponse` | Đọc dữ liệu nhị phân kèm Content-Type trực tiếp từ Cloud Storage. |
+| `Delete` | `DeleteRequest` | `DeleteResponse` | Xóa vĩnh viễn tệp tin khỏi Cloud Storage theo Object Key. |
+
+### Cấu trúc thông điệp Protocol Buffers:
+
+```protobuf
+syntax = "proto3";
+
+package media.v1;
+
+service MediaService {
+    rpc Upload (UploadRequest) returns (UploadResponse);
+    rpc Get (GetRequest) returns (GetResponse);
+    rpc Delete (DeleteRequest) returns (DeleteResponse);
+}
+
+message UploadRequest {
+  string file_name = 1;               // Tên gốc của tệp (vd: avatar.png, poster.jpg)
+  string folder = 2;                  // Tiền tố/thư mục trên Cloudflare R2 bucket (vd: "avatars", "movies/posters")
+  string content_type = 3;            // MIME type lưu vào metadata Cloudflare R2 (vd: "image/jpeg", "image/png")
+  bytes data = 4;                     // Luồng dữ liệu nhị phân tải lên
+  optional int32 resize_width = 5;    // (Tùy chọn) Chiều rộng xử lý trước khi lưu
+  optional int32 resize_height = 6;   // (Tùy chọn) Chiều cao xử lý trước khi lưu
+}
+
+message UploadResponse {
+  string key = 1;                     // Object Key định danh duy nhất (vd: "avatars/1743892011-avatar.webp")
+}
+
+message GetRequest {
+  string key = 1;                     // Object Key tệp cần đọc
+}
+
+message GetResponse {
+  bytes data = 1;                     // Dữ liệu nhị phân đọc từ Storage
+  string content_type = 2;            // MIME type gốc của tệp
+}
+
+message DeleteRequest {
+  string key = 1;                     // Object Key cần xóa
+}
+
+message DeleteResponse {
+  bool ok = 1;                        // Kết quả xóa thành công
+}
+```
+
+---
+
+## 4. Cơ chế Phục vụ HTTP & Đệm Bộ nhớ (Caching)
+
+Để giảm tải tối đa cho Object Storage và tiết kiệm chi phí băng thông Cloudflare R2, cổng HTTP (`:4200`) của `media-service` được thiết kế chuyên biệt cho việc đọc:
+
+1. **Định tuyến linh hoạt**: Route `GET /*key` tiếp nhận mọi đường dẫn tệp tin (ví dụ: `http://localhost:4200/avatars/user-1.webp`).
+2. **Nhận diện MIME tự động**: Dựa vào phần mở rộng hoặc magic bytes, server phản hồi đúng `Content-Type` (`image/webp`, `image/png`, `video/mp4`).
+3. **HTTP Cache Header**:
+   ```http
+   Cache-Control: public, max-age=86400, immutable
+   ETag: "w/3829104-cf"
+   ```
+   Trình duyệt của người dùng sẽ lưu cache trong vòng **24 giờ (86,400 giây)**. Khi tải lại trang, trình duyệt đọc trực tiếp từ Disk Cache mà không cần gửi request lên server.
+4. **Proxy qua Nginx**: Trong môi trường Docker Production, Nginx tiếp nhận route `/media/*` ở cổng `8080`, áp dụng bộ giới hạn tốc độ `rate=30r/s` và reverse proxy đến `media-service:4200`.
+
+---
+
+## 5. Sơ đồ Chu trình Dữ liệu (Media Pipeline)
+
+<DiagramViewer
+  src="/diagrams/media-streaming.html"
+  title="Chu trình Tải lên & Phân phối Media (Archify Dataflow)"
+  description="Luồng upload nhị phân qua gRPC từ API Gateway tới Media Service và cơ chế phân phối tải trực tiếp qua HTTP Caching."
+  height="600px"
+/>
+
+---
+
+## 6. Vòng đời Khởi chạy & Graceful Shutdown
+
+Trong `cmd/main.go`, `media-service` sử dụng mô hình lắng nghe tín hiệu hệ điều hành (`SIGINT`, `SIGTERM`) để đóng kết nối an toàn:
+
+```go
+// cmd/main.go
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+
+log.Println("🛑 Đang tiến hành tắt Media Service an toàn...")
+
+// 1. Dừng nhận request gRPC mới và đợi hoàn tất các RPC đang dở dang
+grpcServer.GracefulStop()
+
+// 2. Đóng HTTP Server với thời gian chờ tối đa 5 giây
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+if err := httpSrv.Shutdown(ctx); err != nil {
+    log.Fatalf("Lỗi khi tắt HTTP Server: %v", err)
+}
+```
+
+Nhờ cơ chế này, các tác vụ đang tải lên dở dang sẽ không bị đứt đoạn đột ngột khi container bị khởi động lại trong cụm Docker/Kubernetes.
+
+---
+
+## 7. Cấu hình Biến Môi trường (`.env`)
+
+| Tên biến | Kiểu giá trị | Mặc định | Ý nghĩa & Mô tả |
+| :--- | :--- | :--- | :--- |
+| `APP_ENV` | `development` \| `production` | `development` | Môi trường triển khai của service. |
+| `HTTP_PORT` | Số nguyên | `4200` | Cổng lắng nghe của HTTP Static Server. |
+| `HTTP_HOST` | Chuỗi | `localhost:4200` | Tên miền công khai dùng để sinh URL ảnh tĩnh. |
+| `GRPC_PORT` | Số nguyên | `50059` | Cổng lắng nghe của gRPC Server nội bộ. |
+| `STORAGE_DRIVER` | `s3` \| `local` | `s3` | Trình điều khiển lưu trữ (S3/Cloudflare R2/MinIO). |
+| `S3_BUCKET` | Chuỗi | `tomato-cinema` | Tên bucket trên Cloudflare R2 hoặc MinIO. |
+| `S3_REGION` | Chuỗi | `auto` | Vùng lưu trữ (dùng `auto` cho Cloudflare R2, `us-east-1` cho MinIO). |
+| `S3_ENDPOINT` | URL | `http://localhost:9000` | Địa chỉ Endpoint API của S3 (URL account R2 hoặc MinIO). |
+| `S3_ACCESS_KEY` | Chuỗi | - | Access Key ID của R2 hoặc MinIO. |
+| `S3_SECRET_KEY` | Chuỗi | - | Secret Access Key tương ứng. |
+| `S3_USE_PATH_STYLE` | Boolean (`true`/`false`) | `true` | Đặt `true` khi dùng MinIO local, `false` cho AWS chuẩn. |
+| `S3_PUBLIC_URL` | URL | `http://localhost:4200` | Tiền tố đường dẫn công khai gắn vào kết quả tải lên. |
+| `LOG_LEVEL` | `debug` \| `info` \| `warn` \| `error` | `info` | Mức độ chi tiết của hệ thống ghi log. |

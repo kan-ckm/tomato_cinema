@@ -1,13 +1,198 @@
 ---
-title: User Service
-description: Quản lý hồ sơ người dùng, phân quyền RBAC, tích điểm thành viên và ưu đãi.
+title: User Service (Dịch vụ Quản lý Hồ sơ Người dùng)
+description: Vi dịch vụ quản lý hồ sơ người dùng, phân cấp dữ liệu cá nhân, tích hợp cơ sở dữ liệu PostgreSQL độc lập và đồng bộ bất đồng bộ qua RabbitMQ từ Auth Service.
 ---
 
-`user-service` quản lý toàn bộ dữ liệu hồ sơ khách hàng và nhân viên hệ thống.
+`user-service` là vi dịch vụ chịu trách nhiệm lưu trữ và quản lý toàn bộ dữ liệu hồ sơ cá nhân (User Profile) của khách hàng và nhân viên trong hệ thống **Tomato Cinema**. Service tuân thủ mô hình **Database-per-Service**, sở hữu cơ sở dữ liệu PostgreSQL riêng biệt và phối hợp chặt chẽ với `auth-service` và `gateway-service`.
 
-## Trách nhiệm chính
+---
 
-- Quản lý thông tin cá nhân: Họ tên, số điện thoại, avatar, ngày sinh.
-- Hệ thống hạng thành viên: Đồng, Bạc, Vàng, Kim Cương.
-- Tích lũy điểm thưởng và quy đổi quà tặng/vé xem phim.
-- Lưu trữ lịch sử giao dịch và rạp chiếu yêu thích.
+## 1. Kiến trúc & Công nghệ Cốt lõi
+
+- **Framework**: NestJS Microservices (gRPC Server & RabbitMQ Consumer đồng thời).
+- **Cơ sở dữ liệu (Database)**: PostgreSQL độc lập (Database `users`), quản lý qua **TypeORM**.
+- **Hợp đồng RPC**: `@tomatocinema/contracts/proto/users.proto` (`UsersService`).
+- **Giao tiếp Bất đồng bộ**: RabbitMQ Consumer lắng nghe các sự kiện vòng đời tài khoản từ `auth-service` (`auth.account.registered`) để tự động khởi tạo hồ sơ người dùng mới.
+- **Tính lũy thừa (Idempotency)**: Đảm bảo khi nhận lại sự kiện đăng ký trùng lặp nhiều lần (do mạng chập chờn hoặc retry từ broker), hồ sơ không bị ghi đè hay sinh lỗi trùng khóa chính.
+- **Xác thực dữ liệu**: Sử dụng các validator tích hợp (`class-validator`) kiểm tra tính toàn vẹn cấu hình môi trường ngay khi khởi động.
+
+---
+
+## 2. Mô hình Dữ liệu (Database Schema)
+
+Cơ sở dữ liệu của `user-service` được thiết kế tối giản, phân tách rành mạch giữa **thông tin danh tính xác thực** (nằm ở `auth-service`) và **hồ sơ cá nhân** (nằm ở `user-service`).
+
+### Bảng `users`
+
+| Tên Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `id` | `UUID` | **Primary Key** | Khóa chính, giá trị trùng khớp chính xác với `accountId` của `auth-service`. |
+| `name` | `VARCHAR(255)` | `Nullable` | Họ và tên hiển thị của người dùng (ví dụ: "Nguyễn Văn A"). |
+| `avatar` | `VARCHAR(1024)`| `Nullable` | Đường dẫn hoặc Object Key ảnh đại diện lưu tại `media-service`. |
+| `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm tạo hồ sơ người dùng lần đầu. |
+| `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm cập nhật thông tin hồ sơ gần nhất. |
+
+```typescript
+// apps/user-service/src/modules/users/entites/user.entity.ts
+@Entity({ name: 'users' })
+export class UserEntity {
+  @PrimaryColumn('uuid')
+  public id: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  public name: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  public avatar: string | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  public createAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  public updatedAt: Date;
+}
+```
+
+---
+
+## 3. Danh mục Giao diện gRPC (`users.proto`)
+
+`user-service` đóng vai trò là gRPC Provider phục vụ các yêu cầu tra cứu và cập nhật hồ sơ từ `gateway-service`:
+
+| Tên RPC Method | Tham số Request | Dữ liệu Response | Mô tả nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| `GetMe` | `GetMeRequest` (`id`) | `GetMeResponse` (`User`) | Tra cứu thông tin hồ sơ cá nhân của người dùng hiện tại theo UUID. |
+| `CreateUser` | `CreateUserRequest` (`id`) | `CreateUserResponse` (`ok`) | Khởi tạo hồ sơ người dùng mới (được gọi nội bộ khi có nhu cầu). |
+| `PatchUser` | `PatchUserRequest` (`user_id`, `name`, `avatar`) | `PatchUserResponse` (`ok`) | Cập nhật tên hiển thị hoặc đường dẫn avatar mới của người dùng. |
+
+### Cấu trúc thông điệp Protocol Buffers:
+
+```protobuf
+syntax = "proto3";
+
+package users.v1;
+
+service UsersService {
+    rpc GetMe(GetMeRequest) returns (GetMeResponse);
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+    rpc PatchUser (PatchUserRequest) returns (PatchUserResponse);
+}
+
+message GetMeRequest {
+    string id = 1;
+}
+
+message GetMeResponse {
+    User user = 1;
+}
+
+message CreateUserRequest {
+    string id = 1;
+}
+
+message CreateUserResponse {
+    bool ok = 1;
+}
+
+message PatchUserRequest {
+    string user_id = 1;
+    optional string name = 2;
+    optional string avatar = 3;
+}
+
+message PatchUserResponse {
+    bool ok = 1;
+}
+
+message User {
+    string id = 1;
+    optional string name = 2;
+    optional string phone = 3;      
+    optional string email = 4;
+    optional string avatar = 5;
+}
+```
+
+---
+
+## 4. Tự động Khởi tạo Hồ sơ qua RabbitMQ
+
+Để đảm bảo tính nhất quán cuối cùng (**Eventual Consistency**) giữa quá trình đăng ký tài khoản và tạo hồ sơ người dùng, `user-service` không dùng HTTP hay 2-Phase Commit mà sử dụng cơ chế lắng nghe sự kiện bất đồng bộ:
+
+```
+[Khách hàng Đăng ký]
+        │
+        ▼
+   auth-service ──── (Phát sự kiện qua RabbitMQ) ────► auth.account.registered
+                                                              │
+                                                              ▼
+                                                        user-service
+                                                              │
+                                                              ▼
+                                                    Kiểm tra & Tạo UserEntity
+                                                              │
+                                                              ▼
+                                                    channel.ack(msg)
+```
+
+### Triển khai Controller xử lý sự kiện:
+
+```typescript
+// apps/user-service/src/modules/users/users.controller.ts
+@EventPattern('auth.account.registered')
+public async handleAccountRegistered(
+  @Payload() data: AccountRegisteredEvent,
+  @Ctx() ctx: RmqContext
+): Promise<void> {
+  const channel = ctx.getChannelRef();
+  const msg = ctx.getMessage();
+
+  try {
+    // Tạo hồ sơ với tính chất idempotent (nếu đã có thì bỏ qua)
+    await this.usersService.createIfNotExists(data.accountId);
+    // Xác nhận đã nhận và xử lý thành công thông điệp
+    channel.ack(msg);
+  } catch (error: any) {
+    // Nếu lỗi nghiêm trọng không thể khắc phục, nack không requeue để chuyển sang DLQ
+    channel.nack(msg, false, false);
+  }
+}
+```
+
+---
+
+## 5. Cấu trúc Mô-đun & Phân tầng Mã nguồn
+
+```
+apps/user-service/src/
+├── config/                             # Cấu hình môi trường & bộ lọc thẩm định (gRPC, DB, RabbitMQ)
+├── infrastructure/
+│   ├── database/                       # TypeOrmModule & cấu hình kết nối PostgreSQL
+│   └── grpc/                           # Cấu hình gRPC Server options & proto path loading
+├── modules/
+│   └── users/                          # Domain quản lý người dùng
+│       ├── entites/                    # UserEntity định nghĩa schema bảng
+│       ├── users.controller.ts         # Tiếp nhận gRPC Calls và RabbitMQ Events
+│       ├── users.module.ts             # Đăng ký Repository và Providers
+│       └── users.service.ts            # Xử lý logic nghiệp vụ, truy vấn dữ liệu
+└── shared/
+    ├── repository/                     # UserRepository bao đóng các câu lệnh TypeORM
+    └── utils/                          # Tiện ích bổ trợ môi trường và format
+```
+
+---
+
+## 6. Cấu hình Biến Môi trường (`.env`)
+
+| Tên biến | Kiểu giá trị | Mặc định | Mô tả ý nghĩa |
+| :--- | :--- | :--- | :--- |
+| `NODE_ENV` | `development` \| `production` | `development` | Môi trường thực thi ứng dụng. |
+| `GRPC_USER_PORT` | Số nguyên | `50053` | Cổng tiếp nhận kết nối gRPC nội bộ. |
+| `DATABASE_HOST` | Tên miền / IP | `localhost` | Địa chỉ máy chủ PostgreSQL. |
+| `DATABASE_PORT` | Số nguyên | `5432` | Cổng kết nối PostgreSQL. |
+| `DATABASE_NAME` | Chuỗi | `user_db` | Tên cơ sở dữ liệu riêng của user-service. |
+| `DATABASE_USER` | Chuỗi | `postgres` | Tài khoản đăng nhập database. |
+| `DATABASE_PASSWORD` | Chuỗi | - | Mật khẩu tài khoản database. |
+| `DATABASE_SYNCHRONIZE`| Boolean | `false` | Tự động đồng bộ schema (chỉ bật ở môi trường dev). |
+| `RMQ_URL` | Chuỗi URL AMQP | `amqp://localhost:5672` | Đường dẫn kết nối cụm RabbitMQ Broker. |
+| `RMQ_QUEUE` | Chuỗi | `user_queue` | Tên hàng đợi chuyên dụng tiếp nhận sự kiện cho user-service. |

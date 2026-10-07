@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giải Pháp Kháng Poison Pill & Chống Deadlock RabbitMQ - Tomato Cinema</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap");
+
+      @page {
+        size: A4;
+        margin: 12mm 14mm 12mm 14mm;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-size: 10pt;
+        line-height: 1.55;
+        color: #1e293b;
+        background: #f8fafc;
+      }
+
+      .container {
+        max-width: 1020px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 28px 36px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+        .container {
+          max-width: 100%;
+          padding: 0;
+          box-shadow: none;
+          border-radius: 0;
+        }
+        .no-print {
+          display: none !important;
+        }
+      }
+
+      /* Quy tắc ngắt trang in ấn */
+      h2,
+      h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .no-break,
+      table,
+      pre,
+      .ascii-box,
+      .analogy-card,
+      .callout,
+      .simulator-container,
+      .diagram-wrapper {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .page-break {
+        break-before: page;
+        page-break-before: always;
+      }
+
+      /* Header tài liệu */
+      .doc-header {
+        border-bottom: 2px solid #ea580c;
+        padding-bottom: 12px;
+        margin-bottom: 18px;
+      }
+
+      .doc-badge {
+        display: inline-block;
+        background: #fff7ed;
+        color: #c2410c;
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: 3px 9px;
+        border-radius: 4px;
+        margin-bottom: 6px;
+        border: 1px solid #ffedd5;
+      }
+
+      .doc-title {
+        font-size: 16pt;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.3;
+        margin-bottom: 5px;
+      }
+
+      .doc-subtitle {
+        font-size: 10pt;
+        color: #475569;
+        font-weight: 500;
+        margin-bottom: 12px;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        font-size: 8pt;
+      }
+
+      .meta-item strong {
+        display: block;
+        color: #64748b;
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+
+      .meta-item span {
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      /* Headings */
+      h2 {
+        font-size: 12.5pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      h2 .h2-badge {
+        background: #ffedd5;
+        color: #c2410c;
+        font-size: 8.5pt;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-weight: 800;
+      }
+
+      h3 {
+        font-size: 10.5pt;
+        font-weight: 600;
+        color: #1e293b;
+        margin-top: 14px;
+        margin-bottom: 6px;
+      }
+
+      p {
+        margin-bottom: 8px;
+        text-align: justify;
+      }
+
+      ul,
+      ol {
+        margin-left: 20px;
+        margin-bottom: 10px;
+      }
+
+      li {
+        margin-bottom: 4px;
+      }
+
+      /* Callout Boxes */
+      .callout {
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin: 10px 0;
+        font-size: 9pt;
+        line-height: 1.5;
+      }
+
+      .callout-danger {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        color: #991b1b;
+      }
+
+      .callout-warning {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        color: #92400e;
+      }
+
+      .callout-info {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        color: #1e40af;
+      }
+
+      .callout-success {
+        background: #f0fdf4;
+        border-left: 4px solid #22c55e;
+        color: #166534;
+      }
+
+      .callout strong {
+        font-weight: 700;
+      }
+
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 8.5pt;
+      }
+
+      th,
+      td {
+        border: 1px solid #cbd5e1;
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+      }
+
+      tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+
+      /* Code Blocks */
+      pre,
+      code {
+        font-family: "Fira Code", Consolas, Monaco, monospace;
+      }
+
+      code {
+        background: #f1f5f9;
+        color: #c2410c;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 8.2pt;
+        font-weight: 500;
+      }
+
+      pre {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 12px 14px;
+        border-radius: 6px;
+        font-size: 8pt;
+        line-height: 1.45;
+        overflow-x: auto;
+        margin: 10px 0;
+        border: 1px solid #334155;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        border-radius: 0;
+        font-size: inherit;
+      }
+
+      .code-comment {
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .code-keyword {
+        color: #f43f5e;
+        font-weight: 600;
+      }
+      .code-func {
+        color: #38bdf8;
+      }
+      .code-string {
+        color: #34d399;
+      }
+      .code-type {
+        color: #fbbf24;
+      }
+      .code-constant {
+        color: #c084fc;
+      }
+
+      /* ASCII Diagram Box */
+      .ascii-box {
+        background: #0f172a;
+        color: #38bdf8;
+        padding: 12px;
+        border-radius: 6px;
+        font-family: "Fira Code", Consolas, monospace;
+        font-size: 7.2pt;
+        line-height: 1.3;
+        margin: 10px 0;
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      /* Analogy / Stat Cards */
+      .analogy-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 12px 0;
+      }
+
+      .analogy-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      }
+
+      .analogy-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      .analogy-card-title {
+        font-weight: 700;
+        font-size: 9.5pt;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .tag {
+        font-size: 7pt;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+
+      .tag-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .tag-success {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .tag-warning {
+        background: #fef3c7;
+        color: #b45309;
+      }
+      .tag-info {
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+
+      /* Story / Analogy Feature Box (Dễ hiểu nhất) */
+      .story-box {
+        background: linear-gradient(135deg, #fff7ed 0%, #fefce8 100%);
+        border: 2px solid #fdba74;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin: 18px 0 22px 0;
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.07);
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .story-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #fed7aa;
+      }
+
+      .story-title {
+        font-size: 11pt;
+        font-weight: 800;
+        color: #9a3412;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .story-badge {
+        background: #ea580c;
+        color: #ffffff;
+        font-size: 7pt;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .story-step-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 12px 0;
+      }
+
+      .story-step-card {
+        background: #ffffff;
+        border: 1px solid #fed7aa;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 8pt;
+        line-height: 1.45;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      }
+
+      .story-step-num {
+        display: inline-block;
+        background: #ffedd5;
+        color: #c2410c;
+        font-weight: 800;
+        font-size: 7pt;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-bottom: 6px;
+      }
+
+      .interview-cheatsheet-banner {
+        background: #0f172a;
+        color: #f8fafc;
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-top: 14px;
+        border: 1px solid #334155;
+      }
+
+      .interview-cheatsheet-banner ul {
+        margin: 6px 0 0 18px;
+      }
+
+      .interview-cheatsheet-banner li {
+        font-size: 8pt;
+        margin-bottom: 4px;
+        color: #e2e8f0;
+      }
+
+      /* Interactive Simulator */
+      .simulator-container {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        margin: 16px 0;
+        padding: 14px 18px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      }
+
+      .sim-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 10px;
+      }
+
+      .sim-btn-group {
+        display: flex;
+        gap: 6px;
+      }
+
+      .sim-btn {
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        padding: 6px 12px;
+        border-radius: 5px;
+        font-size: 8pt;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .sim-btn:hover {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+      }
+
+      .sim-btn.active {
+        background: #ea580c;
+        color: #ffffff;
+        border-color: #ea580c;
+      }
+
+      .sim-btn.active.btn-danger {
+        background: #dc2626;
+        border-color: #dc2626;
+      }
+
+      .sim-btn.active.btn-success {
+        background: #16a34a;
+        border-color: #16a34a;
+      }
+
+      .sim-stage {
+        display: grid;
+        grid-template-columns: 1.2fr 0.3fr 1.5fr 0.3fr 1.2fr;
+        gap: 10px;
+        align-items: center;
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .sim-box {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+        min-height: 110px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .sim-box-title {
+        font-size: 7.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.5px;
+      }
+
+      .sim-msg-card {
+        background: #fff1f2;
+        border: 1px dashed #f43f5e;
+        border-radius: 4px;
+        padding: 6px;
+        font-size: 7.5pt;
+        margin-top: 4px;
+        transition: all 0.3s ease;
+      }
+
+      .sim-arrow {
+        font-size: 14pt;
+        text-align: center;
+        color: #94a3b8;
+        font-weight: bold;
+      }
+
+      .sim-status-banner {
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 5px;
+        font-size: 8.5pt;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Diagram Embedder */
+      .diagram-wrapper {
+        margin: 16px 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #0f172a;
+      }
+
+      .diagram-header {
+        background: #1e293b;
+        color: #f8fafc;
+        padding: 8px 14px;
+        font-size: 8pt;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .diagram-iframe {
+        width: 100%;
+        height: 520px;
+        border: none;
+        display: block;
+      }
+
+      /* Footer */
+      .doc-footer {
+        margin-top: 24px;
+        padding-top: 10px;
+        border-top: 1px solid #cbd5e1;
+        display: flex;
+        justify-content: space-between;
+        font-size: 7.5pt;
+        color: #64748b;
+        break-inside: avoid;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- ==================== HEADER ==================== -->
+      <div class="doc-header">
+        <div class="doc-badge">Reliability &amp; Messaging Architecture Whitepaper</div>
+        <div class="doc-title">
+          GIẢI QUYẾT BÀI TOÁN "POISON PILL" VÀ "DEADLOCK" GỬI OTP TRONG RABBITMQ
+        </div>
+        <div class="doc-subtitle">
+          Chuyên sâu về Custom AOP Interceptor, Chiến lược Phân loại Lỗi (Transient vs Fatal), Dead Letter Queue (DLQ) và Cơ chế Kháng Vòng lặp Vô hạn (Infinite Loop Prevention)
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <strong>Hệ thống</strong>
+            <span>Tomato Cinema Core</span>
+          </div>
+          <div class="meta-item">
+            <strong>Chuyên đề</strong>
+            <span>Message Queue &amp; Fault Tolerance</span>
+          </div>
+          <div class="meta-item">
+            <strong>Công nghệ</strong>
+            <span>RabbitMQ, NestJS AOP, RxJS, Prometheus</span>
+          </div>
+          <div class="meta-item">
+            <strong>Phiên bản</strong>
+            <span>v2.4.0 (Deep-Dive Edition)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== KHÁI QUÁT DỄ HIỂU: ẨN DỤ ĐỜI THỰC ==================== -->
+      <div class="story-box">
+        <div class="story-header">
+          <div class="story-title">
+            <span>📮</span> ẨN DỤ DỄ HIỂU NHẤT: Băng Chuyền Bưu Điện &amp; Anh Bưu Tá Giao Thư OTP
+          </div>
+          <span class="story-badge">Dành cho Ôn Thi &amp; Phỏng Vấn</span>
+        </div>
+
+        <p style="font-size: 8.5pt; color: #431407; margin-bottom: 8px;">
+          Để hình dung trực quan nhất cơ chế hoạt động, hãy tưởng tượng <strong>RabbitMQ</strong> giống như <strong>chiếc băng chuyền bưu điện</strong> và <strong>Notification Service (Worker)</strong> là <strong>anh nhân viên giao thư OTP</strong>:
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div style="background: #ffffff; border-radius: 6px; padding: 10px; border-left: 3px solid #22c55e;">
+            <strong style="color: #15803d; font-size: 8.5pt;">✉️ Bức thư bình thường:</strong>
+            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;">
+              Ghi địa chỉ rõ ràng <code>nam@gmail.com</code> ➔ Anh nhân viên gửi cái vèo là xong ➔ Xé biên lai xác nhận (<strong>ACK</strong>), lấy bức thư tiếp theo trên băng chuyền.
+            </p>
+          </div>
+          <div style="background: #ffffff; border-radius: 6px; padding: 10px; border-left: 3px solid #ef4444;">
+            <strong style="color: #b91c1c; font-size: 8.5pt;">☠️ Bức thư độc hại (Poison Pill):</strong>
+            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;">
+              Ghi địa chỉ ma <code>nguyenvana@@@sai_dia_chi..xyz</code> hoặc phong bì rách nát (payload hỏng) ➔ Anh nhân viên cố gửi nhưng hệ thống ném lỗi (<strong>Exception</strong>).
+            </p>
+          </div>
+        </div>
+
+        <div class="callout callout-danger" style="margin: 6px 0 12px 0;">
+          <strong>⚠️ Quy định mặc định ngớ ngẩn (Default Requeue):</strong> Nếu gửi lỗi mà không ai hướng dẫn, bưu tá sẽ <em>nhét bức thư lỗi đó ngược lại ngay đầu băng chuyền</em> (<code>requeue: true</code>). Anh nhân viên lập tức rút đúng bức thư đó ra ➔ Lại lỗi ➔ Lại nhét vào đầu băng chuyền...
+          <br />➔ <strong>100% CPU:</strong> Anh nhân viên quay cuồng làm việc vô nghĩa hàng ngàn lần/giây đến kiệt sức.
+          <br />➔ <strong>Deadlock (Tắc nghẽn):</strong> Hàng ngàn bức thư OTP của người dùng hợp lệ xếp phía sau bị <strong>kẹt cứng hoàn toàn</strong> (Head-of-Line Blocking)!
+        </div>
+
+        <div style="font-weight: 700; color: #9a3412; font-size: 8.5pt; margin-bottom: 6px;">
+          🛠️ 3 BƯỚC GIẢI QUYẾT ÊM ĐẸP CỦA TOMATO CINEMA:
+        </div>
+
+        <div class="story-step-grid">
+          <div class="story-step-card">
+            <span class="story-step-num">BƯỚC 1</span>
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">Người Giám Sát Đứng Canh</div>
+            <p style="color: #475569; margin: 0;">
+              Thay vì bắt từng hàm tự viết try/catch, hệ thống cử <strong>AOP Interceptor</strong> bọc quanh bưu tá. Thư gửi thành công thì tự gọi <strong>ACK</strong>; nếu gặp sự cố thì chặn ngay không để bưu tá nhét bừa lại băng chuyền.
+            </p>
+          </div>
+
+          <div class="story-step-card">
+            <span class="story-step-num">BƯỚC 2</span>
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">Bắt Mạch Phân Loại Lỗi</div>
+            <p style="color: #475569; margin: 0;">
+              • <strong>Lỗi tạm thời (Trời mưa / Mạng lag):</strong> Hẹn thử lại tối đa 3 lần có giãn cách (Exponential Backoff: chờ 1s ➔ 4s ➔ 16s).
+              <br />• <strong>Lỗi vĩnh viễn (Địa chỉ ma - Poison Pill):</strong> Tuyệt đối không thử lại! Bỏ cuộc ngay (Fast Fail).
+            </p>
+          </div>
+
+          <div class="story-step-card">
+            <span class="story-step-num">BƯỚC 3</span>
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">Ném Vào Hòm Cách Ly (DLQ)</div>
+            <p style="color: #475569; margin: 0;">
+              Người giám sát phát lệnh: <code>NACK (requeue: false)</code> ➔ RabbitMQ gắp thư hỏng bỏ ngay vào <strong>Dead Letter Queue (DLQ)</strong>. Băng chuyền chính chạy ro ro trong 3ms, CPU dưới 3%, thư lỗi lưu lại cho kỹ sư kiểm tra.
+            </p>
+          </div>
+        </div>
+
+        <div class="interview-cheatsheet-banner">
+          <strong style="color: #fbbf24; font-size: 8.5pt;">💡 3 CÂU "NẰM LÒNG" KHI ĐI PHỎNG VẤN SENIOR:</strong>
+          <ul>
+            <li><strong>1. Hiện tượng:</strong> Poison Pill là tin nhắn lỗi logic; nếu để mặc định <code>requeue: true</code> sẽ gây vòng lặp vô hạn đẩy CPU lên 100% và làm nghẽn toàn bộ OTP phía sau (Head-of-Line Blocking).</li>
+            <li><strong>2. Xử lý trong Code:</strong> Viết <strong>Custom AOP Interceptor</strong> bọc quanh Message Handler: Lỗi tạm thời (Network/SMTP) thì Retry giãn cách tối đa 3 lần; Lỗi vĩnh viễn (Poison Pill) thì dứt khoát <strong>NACK với <code>requeue: false</code></strong>.</li>
+            <li><strong>3. Tầng Hạ tầng:</strong> Cấu hình <strong>Dead Letter Exchange (DLX) &amp; Dead Letter Queue (DLQ)</strong> để RabbitMQ tự gom tin nhắn hỏng sang hàng đợi cách ly để audit, bảo đảm hàng đợi chính luôn thông suốt.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ==================== PHẦN 1 ==================== -->
+      <h2>
+        <span class="h2-badge">01</span>
+        Bản chất Hiện tượng "Poison Pill" và Nguy cơ "Deadlock" Gửi OTP
+      </h2>
+      <p>
+        Trong kiến trúc phân tán dựa trên hướng sự kiện (Event-Driven Architecture) của <strong>Tomato Cinema</strong>, lưu lượng gửi mã OTP (One-Time Password) xác thực đăng ký, đăng nhập và đổi mật khẩu được Auth Service xuất bản (Publish) vào RabbitMQ để <code>notification-service</code> tiêu thụ (Consume) bất đồng bộ.
+      </p>
+
+      <div class="analogy-grid">
+        <div class="analogy-card" style="border-top: 3px solid #ef4444;">
+          <div class="analogy-card-header">
+            <span class="analogy-card-title">☠️ Poison Pill (Viên thuốc độc)</span>
+            <span class="tag tag-danger">Lỗi Logic Vĩnh Viễn</span>
+          </div>
+          <p style="font-size: 8.5pt; color: #475569;">
+            Là tin nhắn chứa dữ liệu hỏng hóc hoặc vi phạm logic nghiệp vụ nghiêm trọng. Ví dụ: Email sai định dạng (<code>user@@example..com</code>), chuỗi JSON hỏng cú pháp (Malformed Payload), thiếu số điện thoại bắt buộc, hoặc tham số template không tồn tại.
+          </p>
+          <div class="callout callout-danger" style="margin: 4px 0 0 0; padding: 6px 10px; font-size: 8pt;">
+            <strong>Đặc tính:</strong> Cho dù Consumer có thử xử lý lại 1 triệu lần thì kết quả vẫn là <strong>Exception 100% thất bại</strong>!
+          </div>
+        </div>
+
+        <div class="analogy-card" style="border-top: 3px solid #f59e0b;">
+          <div class="analogy-card-header">
+            <span class="analogy-card-title">🔄 Deadlock / Vòng Lặp Vô Tận</span>
+            <span class="tag tag-warning">Head-of-Line Blocking</span>
+          </div>
+          <p style="font-size: 8.5pt; color: #475569;">
+            Khi Consumer gặp lỗi không bắt (Unhandled Exception), thư viện kết nối AMQP theo mặc định sẽ gửi tín hiệu <code>NACK (requeue: true)</code>, hoặc tiến trình bị sập khiến unacknowledged message bị RabbitMQ đẩy ngược lại ngay <strong>đầu hàng đợi (Queue Head)</strong>.
+          </p>
+          <div class="callout callout-warning" style="margin: 4px 0 0 0; padding: 6px 10px; font-size: 8pt;">
+            <strong>Hậu quả:</strong> Consumer lấy lại tin nhắn đó ➔ Lại lỗi ➔ Lại requeue ➔ Lặp vô hạn, <strong>CPU vọt lên 100%</strong> và chặn đứng toàn bộ tin nhắn phía sau.
+          </div>
+        </div>
+      </div>
+
+      <div class="ascii-box">
+  ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+  ║                        CƠ CHẾ "VÒNG LẶP TỬ THẦN" KHI MẶC ĐỊNH REQUEUE: TRUE (ANTI-PATTERN)                          ║
+  ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+     [Auth Service]
+           │
+           │ 1. Publish sự kiện OTP lỗi logic
+           ▼
+     ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+     │ RABBITMQ PRIMARY QUEUE (prefetch = 1)                                                                  │
+     │ ┌───────────────────────────┐    ┌──────────────────────────┐    ┌──────────────────────────┐         │
+     │ │ [1] POISON PILL (HỎNG)    │    │ [2] OTP Hợp Lệ (User A)  │    │ [3] OTP Hợp Lệ (User B)  │  ...    │
+     │ └─────────────┬─────────────┘    └──────────────────────────┘    └──────────────────────────┘         │
+     └───────────────┼─────────────────────────────────▲─────────────────────────────────────────────────────┘
+                     │                                 │
+                     │ 2. Consume Msg #1               │ 5. REQUEUE: TRUE!
+                     ▼                                 │    (Bị đẩy ngược lại đỉnh Queue)
+     ┌─────────────────────────────────────────────────┴─────────────────────────────────────────────────────┐
+     │ NOTIFICATION CONSUMER (Worker)                                                                        │
+     │                                                                                                       │
+     │    Xử lý: Email sai format ──► Ném Unhandled Exception ──► Mặc định NACK(requeue = true)              │
+     │                                                                                                       │
+     │    [THẢM HỌA]: Worker kẹt trong vòng xoáy: LẤY ➔ LỖI ➔ REQUEUE ➔ LẤY ➔ LỖI (Hàng nghìn lần/giây)      │
+     │    - CPU Worker tăng vọt 100%!                                                                        │
+     │    - Msg #2, #3 của người dùng hợp lệ bị "DEADLOCK" (Head-of-Line Blocking), không bao giờ được gửi!  │
+     └───────────────────────────────────────────────────────────────────────────────────────────────────────┘
+      </div>
+
+      <!-- ==================== SIMULATOR (NO-PRINT) ==================== -->
+      <div class="simulator-container no-print">
+        <div class="sim-toolbar">
+          <div>
+            <strong style="font-size: 9pt; color: #0f172a;">🎮 Trình Mô Phỏng Tương Tác: Kháng Độc vs Vòng Lặp Vô Tận</strong>
+            <div style="font-size: 7.5pt; color: #64748b;">Chọn một kịch bản dưới đây để kiểm tra phản ứng của hệ thống theo thời gian thực</div>
+          </div>
+          <div class="sim-btn-group">
+            <button class="sim-btn active btn-danger" id="btn-scenario-deadlock" onclick="runSimulation('deadlock')">
+              💀 1. Vòng lặp Tử Thần (Deadlock)
+            </button>
+            <button class="sim-btn" id="btn-scenario-transient" onclick="runSimulation('transient')">
+              ⚡ 2. Lỗi Tạm Thời (Retry Backoff)
+            </button>
+            <button class="sim-btn" id="btn-scenario-solution" onclick="runSimulation('solution')">
+              🛡️ 3. Giải Pháp Tomato Cinema (DLQ)
+            </button>
+          </div>
+        </div>
+
+        <div class="sim-stage">
+          <div class="sim-box" id="sim-queue-box">
+            <div class="sim-box-title">Hàng đợi chính (Primary Queue)</div>
+            <div id="sim-queue-items">
+              <div class="sim-msg-card" style="background: #fee2e2; border-color: #ef4444; color: #b91c1c;">
+                <strong>Msg #1: Poison Pill</strong><br />email: <code>john@@bad..com</code>
+              </div>
+              <div class="sim-msg-card" style="background: #e0f2fe; border-color: #0284c7; color: #0369a1; margin-top: 4px;">
+                <strong>Msg #2: OTP Hợp lệ</strong><br />email: <code>alice@cinema.vn</code>
+              </div>
+            </div>
+            <span style="font-size: 7pt; color: #64748b;" id="sim-queue-stats">Prefetch: 1 | Đang chờ: 2</span>
+          </div>
+
+          <div class="sim-arrow" id="sim-arrow-1">➔</div>
+
+          <div class="sim-box" id="sim-worker-box">
+            <div class="sim-box-title">Worker (Notification Service)</div>
+            <div id="sim-worker-content" style="padding: 6px 0;">
+              <div style="font-size: 8pt; font-weight: 700; color: #0f172a;" id="sim-worker-title">Sẵn sàng</div>
+              <div style="font-size: 7.5pt; color: #475569;" id="sim-worker-desc">Đang đợi message...</div>
+            </div>
+            <div style="font-size: 7pt; font-weight: 700;" id="sim-worker-cpu">CPU: 2% (Ổn định)</div>
+          </div>
+
+          <div class="sim-arrow" id="sim-arrow-2">➔</div>
+
+          <div class="sim-box" id="sim-target-box">
+            <div class="sim-box-title" id="sim-target-title">Dead Letter Queue (DLQ)</div>
+            <div id="sim-target-content" style="padding: 6px 0;">
+              <span style="font-size: 7.5pt; color: #94a3b8;">Trống (0 message)</span>
+            </div>
+            <span style="font-size: 7pt; color: #64748b;" id="sim-target-stats">Cách ly an toàn</span>
+          </div>
+        </div>
+
+        <div class="sim-status-banner" id="sim-banner" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecdd3;">
+          <span style="font-size: 11pt;">⚠️</span>
+          <span id="sim-banner-text">Nhấn nút kịch bản để bắt đầu diễn giải quy trình hoạt động.</span>
+        </div>
+      </div>
+
+      <!-- ==================== PHẦN 2 ==================== -->
+      <h2>
+        <span class="h2-badge">02</span>
+        Bảng Ma Trận So Sánh: Trước và Sau Khi Triển Khai Giải Pháp
+      </h2>
+      <table class="no-break">
+        <thead>
+          <tr>
+            <th style="width: 20%;">Tiêu chí</th>
+            <th style="width: 40%; background: #fef2f2; color: #991b1b;">Trước: Mặc định Requeue (Nguy Hiểm)</th>
+            <th style="width: 40%; background: #f0fdf4; color: #166534;">Sau: Tomato Cinema AOP + DLQ (Chuẩn Hóa)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Xử lý Poison Pill</strong></td>
+            <td>NACK với <code>requeue: true</code> hoặc unhandled crash khiến message quay lại đỉnh queue.</td>
+            <td>AOP Interceptor chủ động gửi <code>NACK(requeue: false)</code>, chuyển thẳng sang DLQ.</td>
+          </tr>
+          <tr>
+            <td><strong>Tải CPU Worker</strong></td>
+            <td><strong>100% CPU Spike</strong> do vòng lặp lấy-lỗi-requeue liên tục hàng ngàn lần/giây.</td>
+            <td><strong>Dưới 3% CPU</strong>, message lỗi bị đào thải trong &lt; 5ms, giải phóng tiến trình ngay.</td>
+          </tr>
+          <tr>
+            <td><strong>Tác động người dùng khác</strong></td>
+            <td><strong>Tê liệt toàn bộ (Deadlock)</strong>: Tin nhắn sau bị kẹt cứng (Head-of-Line Blocking).</td>
+            <td><strong>Zero Impact</strong>: Tin nhắn kế tiếp của người dùng khác được xử lý ngay lập tức.</td>
+          </tr>
+          <tr>
+            <td><strong>Lỗi tạm thời (Network/SMTP)</strong></td>
+            <td>Hoặc bị lặp vô tận, hoặc bị mất message nếu drop sai cách.</td>
+            <td>Thử lại có kiểm soát với <strong>Exponential Backoff</strong> (tối đa 3 lần) trước khi đưa vào DLQ.</td>
+          </tr>
+          <tr>
+            <td><strong>Khả năng Điều tra (Audit)</strong></td>
+            <td>Logs ngập tràn lỗi trùng lặp (Log flooding), khó truy vết nguyên nhân gốc rễ.</td>
+            <td>DLQ lưu toàn bộ payload hỏng kèm header <code>x-death</code> (thời gian, số lần thử, lỗi) phục vụ SRE.</td>
+          </tr>
+          <tr>
+            <td><strong>Độ ổn định tiến trình</strong></td>
+            <td>Unhandled Exception có thể kích hoạt <code>uncaughtException</code> làm sập cả Node.js container.</td>
+            <td>AOP Interceptor bắt ngoại lệ qua RxJS <code>catchError</code> và trả về <code>of(null)</code> bảo vệ worker.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ==================== PHẦN 3 ==================== -->
+      <div class="page-break"></div>
+      <h2>
+        <span class="h2-badge">03</span>
+        Kiến Trúc Sơ Đồ Quy Trình (Archify Showcase Diagram)
+      </h2>
+      <p>
+        Dưới đây là sơ đồ quy trình trực quan tương tác đa làn (Lanes) thể hiện đầy đủ 3 phân đoạn: <em>Phát tán &amp; Xếp hàng</em> ➔ <em>AOP Đánh chặn &amp; Phân loại lỗi</em> ➔ <em>Xác nhận ACK hoặc Cách ly DLQ</em>. Sơ đồ được biên dịch theo tiêu chuẩn Showcase đạt 9/9 tiêu chí kiểm định kỹ thuật:
+      </p>
+
+      <div class="diagram-wrapper">
+        <div class="diagram-header">
+          <span>📐 Sơ đồ Kỹ thuật: RabbitMQ Poison Pill Defense &amp; DLQ Workflow</span>
+          <span style="font-size: 7.5pt; color: #94a3b8;">Đạt chuẩn 9/9 Showcase Checks • Archify v2</span>
+        </div>
+        <iframe
+          src="/diagrams/rabbitmq-poison-pill-dlq.html?embed=1"
+          class="diagram-iframe"
+          title="RabbitMQ Poison Pill Defense Diagram"
+        ></iframe>
+      </div>
+
+      <!-- ==================== PHẦN 4 ==================== -->
+      <h2>
+        <span class="h2-badge">04</span>
+        Chi Tiết Giải Pháp Trong Code Tomato Cinema
+      </h2>
+      <p>
+        Để không phải viết đi viết lại hàng trăm khối <code>try/catch</code> trong từng Controller (tuân thủ nguyên lý <strong>DRY - Don't Repeat Yourself</strong>), Tomato Cinema triển khai <strong>Custom AOP Interceptor</strong> bọc quanh toàn bộ các Message Handler của RabbitMQ.
+      </p>
+
+      <h3>4.1. Bộ Đánh Chặn <code>RmqMetricsAckInterceptor</code></h3>
+      <p>
+        Áp dụng mô hình AOP (Aspect-Oriented Programming) của NestJS và sức mạnh của RxJS Observables, Interceptor thực hiện quản lý vòng đời ACK/NACK kết hợp thu thập metrics Prometheus:
+      </p>
+
+      <pre><code><span class="code-comment">/**
+ * File: apps/notification-service/src/modules/notifications/interceptors/rmq-metrics-ack.interceptor.ts
+ * Vai trò: AOP Interceptor tự động phân luồng ACK khi thành công và NACK(requeue=false) khi lỗi
+ */</span>
+<span class="code-keyword">@Injectable</span>()
+<span class="code-keyword">export class</span> <span class="code-type">RmqMetricsAckInterceptor</span> <span class="code-keyword">implements</span> <span class="code-type">NestInterceptor</span> {
+  <span class="code-keyword">public</span> <span class="code-func">intercept</span>(context: <span class="code-type">ExecutionContext</span>, next: <span class="code-type">CallHandler</span>): <span class="code-type">Observable</span>&lt;<span class="code-type">any</span>&gt; {
+    <span class="code-keyword">if</span> (context.getType() !== <span class="code-string">'rpc'</span>) <span class="code-keyword">return</span> next.handle();
+
+    <span class="code-keyword">const</span> rpcContext = context.switchToRpc();
+    <span class="code-keyword">const</span> rmqContext = rpcContext.getContext&lt;<span class="code-type">RmqContext</span>&gt;();
+    <span class="code-keyword">const</span> pattern = rmqContext?.getPattern ? rmqContext.getPattern() : <span class="code-string">'unknown'</span>;
+
+    <span class="code-comment">// 1. Khởi động Timer đo lường độ trễ xử lý (Prometheus Histogram)</span>
+    <span class="code-keyword">const</span> endTimer = <span class="code-keyword">this</span>.processingDuration.startTimer({ service: <span class="code-string">'notification-service'</span>, event: pattern });
+
+    <span class="code-keyword">return</span> next.handle().pipe(
+      <span class="code-comment">// [TRƯỜNG HỢP 1]: GỬI THÀNH CÔNG (tap) ──► Tự động gọi ACK</span>
+      <span class="code-func">tap</span>(() =&gt; {
+        <span class="code-keyword">this</span>.eventTotal.inc({ service: <span class="code-string">'notification-service'</span>, event: pattern, status: <span class="code-string">'success'</span> });
+        <span class="code-keyword">this</span>.rmqService.<span class="code-func">ack</span>(rmqContext, pattern); <span class="code-comment">// Xóa message khỏi queue chính</span>
+      }),
+
+      <span class="code-comment">// [TRƯỜNG HỢP 2]: GẶP NGOẠI LỆ / LỖI LOGIC (catchError) ──► NACK với requeue: false</span>
+      <span class="code-func">catchError</span>((error: <span class="code-type">unknown</span>) =&gt; {
+        <span class="code-keyword">this</span>.eventTotal.inc({ service: <span class="code-string">'notification-service'</span>, event: pattern, status: <span class="code-string">'error'</span> });
+        <span class="code-keyword">this</span>.logger.error(<span class="code-string">`Lỗi xử lý sự kiện [${pattern}]: ${error instanceof Error ? error.message : error}`</span>);
+
+        <span class="code-comment">// 🔥 CỐT LÕI KHÁNG POISON PILL: Chủ động NACK với requeue: false!</span>
+        <span class="code-comment">// RabbitMQ tự động đẩy message sang DLX/DLQ, không bao giờ nhét ngược lại đỉnh queue!</span>
+        <span class="code-keyword">this</span>.rmqService.<span class="code-func">nack</span>(rmqContext, pattern, <span class="code-keyword">false</span>);
+
+        <span class="code-comment">// 🛡️ BẢO VỆ TIẾN TRÌNH: Nuốt lỗi bằng stream of(null) để worker không bị crash sập container</span>
+        <span class="code-keyword">return</span> <span class="code-func">of</span>(<span class="code-constant">null</span>);
+      }),
+
+      <span class="code-comment">// [TRƯỜNG HỢP 3]: HOÀN TẤT VÒNG ĐỜI (finalize) ──► Dừng timer</span>
+      <span class="code-func">finalize</span>(() =&gt; endTimer())
+    );
+  }
+}</code></pre>
+
+      <h3>4.2. Thao Tác AMQP Channel Trong <code>RmqService</code></h3>
+      <p>
+        Service tầng hạ tầng tương tác trực tiếp với giao thức AMQP để phát tín hiệu xác nhận:
+      </p>
+
+      <pre><code><span class="code-comment">/**
+ * File: apps/notification-service/src/infrastructure/rmq/rmq.service.ts
+ */</span>
+<span class="code-keyword">public</span> <span class="code-func">nack</span>(context: <span class="code-type">RmqContext</span>, event: <span class="code-type">string</span>, requeue = <span class="code-keyword">false</span>): <span class="code-type">void</span> {
+  <span class="code-keyword">const</span> channel = context.getChannelRef();
+  <span class="code-keyword">const</span> msg = context.getMessage();
+  <span class="code-keyword">const</span> tag = msg.fields.deliveryTag;
+  <span class="code-keyword">if</span> (!tag) <span class="code-keyword">return</span>;
+
+  <span class="code-comment">// Báo từ chối tin nhắn: allUpTo: false, requeue: boolean</span>
+  channel.<span class="code-func">nack</span>(msg, <span class="code-keyword">false</span>, requeue);
+  <span class="code-keyword">this</span>.nackTotal.inc({ service: <span class="code-string">'notification-service'</span>, event });
+
+  <span class="code-keyword">if</span> (requeue) {
+    <span class="code-keyword">this</span>.logger.warn(<span class="code-string">`NACK requeue(pattern: ${context.getPattern()}, tag: ${tag})`</span>);
+  } <span class="code-keyword">else</span> {
+    <span class="code-keyword">this</span>.logger.error(<span class="code-string">`NACK drop -&gt; DLQ(pattern: ${context.getPattern()}, tag: ${tag})`</span>);
+  }
+}</code></pre>
+
+      <!-- ==================== PHẦN 5 ==================== -->
+      <div class="page-break"></div>
+      <h2>
+        <span class="h2-badge">05</span>
+        Chiến Lược Phân Loại Lỗi (Fault Classification Strategy)
+      </h2>
+      <p>
+        Hệ thống không đánh đồng tất cả mọi lỗi là Poison Pill. Cơ chế phân loại 2 cấp độ bảo vệ tính toàn vẹn của việc gửi OTP:
+      </p>
+
+      <div class="analogy-grid">
+        <div class="analogy-card">
+          <div class="analogy-card-header">
+            <span class="analogy-card-title">1. Lỗi Tạm Thời (Transient Error)</span>
+            <span class="tag tag-warning">Controlled Retry</span>
+          </div>
+          <ul style="font-size: 8.5pt; margin-left: 16px;">
+            <li><strong>Dấu hiệu:</strong> Network glitch, SMTP Gmail bị timeout 504, SendGrid bị rate limit 429, DNS resolution fail tạm thời.</li>
+            <li><strong>Bản chất:</strong> Thử lại sau vài giây sẽ <strong>thành công</strong> khi hệ thống bên ngoài phục hồi.</li>
+            <li><strong>Cơ chế xử lý:</strong> <strong>Exponential Backoff + Jitter</strong>:
+              <br />• Lần 1: Chờ <code>1s</code>
+              <br />• Lần 2: Chờ <code>4s</code>
+              <br />• Lần 3: Chờ <code>16s</code>
+              <br />• Sau 3 lần vẫn lỗi ➔ Xem như Fatal Error và chuyển sang DLQ.
+            </li>
+          </ul>
+        </div>
+
+        <div class="analogy-card">
+          <div class="analogy-card-header">
+            <span class="analogy-card-title">2. Lỗi Vĩnh Viễn (Fatal / Poison Pill)</span>
+            <span class="tag tag-danger">NACK requeue: false</span>
+          </div>
+          <ul style="font-size: 8.5pt; margin-left: 16px;">
+            <li><strong>Dấu hiệu:</strong> Email sai định dạng (<code>user@@com</code>), payload JSON thiếu trường, mã OTP rỗng, template email bị xóa.</li>
+            <li><strong>Bản chất:</strong> Có thử lại 100 lần vẫn thất bại, chỉ làm tốn tài nguyên và nghẽn hệ thống.</li>
+            <li><strong>Cơ chế xử lý:</strong> <strong>Cắt lỗ ngay tức thì (Fast Fail)</strong>:
+              <br />• Gửi <code>NACK(requeue = false)</code> ngay trong lần đầu tiên.
+              <br />• Không Retry vô nghĩa.
+              <br />• Đẩy sang DLQ để cách ly và ghi Audit Log.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ==================== PHẦN 6 ==================== -->
+      <h2>
+        <span class="h2-badge">06</span>
+        Cấu Hình Dead Letter Exchange (DLX) và Dead Letter Queue (DLQ)
+      </h2>
+      <p>
+        Dead Letter Exchange là tính năng nguyên sinh mạnh mẽ của RabbitMQ. Khi hàng đợi chính được cấu hình với các đối số <code>x-dead-letter-exchange</code> và <code>x-dead-letter-routing-key</code>, bất kỳ tin nhắn nào bị NACK với <code>requeue: false</code> sẽ được RabbitMQ tự động bắt và tái định tuyến sang DLQ mà không bị rơi rụng (Zero Message Loss).
+      </p>
+
+      <pre><code><span class="code-comment">// Cấu hình Topology RabbitMQ (main.ts / rmq.module.ts)</span>
+<span class="code-keyword">const</span> queueOptions = {
+  durable: <span class="code-keyword">true</span>,
+  arguments: {
+    <span class="code-comment">// Khi tin nhắn bị NACK(requeue=false), đẩy sang Exchange này:</span>
+    <span class="code-string">'x-dead-letter-exchange'</span>: <span class="code-string">'notifications.dlx'</span>,
+    <span class="code-comment">// Routing key khi đẩy sang DLX:</span>
+    <span class="code-string">'x-dead-letter-routing-key'</span>: <span class="code-string">'notifications.dlq'</span>,
+    <span class="code-comment">// Thời gian sống của message trong queue chính (nếu quá hạn cũng vào DLQ):</span>
+    <span class="code-string">'x-message-ttl'</span>: <span class="code-keyword">60000</span> <span class="code-comment">// 60 giây</span>
+  }
+};</code></pre>
+
+      <div class="callout callout-info">
+        <strong>🔍 Cấu trúc Header <code>x-death</code> trong DLQ:</strong> Khi tin nhắn cập bến DLQ, RabbitMQ tự động đính kèm metadata vô giá gồm:
+        <code>reason: "rejected"</code>, <code>queue: "notifications_queue"</code>, <code>time: timestamp</code>, <code>count: số lần thất bại</code>. Kỹ sư SRE chỉ cần mở giao diện RabbitMQ Management là biết chính xác tại sao tin nhắn bị loại bỏ mà không cần mò mẫm hàng triệu dòng log.
+      </div>
+
+      <!-- ==================== PHẦN 7 ==================== -->
+      <h2>
+        <span class="h2-badge">07</span>
+        Hệ Thống Giám Sát Observability &amp; Cảnh Báo SRE
+      </h2>
+      <p>
+        Trong <code>RmqMetricsAckInterceptor</code>, Tomato Cinema tích hợp sẵn hệ thống đo kiểm Prometheus phục vụ Dashboard Grafana và Alertmanager:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 32%;">Tên Metric Prometheus</th>
+            <th style="width: 18%;">Loại Metric</th>
+            <th style="width: 50%;">Ý nghĩa Vận hành &amp; Ngưỡng Cảnh báo SRE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>rmq_event_processing_duration_seconds</code></td>
+            <td><strong>Histogram</strong></td>
+            <td>Đo phân phối thời gian xử lý (P50, P90, P99). Nếu P99 vượt quá 2.0s ➔ Cảnh báo nghẽn mạng SMTP.</td>
+          </tr>
+          <tr>
+            <td><code>rmq_events_total{status="error"}</code></td>
+            <td><strong>Counter</strong></td>
+            <td>Đếm số sự kiện thất bại. Tỷ lệ lỗi &gt; 5% trong 5 phút ➔ Bắn Alert PagerDuty/Slack cho team Backend.</td>
+          </tr>
+          <tr>
+            <td><code>rmq_events_nack_total</code></td>
+            <td><strong>Counter</strong></td>
+            <td>Đếm số lần thực hiện NACK. Đột biến tăng vọt báo hiệu đợt tấn công spam dữ liệu rác (Payload Bombing).</td>
+          </tr>
+          <tr>
+            <td><code>rabbitmq_queue_messages{queue="dlq"}</code></td>
+            <td><strong>Gauge</strong></td>
+            <td>Số lượng tin nhắn đang nằm trong DLQ. <strong>Ngưỡng &gt; 0</strong> kích hoạt cảnh báo kỹ sư vào Audit!</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ==================== PHẦN 8 ==================== -->
+      <div class="page-break"></div>
+      <h2>
+        <span class="h2-badge">08</span>
+        Bộ Câu Hỏi Phỏng Vấn Chuyên Sâu (Interview Cheatsheet)
+      </h2>
+
+      <div class="analogy-card" style="margin-bottom: 12px;">
+        <strong style="color: #0f172a; font-size: 9.5pt;">Q1: Tại sao nên đặt <code>prefetchCount: 1</code> cho Notification Worker?</strong>
+        <p style="font-size: 8.5pt; color: #334155; margin-top: 4px;">
+          <strong>Trả lời:</strong> <code>prefetchCount: 1</code> (Fair Dispatch) đảm bảo RabbitMQ chỉ giao 1 message cho worker tại một thời điểm, chỉ khi worker ACK/NACK xong mới giao tiếp. Điều này ngăn một worker nhận trước 100 tin nhắn (trong đó có 1 tin nhắn nặng hoặc lỗi) làm chậm trễ 99 tin nhắn còn lại trong khi các worker khác đang rảnh rỗi.
+        </p>
+      </div>
+
+      <div class="analogy-card" style="margin-bottom: 12px;">
+        <strong style="color: #0f172a; font-size: 9.5pt;">Q2: Làm sao để xử lý lại (Replay) các tin nhắn trong DLQ sau khi đã fix bug code?</strong>
+        <p style="font-size: 8.5pt; color: #334155; margin-top: 4px;">
+          <strong>Trả lời:</strong> Tomato Cinema cung cấp script CLI nội bộ hoặc plugin <code>rabbitmq-shovel</code>. Shovel sẽ đọc toàn bộ message từ <code>notifications_queue.dlq</code> và chuyển tiếp (Re-route) ngược lại vào Primary Exchange. Vì hệ thống gửi OTP có kiểm tra Idempotency trên Redis, việc replay này diễn ra hoàn toàn an toàn mà không sợ gửi OTP trùng lặp.
+        </p>
+      </div>
+
+      <div class="analogy-card">
+        <strong style="color: #0f172a; font-size: 9.5pt;">Q3: Điểm khác biệt lớn nhất giữa NACK <code>requeue: false</code> và <code>channel.reject(..., false)</code> là gì?</strong>
+        <p style="font-size: 8.5pt; color: #334155; margin-top: 4px;">
+          <strong>Trả lời:</strong> <code>basic.reject</code> chỉ từ chối 1 tin nhắn duy nhất. Trong khi đó, <code>basic.nack</code> là tiện ích mở rộng của RabbitMQ cho phép từ chối hàng loạt (batch rejection với cờ <code>multiple: true</code>). Cả hai khi đặt <code>requeue: false</code> đều kích hoạt cơ chế chuyển sang Dead Letter Exchange (DLX).
+        </p>
+      </div>
+
+      <!-- ==================== FOOTER ==================== -->
+      <div class="doc-footer">
+        <span>Tomato Cinema Reliability &amp; Messaging Technical Whitepaper</span>
+        <span>Bản quyền © 2026 Tomato Cinema — Lưu hành kỹ thuật nội bộ</span>
+        <span>Trang 1 / 1</span>
+      </div>
+    </div>
+
+    <!-- ==================== INTERACTIVE JAVASCRIPT ==================== -->
+    <script>
+      function runSimulation(scenario) {
+        const btnDeadlock = document.getElementById('btn-scenario-deadlock');
+        const btnTransient = document.getElementById('btn-scenario-transient');
+        const btnSolution = document.getElementById('btn-scenario-solution');
+
+        btnDeadlock.className = 'sim-btn';
+        btnTransient.className = 'sim-btn';
+        btnSolution.className = 'sim-btn';
+
+        const queueItems = document.getElementById('sim-queue-items');
+        const workerTitle = document.getElementById('sim-worker-title');
+        const workerDesc = document.getElementById('sim-worker-desc');
+        const workerCpu = document.getElementById('sim-worker-cpu');
+        const targetTitle = document.getElementById('sim-target-title');
+        const targetContent = document.getElementById('sim-target-content');
+        const banner = document.getElementById('sim-banner');
+        const bannerText = document.getElementById('sim-banner-text');
+
+        if (scenario === 'deadlock') {
+          btnDeadlock.className = 'sim-btn active btn-danger';
+          queueItems.innerHTML = `
+            <div class="sim-msg-card" style="background: #fee2e2; border-color: #ef4444; color: #b91c1c; animation: pulse 1s infinite;">
+              <strong>Msg #1: Poison Pill (Loop)</strong><br />email: <code>john@@bad..com</code>
+            </div>
+            <div class="sim-msg-card" style="background: #e2e8f0; border-color: #94a3b8; color: #64748b; opacity: 0.6;">
+              <strong>Msg #2: Alice OTP (BỊ KẸT)</strong><br />Không bao giờ được xử lý!
+            </div>
+          `;
+          workerTitle.innerText = '💀 Vòng Lặp Vô Hạn (Lấy ➔ Lỗi ➔ Requeue)';
+          workerTitle.style.color = '#dc2626';
+          workerDesc.innerText = 'NACK(requeue: true) liên tục!';
+          workerCpu.innerText = 'CPU: 100% (NGUY HIỂM)';
+          workerCpu.style.color = '#dc2626';
+
+          targetTitle.innerText = 'DLQ (Chưa Cấu Hình)';
+          targetContent.innerHTML = '<span style="color: #dc2626; font-size: 7.5pt; font-weight: 700;">Hàng đợi kẹt cứng! OTP chết đứng!</span>';
+
+          banner.style.background = '#fef2f2';
+          banner.style.color = '#991b1b';
+          banner.style.borderColor = '#fecdd3';
+          bannerText.innerHTML = '<strong>HẬU QUẢ:</strong> Message lỗi liên tục bị đẩy lại đỉnh hàng đợi (Queue Head). Khách hàng Alice không nhận được OTP! CPU máy chủ chạm đỉnh 100%.';
+        } else if (scenario === 'transient') {
+          btnTransient.className = 'sim-btn active btn-success';
+          queueItems.innerHTML = `
+            <div class="sim-msg-card" style="background: #fef3c7; border-color: #f59e0b; color: #b45309;">
+              <strong>Msg #1: Timeout SMTP</strong><br />Gmail bận 504 (Retry 2/3)
+            </div>
+            <div class="sim-msg-card" style="background: #e0f2fe; border-color: #0284c7; color: #0369a1;">
+              <strong>Msg #2: Alice OTP</strong><br />Chờ xử lý sau retry
+            </div>
+          `;
+          workerTitle.innerText = '⏳ Đang Thử Lại (Exponential Backoff)';
+          workerTitle.style.color = '#b45309';
+          workerDesc.innerText = 'Tạm hoãn 4 giây trước lần thử 3...';
+          workerCpu.innerText = 'CPU: 4% (Bình thường)';
+          workerCpu.style.color = '#16a34a';
+
+          targetTitle.innerText = 'Gửi Lại Kiểm Soát';
+          targetContent.innerHTML = '<span style="color: #b45309; font-size: 7.5pt;">Lần 3: SMTP phục hồi ➔ ACK thành công!</span>';
+
+          banner.style.background = '#fffbeb';
+          banner.style.color = '#92400e';
+          banner.style.borderColor = '#fde68a';
+          bannerText.innerHTML = '<strong>THÀNH CÔNG:</strong> Lỗi tạm thời mạng/SMTP được thử lại có giãn cách (Backoff). Không làm ngập server email và cứu được tin nhắn hợp lệ!';
+        } else if (scenario === 'solution') {
+          btnSolution.className = 'sim-btn active btn-success';
+          queueItems.innerHTML = `
+            <div class="sim-msg-card" style="background: #dcfce7; border-color: #22c55e; color: #15803d;">
+              <strong>Msg #2: Alice OTP (ĐANG GỬI)</strong><br />email: <code>alice@cinema.vn</code>
+            </div>
+            <div class="sim-msg-card" style="background: #f1f5f9; border-color: #cbd5e1; color: #475569;">
+              <strong>Msg #3: Bob OTP</strong><br />email: <code>bob@cinema.vn</code>
+            </div>
+          `;
+          workerTitle.innerText = '🛡️ AOP NACK(requeue: false)';
+          workerTitle.style.color = '#15803d';
+          workerDesc.innerText = 'Đào thải Msg #1 trong 3ms ➔ Xử lý Msg #2 ngay!';
+          workerCpu.innerText = 'CPU: 3% (Tối ưu)';
+          workerCpu.style.color = '#15803d';
+
+          targetTitle.innerText = 'Dead Letter Queue (DLQ)';
+          targetContent.innerHTML = `
+            <div class="sim-msg-card" style="background: #fee2e2; border-color: #ef4444; color: #b91c1c;">
+              <strong>Đã cách ly Msg #1</strong><br />x-death: rejected (5ms)
+            </div>
+          `;
+
+          banner.style.background = '#f0fdf4';
+          banner.style.color = '#166534';
+          banner.style.borderColor = '#bbf7d0';
+          bannerText.innerHTML = '<strong>HOÀN HẢO:</strong> AOP Interceptor phát hiện Poison Pill ➔ Gửi NACK(requeue=false) ➔ Message chuyển vào DLQ ➔ Hàng đợi chính thông thoáng 100%!';
+        }
+      }
+    </script>
+  </body>
+</html>

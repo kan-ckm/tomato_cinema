@@ -1,37 +1,84 @@
 ---
-title: Kiến trúc tổng quan (System Overview)
-description: Khái quát kiến trúc phân tán microservices và phân bổ vai trò trong tomato_cinema.
+title: Kiến trúc Tổng quan (System Overview)
+description: Khái quát toàn bộ kiến trúc phân tán Microservices Polyglot, công nghệ nền tảng và cơ chế liên kết giữa các dịch vụ trong Tomato Cinema.
 ---
 
-Hệ thống **Tomato Cinema** áp dụng mô hình kiến trúc phân tán hướng dịch vụ (Distributed Microservices Architecture) phối hợp giữa giao tiếp đồng bộ (Synchronous HTTP/REST) và bất đồng bộ (Asynchronous Event-Driven).
+Hệ sinh thái **Tomato Cinema** được xây dựng theo mô hình **Kiến trúc Vi dịch vụ Phân tán Đa ngôn ngữ (Polyglot Microservices)**, quản lý tập trung trong một cấu trúc Monorepo thống nhất kết hợp giữa **Turborepo** (cho các dịch vụ TypeScript/Node.js & Frontend) và **Go Workspace (`go.work`)** (cho các dịch vụ xử lý I/O hiệu năng cao bằng Golang).
 
-## Mô hình phân lớp
+---
 
-1. **Client Tier**: Web App (Next.js 16 App Router), Mobile App, Admin Dashboard.
-2. **API Gateway Tier**: `gateway-service` đóng vai trò Reverse Proxy, Rate Limiter, định tuyến request và thực hiện xác thực bước đầu.
-3. **Core Services Tier**:
-   - `auth-service`: Quản lý danh tính, phân quyền, cấp phát Dual-Token qua engine bảo mật `@tomatocinema/passport` và quản lý phiên xoay vòng trên Redis.
-   - `user-service`: Quản lý thông tin hồ sơ người dùng, hạng mức thành viên, lịch sử đặt vé.
-   - `media-service`: Xử lý lưu trữ video, ảnh poster, luồng phát trực tuyến trailer phim.
-   - `notification-service`: Xử lý gửi email kích hoạt, tin nhắn xác nhận vé xem phim.
-   - `bot-service`: Hỗ trợ chăm sóc khách hàng tự động và tra cứu suất chiếu qua bot.
-4. **Shared Packages**:
-   - `@tomatocinema/common`: Chứa DTO, Utility, Constants, Enum và Error handlers dùng chung.
-   - `@tomatocinema/contracts`: Định nghĩa hợp đồng giao tiếp gRPC / Protocol Buffers giữa các services.
-   - `@tomatocinema/passport`: Thư viện tạo và thẩm định token HMAC Domain Separation hiệu năng cao.
-   - `@tomatocinema/ui`: Thư viện giao diện React UI components dùng chung trên toàn hệ thống.
-
-## Sơ đồ Kiến trúc Hệ thống
+## 1. Sơ đồ Kiến trúc Toàn cảnh (System Architecture)
 
 <DiagramViewer
   src="/diagrams/system-architecture.html"
-  title="Kiến trúc Phân tán Tomato Cinema (Archify Interactive)"
-  description="Nhấp vào từng service để xem tiêu điểm kết nối hoặc chuyển đổi theme ở góc sơ đồ."
-  height="540px"
+  title="Toàn cảnh Kiến trúc Phân tán Tomato Cinema (Archify Interactive)"
+  description="Khám phá luồng tương tác giữa các tầng Client, API Gateway, các Core Microservices và hạ tầng cơ sở dữ liệu."
+  height="600px"
 />
 
-## Lợi ích kiến trúc
+---
 
-- **Độc lập triển khai (Independent Deployment):** Mỗi service có thể build, test và scale riêng mà không làm gián đoạn toàn hệ thống.
-- **Tách biệt dữ liệu (Database per Service):** Giảm thiểu xung đột khóa bảng và đảm bảo tính bao đóng của từng domain.
-- **Khả năng chịu lỗi cao (Resilience):** Khi `notification-service` hoặc `media-service` gặp sự cố, các luồng mua vé và đăng nhập vẫn hoạt động bình thường.
+## 2. Mô hình Phân tầng Kiến trúc (4 Tiers)
+
+Hệ thống được tổ chức thành 4 phân tầng độc lập nhằm đảm bảo khả năng chịu tải, bao đóng nghiệp vụ và mở rộng linh hoạt:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. EDGE & CLIENT TIER                                                  │
+│    Next.js 16 Web Client (apps/web)  │  Mobile App  │  Telegram Bot     │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │ HTTPS / REST API
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│ 2. API GATEWAY TIER                                                    │
+│    Nginx Proxy (:8080) ──► gateway-service (:3000)                      │
+│    (Xác thực không trạng thái Passport, Rate Limiting, CORS, Throttler) │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │ gRPC / Protocol Buffers (Nội bộ)
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│ 3. CORE SERVICES TIER                                                  │
+│    ├── auth-service (:50051)      [Argon2id, Dual-Token, Redis Session]│
+│    ├── user-service (:50053)      [Hồ sơ cá nhân, TypeORM, Postgres]   │
+│    ├── media-service (:50059/:4200)[Go 1.24, S3/R2 I/O, WebP, Caching] │
+│    ├── notification-service       [RabbitMQ Consumer, Email, SMS, Prom]│
+│    └── bot-service                [Telegraf, One-Tap Login Deep Link]  │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │ AMQP Events / Pub-Sub
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│ 4. STORAGE & MESSAGING TIER                                            │
+│    PostgreSQL (DB-per-Service) │ Redis Cluster │ RabbitMQ │ Cloudflare R2
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Ma trận Các Vi Dịch vụ (Core Microservices)
+
+| Vi Dịch Vụ | Ngôn ngữ / Công nghệ | Cổng Lắng Nghe | Trách nhiệm Nghiệp vụ Trọng yếu |
+| :--- | :--- | :--- | :--- |
+| **`gateway-service`** | TypeScript / NestJS | HTTP `:3000` | Cổng đón tiếp duy nhất từ Internet; thẩm định token không trạng thái (Zero-I/O); quản lý HttpOnly Cookie; chuyển tiếp gRPC tới các service nội bộ. |
+| **`auth-service`** | TypeScript / NestJS | gRPC `:50051` | Quản lý tài khoản; mã hóa Argon2id; cấp phát token qua Passport Engine; lưu trữ phiên stateful trên Redis với cơ chế Grace Period 30s và Token Reuse Detection. |
+| **`user-service`** | TypeScript / NestJS | gRPC `:50053` | Quản lý hồ sơ người dùng (tên, avatar); sở hữu database PostgreSQL `user_db` riêng biệt; tự động tạo hồ sơ khi nhận sự kiện `auth.account.registered` từ RabbitMQ. |
+| **`media-service`** | Golang 1.24 | gRPC `:50059`<br />HTTP `:4200` | Quản lý tài nguyên hình ảnh poster, avatar, video; tích hợp Cloudflare R2 / MinIO; xử lý nén ảnh WebP; phân phối tĩnh qua HTTP với bộ đệm Cache 24h. |
+| **`notification-service`** | TypeScript / NestJS | HTTP `:9102`<br />AMQP Consumer | Tiêu thụ sự kiện từ RabbitMQ; gửi email kích hoạt, khôi phục mật khẩu qua Nodemailer HTML templates; gửi SMS qua Exolve; thu thập chỉ số Prometheus. |
+| **`bot-service`** | TypeScript / NestJS | Telegram Long-polling | Kết nối Telegram Bot API qua Telegraf; hỗ trợ đăng nhập một chạm (One-Tap Deep Linking); liên kết số điện thoại qua gRPC tới `auth-service`. |
+
+---
+
+## 4. Hệ Thống Thư Viện Chia Sẻ (Shared Packages)
+
+Nhằm đảm bảo nguyên tắc **DRY (Don't Repeat Yourself)** và **Single Source of Truth**, các thành phần dùng chung được tách thành các gói riêng trong thư mục `packages/`:
+
+- **`@tomatocinema/contracts`**: Chứa toàn bộ định nghĩa tệp tin Protocol Buffers (`auth.proto`, `account.proto`, `users.proto`, `media.proto`). Tự động sinh mã nguồn TypeScript và Go thông qua pipeline `buf` / `protoc`.
+- **`@tomatocinema/passport`**: Động cơ tạo và thẩm định token HMAC 5 thành phần siêu tốc (< 0.05ms) với cơ chế phân tách miền (Domain Separation) chống giả mạo loại token.
+- **`@tomatocinema/common`**: Cung cấp mã lỗi chuẩn Google gRPC (`RpcStatus`), interceptors hàng đợi RabbitMQ Telemetry & Manual ACK, và các tiện ích dùng chung.
+- **`@tomatocinema/ui`**: Thư viện thành phần giao diện React chuẩn hóa cho Next.js Web Client dựa trên Radix UI và Tailwind CSS.
+
+---
+
+## 5. Chiến lược Hạ tầng & Docker v2 Pipeline
+
+Để tối ưu hóa thời gian triển khai và kích thước image trong môi trường Production, dự án áp dụng kiến trúc **Shared Builder Pipeline**:
+
+1. **Shared Builder Image**: Một Dockerfile đa tầng trung gian thực hiện cài đặt dependencies và biên dịch trước toàn bộ monorepo, giúp tái sử dụng cache cho cả 4 services NestJS, rút ngắn tổng thời gian build từ hơn 10 phút xuống còn dưới **150 giây**.
+2. **Distroless Container cho Media Service**: `media-service` được biên dịch thành file binary tĩnh chạy trên nền `gcr.io/distroless/static-debian12`, hoàn toàn không có shell Linux, giảm thiểu 99% bề mặt tấn công bảo mật và kích thước container chỉ khoảng **25MB**.
+3. **Nginx Reverse Proxy & Dynamic DNS**: Nginx đóng vai trò Edge Ingress, định tuyến `/api/*` vào Gateway và `/media/*` vào Media Service kèm cơ chế DNS Runtime Resolver `127.0.0.11` tránh lỗi đứt kết nối khi container cập nhật.

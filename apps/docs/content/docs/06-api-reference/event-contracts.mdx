@@ -1,35 +1,113 @@
 ---
-title: Hợp đồng sự kiện (Event Contracts)
-description: Định nghĩa cấu trúc tin nhắn RabbitMQ trao đổi giữa các microservices.
+title: Hợp đồng Sự kiện (Event Contracts)
+description: Định nghĩa cấu trúc các Domain Events trao đổi bất đồng bộ qua RabbitMQ được khai báo tập trung tại @tomatocinema/contracts.
 ---
 
-Các sự kiện được quản lý tập trung tại thư viện `@repo/contracts`.
+Trong kiến trúc Event-Driven của **Tomato Cinema**, mọi thông điệp trao đổi qua RabbitMQ đều được định nghĩa kiểu dữ liệu tĩnh nghiêm ngặt (Strictly Typed) tại gói thư viện `@tomatocinema/contracts/src/events/`. Điều này giúp đảm bảo sự đồng nhất tuyệt đối giữa bên phát tán sự kiện (Publisher/Producer) và bên tiêu thụ sự kiện (Subscriber/Consumer).
 
-## Cấu trúc sự kiện Envelope chung
+---
 
-Mọi tin nhắn bắn vào RabbitMQ đều có cấu trúc tiêu chuẩn:
+## 1. Danh mục Sự kiện Xác thực (`events/auth/`)
+
+Các sự kiện phát sinh từ `auth-service` trong vòng đời đăng ký và quản lý bảo mật tài khoản:
+
+### 1.1. `AccountRegisteredEvent` (`auth.account.registered`)
+Được phát ra khi người dùng kích hoạt tài khoản thành công qua OTP, kích hoạt `user-service` khởi tạo hồ sơ người dùng:
 
 ```typescript
-export interface BaseEventPayload<T = unknown> {
-  eventId: string;        // UUIDv4
-  eventType: string;      // Vd: 'user.registered'
-  occurredAt: string;     // ISO 8601 Timestamp
-  producer: string;       // Tên service phát sinh sự kiện
-  version: string;        // Semver, vd: '1.0.0'
-  data: T;                // Dữ liệu nghiệp vụ chi tiết
+export interface AccountRegisteredEvent {
+  accountId: string;  // UUID định danh tài khoản
+  email: string;      // Địa chỉ email đã xác thực
 }
 ```
 
-## Ví dụ sự kiện `booking.confirmed`
+### 1.2. `PasswordResetRequestedEvent` (`auth.password_reset.requested`)
+Được phát ra khi người dùng yêu cầu đặt lại mật khẩu quên, kích hoạt `notification-service` gửi thư:
 
 ```typescript
-export interface BookingConfirmedEvent {
-  bookingId: string;
-  userId: string;
-  showId: string;
-  cinemaId: string;
-  totalAmount: number;
-  seats: Array<{ seatId: string; seatCode: string }>;
-  qrCodeUrl: string;
+export interface PasswordResetRequestedEvent {
+  email: string;             // Email người nhận mã
+  code: string;              // Mã OTP khôi phục 6 chữ số
+  expiresInMinutes: number;  // Thời gian hiệu lực (5 phút)
+}
+```
+
+### 1.3. `PasswordChangedEvent` (`auth.password.changed`)
+Được phát ra sau khi mật khẩu tài khoản được cập nhật thành công nhằm gửi email cảnh báo an ninh:
+
+```typescript
+export interface PasswordChangedEvent {
+  email: string;        // Email tài khoản
+  changedAt: string;    // Thời điểm cập nhật ISO 8601
+  ipAddress?: string;   // Địa chỉ IP thực hiện đổi mật khẩu
+}
+```
+
+### 1.4. `otpRequestedEvent` (`auth.otp.requested`)
+Được phát ra khi cần gửi mã OTP xác nhận tài khoản:
+
+```typescript
+export interface otpRequestedEvent {
+  email: string;
+  code: string;
+  type: string;
+}
+```
+
+---
+
+## 2. Danh mục Sự kiện Hồ sơ Tài khoản (`events/account/`)
+
+Các sự kiện phát sinh từ `auth-service` (mô-đun Account) khi người dùng thay đổi các thông tin liên lạc nhạy cảm:
+
+### 2.1. `EmailChangedEvent` (`account.email.changed`)
+Phát ra khi người dùng xác nhận đổi sang địa chỉ email mới thành công:
+
+```typescript
+export interface EmailChangedEvent {
+  email: string;  // Địa chỉ email mới đã xác thực
+  code: string;   // Mã định danh phiên đổi
+}
+```
+
+### 2.2. `PhoneChangedEvent` (`account.phone.changed`)
+Phát ra khi người dùng yêu cầu liên kết hoặc cập nhật số điện thoại mới qua SMS:
+
+```typescript
+export interface PhoneChangedEvent {
+  phone: string;  // Số điện thoại nhận mã SMS
+  code: string;   // Mã xác nhận OTP
+}
+```
+
+---
+
+## 3. Cách Sử dụng trong NestJS Microservices
+
+### Bên Gửi Sự Kiện (Publisher):
+```typescript
+import type { AccountRegisteredEvent } from '@tomatocinema/contracts';
+
+@Injectable()
+export class AuthService {
+  constructor(@Inject('RABBITMQ_CLIENT') private readonly client: ClientProxy) {}
+
+  async onRegisterSuccess(accountId: string, email: string) {
+    const payload: AccountRegisteredEvent = { accountId, email };
+    this.client.emit('auth.account.registered', payload);
+  }
+}
+```
+
+### Bên Nhận Sự Kiện (Consumer):
+```typescript
+import type { AccountRegisteredEvent } from '@tomatocinema/contracts';
+
+@Controller()
+export class UsersController {
+  @EventPattern('auth.account.registered')
+  async handleAccountRegistered(@Payload() data: AccountRegisteredEvent, @Ctx() ctx: RmqContext) {
+    // Xử lý tạo profile an toàn với kiểu dữ liệu đầy đủ
+  }
 }
 ```

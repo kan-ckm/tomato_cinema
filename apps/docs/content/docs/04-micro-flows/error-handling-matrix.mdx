@@ -1,33 +1,93 @@
 ---
-title: Chuẩn hóa xử lý lỗi (Error Handling Matrix)
-description: Định dạng phản hồi lỗi thống nhất và ma trận Exception Filters xuyên suốt microservices.
+title: Chuẩn hóa Xử lý Lỗi & Ma trận Mã gRPC (Error Handling Matrix)
+description: Định dạng phản hồi lỗi thống nhất RFC 7807, ma trận ánh xạ gRPC RpcStatus sang HTTP Status Code và Exception Filters tại API Gateway.
 ---
 
-Để hỗ trợ Frontend và các Client xử lý lỗi nhất quán, toàn bộ API của Tomato Cinema đều tuân theo chuẩn **RFC 7807 (Problem Details for HTTP APIs)**.
+Trong kiến trúc Microservices phân tán của **Tomato Cinema**, các service nội bộ giao tiếp bằng nhị phân gRPC, trong khi Client bên ngoài (Web Next.js, Mobile App) lại giao tiếp bằng REST API (JSON). Nếu không có một tầng chuẩn hóa chặt chẽ, các lỗi nội bộ sẽ bị rò rỉ mã lỗi không đồng nhất, làm vỡ giao diện người dùng và gây khó khăn cho việc gỡ lỗi.
 
-## Cấu trúc Error Response chuẩn
+Hệ thống thiết lập bộ quy chuẩn chuyển dịch lỗi thống nhất: **Mã lỗi gRPC nội bộ (`RpcStatus`)** $\rightarrow$ **Bộ lọc `GrpcExceptionFilter` tại Gateway** $\rightarrow$ **Định dạng chuẩn `RFC 7807` trả về cho Client**.
+
+---
+
+## 1. Cấu trúc JSON Phản hồi Lỗi Chuẩn (RFC 7807 Standard)
+
+Toàn bộ phản hồi lỗi từ API Gateway đều tuân theo cấu trúc JSON nhất quán:
 
 ```json
 {
-  "success": false,
   "statusCode": 409,
-  "errorCode": "BOOKING_SEAT_ALREADY_LOCKED",
   "message": "Ghế đã được giữ bởi người dùng khác. Vui lòng chọn ghế khác.",
-  "timestamp": "2026-09-27T21:00:00.000Z",
+  "errorCode": "BOOKING_SEAT_ALREADY_LOCKED",
+  "timestamp": "2026-10-07T15:30:00.000Z",
   "path": "/api/v1/seats/lock",
-  "details": {
-    "seatId": "H12",
-    "lockExpiresInSeconds": 482
-  }
+  "traceId": "trace-9842a-99f"
 }
 ```
 
-## Bảng mã lỗi tiêu biểu
+---
 
-| Mã lỗi (Error Code) | HTTP Status | Miêu tả |
-| :--- | :--- | :--- |
-| `AUTH_INVALID_CREDENTIALS` | `401 Unauthorized` | Email hoặc mật khẩu không chính xác |
-| `AUTH_TOKEN_EXPIRED` | `401 Unauthorized` | Access Token đã hết hạn |
-| `AUTH_TOKEN_REVOKED` | `403 Forbidden` | Phiên đăng nhập đã bị vô hiệu hóa |
-| `BOOKING_SEAT_ALREADY_LOCKED` | `409 Conflict` | Ghế đang trong phiên giữ chỗ của người khác |
-| `PAYMENT_GATEWAY_TIMEOUT` | `504 Gateway Timeout`| Cổng thanh toán không phản hồi trong 30 giây |
+## 2. Ma trận Ánh xạ Mã Lỗi gRPC sang HTTP Status (`grpcToHttpStatus`)
+
+Bộ lọc `GrpcExceptionFilter` tại `gateway-service` tự động bóc tách mã lỗi `exception.code` từ Protocol Buffers và dịch sang HTTP Status Code tương ứng:
+
+| Mã gRPC (`RpcStatus`) | Mã Số | HTTP Status Code | Tên HTTP Status | Ý Nghĩa & Tình Huống Kích Hoạt |
+| :--- | :---: | :---: | :--- | :--- |
+| `OK` | `0` | `200` | OK | Xử lý thành công không có lỗi. |
+| `CANCELLED` | `1` | `499` | Client Closed Request | Phía người dùng chủ động ngắt kết nối trước khi RPC hoàn tất. |
+| `UNKNOWN` | `2` | `500` | Internal Server Error | Lỗi không xác định phát sinh trong quá trình xử lý. |
+| `INVALID_ARGUMENT` | `3` | `400` | Bad Request | Dữ liệu đầu vào vi phạm validation (email sai cú pháp, thiếu trường bắt buộc). |
+| `DEADLINE_EXCEEDED` | `4` | `504` | Gateway Timeout | Service nội bộ không phản hồi kịp trong khoảng thời gian quy định (Timeout). |
+| `NOT_FOUND` | `5` | `404` | Not Found | Không tìm thấy tài nguyên (User, Movie, Suất chiếu không tồn tại). |
+| `ALREADY_EXISTS` | `6` | `409` | Conflict | Trùng lặp dữ liệu độc nhất (Email đã đăng ký, mã giao dịch đã tạo). |
+| `PERMISSION_DENIED` | `7` | `403` | Forbidden | Người dùng không đủ quyền hạn (Khách hàng cố truy cập API Quản trị rạp). |
+| `RESOURCE_EXHAUSTED`| `8` | `429` | Too Many Requests | Vượt quá hạn mức yêu cầu (Rate Limit, Throttling). |
+| `FAILED_PRECONDITION`| `9` | `400` | Bad Request | Hệ thống không ở trạng thái phù hợp để thực thi lệnh (Hủy vé khi suất chiếu đã bắt đầu). |
+| `ABORTED` | `10` | `409` | Conflict | Xung đột giao dịch đồng thời (Hai người cùng thanh toán 1 đơn vé). |
+| `OUT_OF_RANGE` | `11` | `400` | Bad Request | Giá trị vượt ngoài dải cho phép (Số lượng ghế chọn quá 8 ghế). |
+| `UNIMPLEMENTED` | `12` | `501` | Not Implemented | Tính năng chưa được phát triển hoặc chưa được hỗ trợ. |
+| `INTERNAL` | `13` | `500` | Internal Server Error | Ngoại lệ nghiêm trọng hoặc crash dịch vụ nội bộ. |
+| `UNAVAILABLE` | `14` | `503` | Service Unavailable | Service đích đang tạm dừng bảo trì hoặc đang khởi động lại. |
+| `DATA_LOSS` | `15` | `500` | Internal Server Error | Mất mát hoặc hư hại dữ liệu không thể phục hồi. |
+| `UNAUTHENTICATED` | `16` | `401` | Unauthorized | Phiên hết hạn, Token không hợp lệ hoặc chưa cung cấp xác thực. |
+
+---
+
+## 3. Triển khai Bộ lọc Ngoại lệ (`GrpcExceptionFilter`)
+
+Bộ lọc ngoại lệ toàn cục tại API Gateway chịu trách nhiệm bắt giữ mọi tầng lỗi:
+
+```typescript
+// apps/gateway-service/src/shared/filters/grpc.exception.filter.ts
+@Catch()
+export class GrpcExceptionFilter implements ExceptionFilter {
+  public catch(exception: any, host: ArgumentsHost) {
+    const context = host.switchToHttp();
+    const response = context.getResponse<Response>();
+
+    // 1. Phân giải lỗi từ các Microservice gRPC nội bộ
+    if (this.isGrpcError(exception)) {
+      const httpStatus = grpcToHttpStatus[exception.code] || HttpStatus.INTERNAL_SERVER_ERROR;
+      return response.status(httpStatus).json({
+        statusCode: httpStatus,
+        message: exception.details || 'Lỗi giao tiếp gRPC nội bộ'
+      });
+    }
+
+    // 2. Phân giải lỗi từ tầng HTTP của Gateway (ValidationPipe, Guards)
+    if (exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const res: any = exception.getResponse();
+      return response.status(status).json({
+        statusCode: status,
+        message: typeof res === 'object' && res.message ? res.message : exception.message
+      });
+    }
+
+    // 3. Phân giải lỗi hệ thống chưa được phân loại (Crash, Unhandled)
+    return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: 'Đã xảy ra sự cố kỹ thuật phía máy chủ'
+    });
+  }
+}
+```

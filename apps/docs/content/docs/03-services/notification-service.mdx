@@ -1,12 +1,122 @@
 ---
-title: Notification Service
-description: Xử lý gửi thông báo đa kênh (Email HTML, Push Notification di động, SMS OTP).
+title: Notification Service (Dịch vụ Thông báo Đa kênh)
+description: Vi dịch vụ xử lý gửi email và tin nhắn SMS bất đồng bộ qua RabbitMQ, tích hợp Nodemailer HTML templates, Exolve SMS provider và hệ thống đo lường Prometheus metrics.
 ---
 
-`notification-service` hoạt động chủ yếu như một Event Consumer từ hàng đợi RabbitMQ.
+`notification-service` là vi dịch vụ trung tâm đảm nhiệm việc phát tán thông báo đa kênh (Email & SMS) đến khách hàng của **Tomato Cinema**. Service hoạt động hoàn toàn hướng sự kiện (**Event-Driven**) thông qua RabbitMQ, giúp tách biệt các tác vụ I/O mạng chậm (gọi API gửi mail, gửi SMS) khỏi luồng xử lý chính của người dùng, đảm bảo trải nghiệm giao diện luôn mượt mà.
 
-## Các kênh thông báo
+---
 
-- **Email Service**: Tích hợp Nodemailer / AWS SES với template HTML responsive.
-- **Push Notification**: Firebase Cloud Messaging (FCM) thông báo nhắc giờ chiếu phim trước 30 phút.
-- **SMS OTP**: Gửi mã OTP xác nhận đặt vé và đổi số điện thoại.
+## 1. Kiến trúc & Công nghệ Cốt lõi
+
+- **Framework**: NestJS Microservices kết hợp lắng nghe hàng đợi RabbitMQ và mở cổng HTTP `:9102` phục vụ Observability.
+- **Message Broker (AMQP)**: Tiêu thụ thông điệp từ RabbitMQ với chính sách bảo đảm:
+  - `durable: true`: Hàng đợi bền vững, không mất thông điệp khi broker khởi động lại.
+  - `noAck: false`: Bắt buộc sử dụng cơ chế **Manual Acknowledgment** sau khi gửi email/SMS thành công.
+  - `prefetchCount: 1`: Điều tiết lưu lượng, mỗi worker chỉ nhận đúng 1 tác vụ tại một thời điểm để tránh quá tải hạn mức API bên thứ ba.
+  - `persistent: true`: Ghi thông điệp xuống đĩa cứng.
+- **Kênh Email**: Tích hợp **Nodemailer** với HTML Templates động chuẩn thương hiệu Tomato Cinema (màu nhấn Tomato Red `#e53935`, Dark Theme, bảo vệ hiển thị trên đa thiết bị). Hỗ trợ SMTP Server nội bộ hoặc dịch vụ bên ngoài (Mailtrap, SendGrid, Amazon SES).
+- **Kênh SMS**: Tích hợp nhà cung cấp viễn thông **Exolve SMS Gateway** để gửi mã xác thực nhanh qua tin nhắn di động.
+- **Đo lường & Giám sát (Metrics)**: Tự động ghi nhận thời gian phản hồi, số lượng thông điệp thành công và tỷ lệ lỗi vào **Prometheus Metrics** tại endpoint `http://localhost:9102/metrics`.
+
+---
+
+## 2. Kiến trúc Xử lý Thông điệp & Tự động ACK (`RmqMetricsAckInterceptor`)
+
+Toàn bộ các controller trong service đều được gắn `RmqMetricsAckInterceptor`. Interceptor này đảm bảo luồng xử lý khép kín và an toàn:
+
+```
+[RabbitMQ Message Đến]
+          │
+          ▼
+   RmqMetricsAckInterceptor (Bắt đầu đếm giờ)
+          │
+          ▼
+   Controller & Service (Gửi Email / SMS qua API bên thứ ba)
+          │
+    ┌─────┴─────────────────┐
+    ▼                       ▼
+ [Thành công]            [Thất bại]
+    │                       │
+    ▼                       ▼
+ Ghi nhận Metrics        Ghi nhận Error Metrics
+ channel.ack(msg)        channel.nack(msg, false, false) ──► (Chuyển vào Dead Letter Queue)
+```
+
+- **Khi tác vụ hoàn tất thành công**: Interceptor tự động gọi `channel.ack(msg)` để giải phóng thông điệp khỏi hàng đợi.
+- **Khi xảy ra ngoại lệ không khắc phục được**: Tự động gọi `channel.nack(msg, false, false)` để đưa thông điệp sang **Dead Letter Queue (DLQ)**, ngăn ngừa hiện tượng nghẽn hàng đợi (Poison Pill).
+
+---
+
+## 3. Danh mục Sự kiện Tiếp nhận
+
+`notification-service` chia tách rõ ràng thành hai Controller chuyên biệt tương ứng với hai domain nghiệp vụ:
+
+### 3.1. Sự kiện Xác thực (`AuthNotificationsController`)
+
+Tiếp nhận các sự kiện liên quan đến bảo mật tài khoản và xác thực danh tính:
+
+| Tên sự kiện (Routing Key) | Dữ liệu kèm theo | Kênh gửi | Nội dung thông báo |
+| :--- | :--- | :---: | :--- |
+| `auth.password_reset.requested` | `email`, `otp`, `expiresIn` | Email | Gửi thư chứa mã OTP khôi phục mật khẩu (thời hạn 5 phút). |
+| `auth.password.changed` | `email`, `timestamp`, `ip` | Email | Gửi thư cảnh báo mật khẩu vừa được thay đổi để người dùng kịp thời phản ứng nếu bị xâm nhập. |
+| `auth.otp.requested` | `email`, `otp`, `type` | Email | Gửi mã xác nhận kích hoạt tài khoản đăng ký mới. |
+
+### 3.2. Sự kiện Hồ sơ Tài khoản (`AccountNotificationsController`)
+
+Tiếp nhận các thông báo về việc thay đổi thông tin liên lạc nhạy cảm:
+
+| Tên sự kiện (Routing Key) | Dữ liệu kèm theo | Kênh gửi | Nội dung thông báo |
+| :--- | :--- | :---: | :--- |
+| `account.email.changed` | `oldEmail`, `newEmail` | Email | Gửi thông báo đến cả email cũ và email mới để đảm bảo tính minh bạch. |
+| `account.phone.changed` | `userId`, `newPhone`, `otp` | SMS | Gửi mã xác thực OTP qua tin nhắn viễn thông Exolve. |
+
+---
+
+## 4. Hệ thống Mẫu Giao diện Email (HTML Email Templates)
+
+Các mẫu email trong `internal/mail/templates/` được thiết kế theo đúng quy chuẩn thương hiệu của **Tomato Cinema**:
+
+- **Bảng màu nhận diện**: Nền tối (`#121216`), khung viền xám mờ (`#2d3142`), khối nổi bật thương hiệu màu Tomato Red (`#e53935`).
+- **Mã OTP định dạng lớn**: Font chữ Monospace (`Geist Mono` / `Courier`), kích thước lớn, khoảng cách chữ rộng (Letter-spacing: `8px`) giúp người dùng dễ dàng sao chép.
+- **Cảnh báo an ninh**: Khuyến cáo người dùng tuyệt đối không chia sẻ mã xác thực cho bất kỳ ai, bao gồm cả nhân viên hỗ trợ rạp.
+
+---
+
+## 5. Cấu trúc Mô-đun & Bố trí Thư mục
+
+```
+apps/notification-service/src/
+├── config/                             # Cấu hình môi trường & Factory nạp Mailer, Exolve
+│   ├── factories/                      # get-mailer.config.ts, exolve.config.ts
+│   └── validation.schema.ts            # Thẩm định biến môi trường với Joi/Zod
+├── infrastructure/
+│   ├── mail/                           # Module gửi email qua Nodemailer & Template engine
+│   ├── rmq/                            # Module kết nối và quản lý kênh RabbitMQ
+│   └── sms/                            # Module tích hợp API dịch vụ Exolve SMS
+├── modules/
+│   └── notifications/
+│       ├── controllers/                # AuthNotificationsController & AccountNotificationsController
+│       ├── interceptors/               # RmqMetricsAckInterceptor
+│       └── services/                   # Logic nghiệp vụ format nội dung và gửi đi
+├── observability/                      # Module quản lý Prometheus Metrics (:9102) & OpenTelemetry
+└── main.ts                             # Điểm khởi động song song HTTP và RabbitMQ Microservice
+```
+
+---
+
+## 6. Cấu hình Biến Môi trường (`.env`)
+
+| Tên biến | Kiểu giá trị | Mặc định | Mô tả ý nghĩa |
+| :--- | :--- | :--- | :--- |
+| `NODE_ENV` | `development` \| `production` | `development` | Môi trường thực thi của service. |
+| `PORT` | Số nguyên | `9102` | Cổng HTTP phục vụ Prometheus Metrics và Healthcheck. |
+| `RMQ_URL` | URL AMQP | `amqp://localhost:5672` | Địa chỉ kết nối máy chủ RabbitMQ. |
+| `RMQ_QUEUE` | Chuỗi | `notification_queue` | Tên hàng đợi tiếp nhận thông điệp gửi thông báo. |
+| `MAIL_HOST` | Tên miền | `sandbox.smtp.mailtrap.io` | Địa chỉ máy chủ SMTP Server. |
+| `MAIL_PORT` | Số nguyên | `2525` | Cổng kết nối SMTP Server. |
+| `MAIL_USER` | Chuỗi | - | Tên đăng nhập dịch vụ gửi mail. |
+| `MAIL_PASS` | Chuỗi | - | Mật khẩu dịch vụ gửi mail. |
+| `MAIL_FROM` | Chuỗi Email | `Tomato Cinema <no-reply@tomatocinema.vn>` | Tên và địa chỉ người gửi xuất hiện trong hòm thư khách hàng. |
+| `EXOLVE_API_KEY` | Chuỗi bí mật | - | API Key dịch vụ SMS Exolve. |
+| `EXOLVE_SENDER` | Chuỗi | `TOMATOCINEMA` | Brandname thương hiệu hiển thị khi gửi tin nhắn SMS. |

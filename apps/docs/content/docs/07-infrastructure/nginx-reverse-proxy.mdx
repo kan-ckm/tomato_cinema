@@ -1,0 +1,162 @@
+---
+title: "Nginx Reverse Proxy & Bảo vệ Biên (Edge Ingress & Rate Limiting)"
+description: "Kiến trúc Nginx Edge Ingress: Tối ưu mạng Zero-Copy Sendfile, TCP Connection Pooling, 4 Vùng Rate Limiting theo IP nhị phân và Docker Dynamic DNS Resolver."
+---
+
+Trong kiến trúc triển khai của **Tomato Cinema**, **Nginx** đóng vai trò là **Edge Reverse Proxy** (Cổng đón tiếp và bảo vệ biên) duy nhất tiếp nhận toàn bộ lưu lượng HTTP/HTTPS từ Internet bên ngoài tại cổng `:8080`. 
+
+Nginx không chỉ đơn thuần làm nhiệm vụ chuyển tiếp yêu cầu (Proxy Forwarding) mà còn hoạt động như một lá chắn bảo vệ an ninh, lọc tải tấn công DDoS, nén dữ liệu truyền tải và giải phóng áp lực tính toán cho các vi dịch vụ backend phía sau.
+
+---
+
+## 1. Sơ đồ Luồng Tiếp Nhận & Định Tuyến Nginx
+
+```
+[Client / Trình duyệt Người Dùng]
+               │
+               ▼ HTTP Requests (:8080)
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ 🛡️ NGINX EDGE REVERSE PROXY                                            │
+   │                                                                        │
+   │ ├── 1. Tối ưu Zero-Copy (sendfile on, tcp_nopush on, keepalive 32)     │
+   │ ├── 2. Nén Gzip Level 6 (Tiết kiệm 70% băng thông văn bản/JSON)        │
+   │ ├── 3. Kiểm soát Rate Limiting 4 Vùng ($binary_remote_addr)            │
+   │ │     ├── otp_strict:   3 req/m (burst=2)  ──► 429 JSON Response       │
+   │ │     ├── auth_strict: 10 req/m (burst=5)  ──► 429 JSON Response       │
+   │ │     ├── media_read:  30 req/s (burst=60) ──► 429 JSON Response       │
+   │ │     └── api_general: 100 req/m (burst=20)──► 429 JSON Response       │
+   │ └── 4. Định tuyến Thông minh:                                          │
+   │       ├── Route /media/*  ──► Docker DNS 127.0.0.11 ──► media-service  │
+   │       └── Route /api/*    ──► Upstream Keepalive   ──► gateway-service │
+   └────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Tối Ưu Hóa Mạng & Zero-Copy I/O
+
+Cấu hình tại [`docker/nginx/nginx.conf`](file:///home/tomato/ssd/data/Projects/tomato_cinema/docker/nginx/nginx.conf) được tinh chỉnh ở cấp độ nhân hệ điều hành Linux:
+
+```nginx
+# docker/nginx/nginx.conf
+http {
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+}
+```
+
+### Giải thích Cơ chế Kỹ thuật:
+1. **`sendfile on` (Zero-Copy Architecture)**:
+   - Thông thường, khi gửi một file tĩnh, kernel phải đọc từ đĩa vào Kernel Buffer, copy sang User Space Buffer của Nginx, rồi lại copy ngược vào Socket Buffer để gửi ra card mạng (4 lần copy dữ liệu qua lại trong RAM).
+   - `sendfile` cho phép kernel chuyển dữ liệu trực tiếp từ Disk Buffer sang Socket Buffer qua cơ chế DMA (Direct Memory Access), **loại bỏ hoàn toàn bước nạp vào User Space**, giảm tải CPU và tăng tốc độ truyền file lên gấp 3–4 lần.
+2. **`tcp_nopush on` & `tcp_nodelay on`**:
+   - `tcp_nopush`: Chỉ hoạt động khi có `sendfile`, gom các gói tin TCP header và body lại để gửi một lần, hạn chế tối đa việc phân mảnh gói tin trên đường truyền Internet.
+   - `tcp_nodelay`: Tắt thuật toán Nagle, gửi dữ liệu ngay khi có thể mà không trì hoãn chờ gom buffer, triệt tiêu độ trễ mạng (Latency) đối với các request API REST nhỏ.
+3. **`keepalive 32` (TCP Connection Pooling)**:
+   ```nginx
+   upstream gateway_upstream {
+       server gateway-service:4000;
+       keepalive 32;
+   }
+   ```
+   Duy trì sẵn 32 kết nối TCP nhàn rỗi mở sẵn giữa Nginx và `gateway-service`. Nginx không phải thực hiện lại quy trình bắt tay 3 bước (TCP 3-way Handshake: SYN -> SYN-ACK -> ACK) cho từng request của người dùng, giúp giảm độ trễ phản hồi từ 5–10ms xuống dưới 1ms cho mỗi cuộc gọi nội bộ.
+
+---
+
+## 3. Chiến Lược Kiểm Soát Tần Suất Đa Tầng (Rate Limiting)
+
+Nginx áp dụng kỹ thuật băm địa chỉ IP sang định dạng nhị phân thông qua biến `$binary_remote_addr`:
+
+<Callout type="info" title="Tại sao dùng $binary_remote_addr thay vì $remote_addr?">
+Biến `$remote_addr` lưu chuỗi ký tự (ví dụ: `"192.168.1.100"` tốn 13–15 bytes). Trong khi đó, `$binary_remote_addr` lưu IP dưới dạng nhị phân nguyên bản (chỉ tốn đúng **4 bytes** cho IPv4 và **16 bytes** cho IPv6). 
+Nhờ đó, một vùng nhớ **10MB RAM** có thể theo dõi đồng thời trạng thái của hơn **160.000 địa chỉ IP**, tiết kiệm tài nguyên bộ nhớ tối đa cho server.
+</Callout>
+
+### 4 Vùng Giới Hạn Tần Suất Theo Hành Động:
+
+| Tên Vùng (`Zone`) | Định Mức (`Rate`) | Dung Lượng Hàng Đợi (`Burst`) | Endpoints Áp Dụng | Mục Đích Bảo Vệ |
+| :--- | :---: | :---: | :--- | :--- |
+| **`otp_strict`** | **3 requests/phút** | `burst=2 nodelay` | `/api/v1/auth/otp`, `/api/v1/account/*-change` | Chống spam gửi mã OTP qua SMS và Email, ngăn chặn thiệt hại chi phí viễn thông Exolve. |
+| **`auth_strict`** | **10 requests/phút** | `burst=5 nodelay` | `/api/v1/auth/login`, `register`, `forgot-password`, `reset-password` | Ngăn chặn tấn công dò quét mật khẩu (Brute-force) và tạo tài khoản ảo tự động bằng botnet. |
+| **`media_read`** | **30 requests/giây** | `burst=60 nodelay` | `/media/*` | Phục vụ tải ảnh WebP/AVIF mượt mà nhưng ngăn chặn việc cào dữ liệu (Scraping) hàng loạt làm nghẽn băng thông. |
+| **`api_general`** | **100 requests/phút** | `burst=20 nodelay` | Toàn bộ các API khác (`/`, duyệt phim, xem lịch chiếu...) | Hạn chế lạm dụng API thông thường và giữ tải ổn định cho toàn hệ thống. |
+
+### Tùy Biến Trả Về Lỗi 429 Chuẩn JSON API (RFC 7807)
+
+Mặc định, khi vi phạm Rate Limit, Nginx sẽ trả về trang HTML thô (`<html><head><title>429 Too Many Requests</title>...`). Điều này làm vỡ các hàm parse JSON trên ứng dụng Web Next.js và Mobile App.
+
+Nginx được cấu hình chuyển hướng sang named location để phản hồi JSON đồng nhất với chuẩn lỗi của NestJS:
+
+```nginx
+# docker/nginx/conf.d/default.conf
+error_page 429 @rate_limited;
+location @rate_limited {
+    default_type application/json;
+    return 429 '{"statusCode":429,"message":"Thao tác quá nhanh. Vui lòng thử lại sau.","error":"Too Many Requests"}';
+}
+```
+
+---
+
+## 4. Cơ Chế Phân Giải DNS Động Runtime Resolver (`127.0.0.11`)
+
+Một trong những bài toán hóc búa nhất khi triển khai microservices trong mạng Docker Bridge là **sự thay đổi địa chỉ IP nội bộ của container**:
+
+### Vấn Đề (The Dilemma):
+Nếu cấu hình thông thường:
+```nginx
+location /media/ {
+    proxy_pass http://media-service:4200/; # ❌ NGUY HIỂM!
+}
+```
+Nginx sẽ phân giải tên miền `media-service` thành địa chỉ IP (ví dụ: `172.20.0.7`) **duy nhất 1 lần khi Nginx khởi động**. Khi container `media-service` được cập nhật mã nguồn hoặc khởi động lại, Docker cấp cho nó một địa chỉ IP mới (ví dụ: `172.20.0.8`). Nginx vẫn cố kết nối vào IP cũ `172.20.0.7`, dẫn tới việc toàn bộ yêu cầu tải hình ảnh đều bị lỗi **`502 Bad Gateway` vĩnh viễn** cho đến khi khởi động lại cả Nginx!
+
+### Giải Pháp Kỹ Thuật Triệt Để:
+
+```nginx
+# docker/nginx/conf.d/default.conf
+location /media/ {
+    limit_req zone=media_read burst=60 nodelay;
+    
+    # 1. Trỏ vào DNS Server nội bộ của Docker Daemon tại 127.0.0.11
+    #    Hết hạn bộ nhớ đệm phân giải mỗi 10 giây (valid=10s)
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    
+    # 2. Gán địa chỉ upstream vào một biến (Variable)
+    #    Buộc Nginx phải tái phân giải DNS trong thời gian thực (Runtime Resolution)
+    set $media_upstream http://media-service:4200;
+    
+    rewrite ^/media/(.*)$ /$1 break;
+    proxy_pass $media_upstream;
+    
+    # 3. Ẩn Cookie nhằm tối đa hóa khả năng cache của trình duyệt và CDN
+    proxy_hide_header Set-Cookie;
+}
+```
+
+- Bằng cách gán URL vào biến `$media_upstream`, Nginx bị buộc phải tra cứu lại địa chỉ IP qua máy chủ DNS nội bộ của Docker (`127.0.0.11`) mỗi 10 giây.
+- Khi `media-service` khởi động lại với IP mới, Nginx tự động thích ứng chỉ sau vài giây mà không cần con người can thiệp hay restart lại reverse proxy.
+
+---
+
+## 5. Cấu Trúc Thư Mục Cấu Hình Nginx
+
+Toàn bộ các tệp cấu hình của Nginx được quản lý có tổ chức tại thư mục `docker/nginx/`:
+
+```
+docker/nginx/
+├── nginx.conf                  # Cấu hình lõi: workers, events, log_format, gzip, limit_req_zone
+└── conf.d/
+    └── default.conf            # Virtual Host (:80): upstream gateway, locations, rules rate limit, 429 JSON
+```
+
+Cấu hình này được gắn kết (mount) vào container dưới dạng chỉ đọc (**Read-Only**) trong `docker/apps/docker-compose.yml`:
+```yaml
+volumes:
+  - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  - ../nginx/conf.d:/etc/nginx/conf.d:ro
+```
+Đảm bảo tính bất biến của cấu hình và ngăn ngừa rủi ro bị sửa đổi từ bên trong container.

@@ -1,37 +1,149 @@
 ---
-title: Biến môi trường (Environment Variables)
-description: Danh sách biến môi trường mẫu và cấu hình chuẩn giữa các microservices.
+title: Biến môi trường & Phân bổ Cổng (Environment Variables & Ports)
+description: Danh mục phân bổ cổng mạng, giao thức kết nối và hướng dẫn cấu hình biến môi trường chuẩn xác cho 6 vi dịch vụ trong Tomato Cinema.
 ---
 
-Mỗi service trong `apps/` có thể sở hữu file `.env` riêng biệt, hoặc kế thừa file cấu hình chung tại thư mục gốc.
+Để đảm bảo tính nhất quán và bảo mật trên toàn bộ hệ sinh thái **Tomato Cinema**, các cấu hình nhạy cảm được quản lý thông qua biến môi trường. Mỗi vi dịch vụ sở hữu file `.env` độc lập hoặc nạp từ file cấu hình chung của Monorepo.
 
-## Bảng phân bổ cổng mặc định
+---
 
-| Service | Port | Giao thức | Mục đích |
-| :--- | :--- | :--- | :--- |
-| `gateway-service` | `3000` | HTTP / WebSocket | Điểm vào duy nhất cho Client |
-| `auth-service` | `3001` | HTTP / gRPC | Xác thực & Quản lý phiên |
-| `user-service` | `3002` | HTTP / gRPC | Hồ sơ người dùng & Thành viên |
-| `media-service` | `3003` | HTTP / gRPC | Tải lên & Quản lý phim/media |
-| `notification-service` | `3004` | Event Consumer | Gửi Email, SMS, Push notification |
-| `bot-service` | `3005` | HTTP / Webhook | Tương tác Chatbot hỗ trợ khách hàng |
-| `web` | `3500` | HTTP | Frontend khách hàng (Next.js) |
-| `docs` | `3501` | HTTP | Trang tài liệu kỹ thuật |
+## 1. Bảng Phân bổ Cổng Mạng & Giao thức Thực tế
 
-## Cấu hình Redis & Database
+Hệ thống phân tách rạch ròi giữa các cổng giao tiếp công khai (Public Ingress) và cổng RPC / Event nội bộ (Private Internal Mesh):
+
+| Vi Dịch Vụ | Cổng Lắng Nghe | Giao Thức | Phạm Vi Truy Cập | Mục Đích Nghiệp Vụ |
+| :--- | :---: | :---: | :---: | :--- |
+| **Nginx Edge Ingress** | `:8080` | HTTP/1.1 | **Public Internet** | Cổng tiếp nhận chính; định tuyến `/api/*` tới Gateway và `/media/*` tới Media Service. |
+| **`gateway-service`** | `:3000` | HTTP / REST | Nội bộ / Sau Nginx | API Gateway đón nhận traffic từ Web/Mobile; thẩm định Passport Zero-I/O; rate limit. |
+| **`media-service` (HTTP)** | `:4200` | HTTP / Streaming | Nội bộ / Sau Nginx | Phục vụ tải ảnh WebP/AVIF tĩnh với Cache-Control 24h. |
+| **`media-service` (gRPC)** | `:50059` | gRPC / HTTP2 | **Private Mesh** | Tiếp nhận upload nhị phân từ Gateway và lưu vào Cloudflare R2/MinIO. |
+| **`auth-service`** | `:50051` | gRPC / HTTP2 | **Private Mesh** | Xác thực danh tính; cấp phát Passport Dual-Token; quản lý phiên xoay vòng trên Redis. |
+| **`user-service`** | `:50053` | gRPC / HTTP2 | **Private Mesh** | Quản lý hồ sơ người dùng (`users` DB); tự động đồng bộ khi nhận event từ RabbitMQ. |
+| **`notification-service`** | `:9102` | HTTP / Prometheus | Nội bộ Observability | Cung cấp Prometheus Metrics (`/metrics`) và Healthcheck; lắng nghe AMQP Queue. |
+| **`bot-service`** | Long-polling | HTTPS / Telegram API | Egress ra ngoài | Kết nối Telegram Bot API; liên kết số điện thoại qua gRPC tới `auth-service`. |
+| **`apps/web`** | `:3500` | HTTP / Next.js | Client | Trang web người dùng Next.js 16 (App Router). |
+| **`apps/docs`** | `:3501` | HTTP / Fumadocs | Kỹ thuật nội bộ | Cổng thông tin tài liệu kiến trúc kỹ thuật. |
+
+---
+
+## 2. Cấu hình Cơ sở hạ tầng Phụ trợ (Infra Ports)
+
+Khi khởi chạy qua Docker Compose (`docker/docker-compose.yml`), các hạ tầng cơ sở dữ liệu lắng nghe tại các cổng mặc định:
+
+| Dịch vụ Hạ tầng | Cổng Mặc định | Tài khoản / Thông tin kết nối |
+| :--- | :---: | :--- |
+| **PostgreSQL (Auth DB)** | `:5432` | `postgres:postgres@localhost:5432/auth_db` |
+| **PostgreSQL (User DB)** | `:5433` (hoặc cùng máy chủ) | `postgres:postgres@localhost:5432/user_db` |
+| **Redis Cluster / Standalone** | `:6379` | `redis://localhost:6379` (Lưu OTP và Session Token) |
+| **RabbitMQ Broker** | `:5672` (AMQP), `:15672` (UI) | `guest:guest` (Management Dashboard tại `http://localhost:15672`) |
+| **MinIO Object Storage** | `:9000` (API), `:9001` (Console) | `minioadmin:minioadmin` (S3 API tương thích Cloudflare R2) |
+
+---
+
+## 3. Danh mục Biến Môi trường Chi tiết Theo Từng Dịch Vụ
+
+### 3.1. `gateway-service` (`apps/gateway-service/.env`)
 
 ```bash
-# PostgreSQL
-DATABASE_URL="postgresql://tomato:secret@localhost:5432/tomato_cinema?schema=public"
+NODE_ENV=development
+PORT=3000
+PASSPORT_SECRET="super-strong-hmac-secret-key-at-least-32-characters"
+PASSPORT_ACCESS_TTL=900        # 15 phút (giây)
+PASSPORT_REFRESH_TTL=2592000    # 30 ngày (giây)
 
-# Redis
-REDIS_HOST="localhost"
+# Địa chỉ gRPC của các microservices đồng cấp
+GRPC_AUTH_URL="localhost:50051"
+GRPC_USER_URL="localhost:50053"
+GRPC_MEDIA_URL="localhost:50059"
+```
+
+### 3.2. `auth-service` (`apps/auth-service/.env`)
+
+```bash
+NODE_ENV=development
+GRPC_PORT=50051
+
+# Cơ sở dữ liệu danh tính
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=auth_db
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+
+# Quản lý phiên và mã OTP trên Redis
+REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=""
+REDIS_PASSWORD=
 
-# JWT Secrets
-JWT_ACCESS_SECRET="your-super-secret-access-key"
-JWT_REFRESH_SECRET="your-super-secret-refresh-key"
-JWT_ACCESS_EXPIRES_IN="15m"
-JWT_REFRESH_EXPIRES_IN="7d"
+# RabbitMQ phát tán sự kiện
+RMQ_URL=amqp://guest:guest@localhost:5672
+
+# Khóa bí mật HMAC cho Passport Token Engine
+PASSPORT_SECRET="super-strong-hmac-secret-key-at-least-32-characters"
+```
+
+### 3.3. `media-service` (`apps/media-service/.env`)
+
+```bash
+APP_ENV=development
+HTTP_PORT=4200
+HTTP_HOST=localhost:4200
+GRPC_PORT=50059
+LOG_LEVEL=info
+
+# Driver lưu trữ: s3 (áp dụng cho cả MinIO và Cloudflare R2)
+STORAGE_DRIVER=s3
+S3_BUCKET=tomato-cinema
+S3_REGION=auto
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_USE_PATH_STYLE=true
+S3_PUBLIC_URL=http://localhost:4200
+```
+
+### 3.4. `user-service` (`apps/user-service/.env`)
+
+```bash
+NODE_ENV=development
+GRPC_USER_PORT=50053
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=user_db
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_SYNCHRONIZE=false
+
+RMQ_URL=amqp://guest:guest@localhost:5672
+RMQ_QUEUE=user_queue
+```
+
+### 3.5. `notification-service` (`apps/notification-service/.env`)
+
+```bash
+NODE_ENV=development
+PORT=9102
+RMQ_URL=amqp://guest:guest@localhost:5672
+RMQ_QUEUE=notification_queue
+
+# SMTP Email Provider
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USER=your_mailtrap_user
+MAIL_PASS=your_mailtrap_pass
+MAIL_FROM="Tomato Cinema <no-reply@tomatocinema.vn>"
+
+# Viễn thông SMS Exolve
+EXOLVE_API_KEY=your_exolve_api_key
+EXOLVE_SENDER=TOMATOCINEMA
+```
+
+### 3.6. `bot-service` (`apps/bot-service/.env`)
+
+```bash
+NODE_ENV=development
+BOT_TOKEN="your_telegram_bot_token_from_botfather"
+GRPC_AUTH_HOST=localhost
+GRPC_AUTH_PORT=50051
+WEB_URL="http://localhost:3500"
 ```
