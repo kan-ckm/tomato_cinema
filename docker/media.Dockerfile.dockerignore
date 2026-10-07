@@ -1,0 +1,10 @@
+# Bỏ qua toàn bộ và chỉ giữ lại đúng những tệp cần thiết cho Go build
+*
+!apps/media-service/go.mod
+!apps/media-service/go.sum
+!apps/media-service/cmd/**
+!apps/media-service/internal/**
+!apps/media-service/pkg/**
+!packages/contracts/go.mod
+!packages/contracts/go.sum
+!packages/contracts/gen/go/**

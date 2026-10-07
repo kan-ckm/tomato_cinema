@@ -16,17 +16,17 @@ docker/
 │   ├── .env.example                #    Mẫu biến môi trường hạ tầng
 │   └── init-db/
 │       └── 01-init-databases.sh    #    Script tự động tạo DB auth + users khi khởi tạo lần đầu
-├── apps/                           # 🚀 Microservices Backend
-│   ├── docker-compose.yml          #    Điều phối 5 microservices
 ├── apps/                           # 🚀 Microservices Backend & Reverse Proxy
-│   ├── docker-compose.yml          #    Điều phối 5 microservices + Nginx
+│   ├── docker-compose.yml          #    Điều phối 6 microservices (gồm media-service) + Nginx
 │   ├── .env                        #    Biến môi trường app (ĐÃ .gitignore)
 │   └── .env.example                #    Mẫu biến môi trường app
 ├── nginx/                          # 🛡️ Reverse Proxy & Edge Rate Limiter (Nginx)
 │   ├── nginx.conf                  #    Cấu hình Nginx gốc & khai báo rate limit zones
-│   └── conf.d/default.conf         #    Định tuyến upstream Gateway và áp dụng rules rate limit
-├── Dockerfile                      # Dockerfile Multi-Stage đa năng dùng chung cho mọi service
-├── docker-compose.yml              # File tổng hợp (include cả infra/ & apps/)
+│   └── conf.d/default.conf         #    Định tuyến Gateway, Media và áp dụng rules rate limit
+├── Dockerfile                      # Dockerfile Multi-Stage tối ưu dùng chung cho 5 service Node.js
+├── media.Dockerfile                # Dockerfile Go Multi-Stage + Distroless siêu nhẹ cho media-service
+├── media.Dockerfile.dockerignore   # Whitelist context cho media-service
+├── docker-compose.yml              # File tổng hợp (include infra/, apps/, observability/)
 ├── .env                            # Biến môi trường master (ĐÃ .gitignore)
 ├── .env.example                    # Mẫu tham khảo tổng hợp
 └── README.md                       # Tài liệu hướng dẫn này
@@ -139,6 +139,8 @@ docker compose down -v
 | **RabbitMQ Management** |       `15673`        |    `15672`     | [http://localhost:15673](http://localhost:15673)                                 |
 | **Auth gRPC**           |       `50051`        |    `50051`     | `localhost:50051`                                                                |
 | **User gRPC**           |       `50052`        |    `50052`     | `localhost:50052`                                                                |
+| **Media Service gRPC**  |          -           |    `50059`     | `media-service:50059` (nội bộ giữa các microservices)                            |
+| **Media Public (Nginx)**|  `${NGINX_HTTP_PORT}`|     `80`       | [http://localhost:8080/media/<key>](http://localhost:8080/media)                |
 | **Grafana**             |        `3001`        |     `3000`     | [http://localhost:3001](http://localhost:3001)                                   |
 | **Prometheus**          |        `9090`        |     `9090`     | [http://localhost:9090](http://localhost:9090)                                   |
 | **Tempo (Traces)**      |        `3200`        |     `3200`     | `localhost:3200`                                                                 |

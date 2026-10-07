@@ -113,20 +113,20 @@ tomato_cinema/
 
 ## 3. Bảng công nghệ sử dụng
 
-| Phân vùng                 | Công nghệ                      | Vai trò trong hệ sinh thái                                                  |
-| :------------------------ | :----------------------------- | :-------------------------------------------------------------------------- |
-| **Ngôn ngữ**              | TypeScript, Go (Golang 1.24)   | TypeScript type-safe toàn diện; Golang cho tác vụ I/O media tốc độ cao      |
-| **Backend Framework**     | NestJS 11, Gin (Go)            | NestJS module hóa mạnh mẽ; Gin framework siêu nhẹ phục vụ HTTP media stream |
-| **IPC (Liên dịch vụ)**    | gRPC, Protocol Buffers         | Giao tiếp nhị phân nội bộ, schema rõ ràng, độ trễ cực thấp                  |
-| **Event Broker**          | RabbitMQ (AMQP)                | Xử lý hàng đợi phi đồng bộ, gửi email OTP và thông báo hệ thống             |
-| **Cơ sở dữ liệu**         | PostgreSQL 16                  | Hệ quản trị CSDL quan hệ chính (tách biệt database `auth` và `users`)       |
-| **Bộ nhớ đệm (Cache)**    | Redis 8                        | Lưu trữ phiên làm việc, chống spam gửi mã OTP, Blacklist/Whitelist Token    |
+| Phân vùng                 | Công nghệ                             | Vai trò trong hệ sinh thái                                                  |
+| :------------------------ | :------------------------------------ | :-------------------------------------------------------------------------- |
+| **Ngôn ngữ**              | TypeScript, Go (Golang 1.24)          | TypeScript type-safe toàn diện; Golang cho tác vụ I/O media tốc độ cao      |
+| **Backend Framework**     | NestJS 11, Gin (Go)                   | NestJS module hóa mạnh mẽ; Gin framework siêu nhẹ phục vụ HTTP media stream |
+| **IPC (Liên dịch vụ)**    | gRPC, Protocol Buffers                | Giao tiếp nhị phân nội bộ, schema rõ ràng, độ trễ cực thấp                  |
+| **Event Broker**          | RabbitMQ (AMQP)                       | Xử lý hàng đợi phi đồng bộ, gửi email OTP và thông báo hệ thống             |
+| **Cơ sở dữ liệu**         | PostgreSQL 16                         | Hệ quản trị CSDL quan hệ chính (tách biệt database `auth` và `users`)       |
+| **Bộ nhớ đệm (Cache)**    | Redis 8                               | Lưu trữ phiên làm việc, chống spam gửi mã OTP, Blacklist/Whitelist Token    |
 | **Lưu trữ tệp (Storage)** | S3-Compatible (Cloudflare R2 / MinIO) | Lưu trữ posters, avatars, videos với cơ chế Streaming I/O                   |
-| **ORM**                   | Prisma, TypeORM                | Thực hành cả Prisma ORM (`auth-service`) và TypeORM (`user-service`)        |
-| **Frontend**              | Next.js 16, React 19           | Trải nghiệm giao diện xem phim hiện đại, Server Components                  |
-| **Tài liệu & Sơ đồ**      | Fumadocs, Archify Diagrams     | Tài liệu hóa kiến trúc tương tác, xem sơ đồ động đa chế độ                  |
-| **Monorepo & Build**      | Turborepo, pnpm                | Cache tác vụ build, tối ưu hóa thời gian triển khai và chia sẻ mã nguồn     |
-| **DevOps & Container**    | Docker, Docker Compose, Nginx  | Đóng gói môi trường đồng nhất, Nginx Gateway Proxy và Rate Limiting         |
+| **ORM**                   | Prisma, TypeORM                       | Thực hành cả Prisma ORM (`auth-service`) và TypeORM (`user-service`)        |
+| **Frontend**              | Next.js 16, React 19                  | Trải nghiệm giao diện xem phim hiện đại, Server Components                  |
+| **Tài liệu & Sơ đồ**      | Fumadocs, Archify Diagrams            | Tài liệu hóa kiến trúc tương tác, xem sơ đồ động đa chế độ                  |
+| **Monorepo & Build**      | Turborepo, pnpm                       | Cache tác vụ build, tối ưu hóa thời gian triển khai và chia sẻ mã nguồn     |
+| **DevOps & Container**    | Docker, Docker Compose, Nginx         | Đóng gói môi trường đồng nhất, Nginx Gateway Proxy và Rate Limiting         |
 
 ---
 

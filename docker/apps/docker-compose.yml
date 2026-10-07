@@ -1,5 +1,5 @@
 # ==============================================================================
-# CÁC MICROSERVICES BACKEND (AUTH, USER, GATEWAY, NOTIFICATION, BOT) & REVERSE PROXY
+# CÁC MICROSERVICES BACKEND (AUTH, USER, GATEWAY, NOTIFICATION, BOT, MEDIA) & REVERSE PROXY
 # Vị trí: docker/apps/docker-compose.yml
 #
 # File .env: docker/apps/.env (biến app + biến kết nối hạ tầng)
@@ -9,6 +9,15 @@
 # ==============================================================================
 
 name: tomato-cinema
+
+# ------------------------------------------------------------------------------
+# 🧩 KHAI BÁO CẤU HÌNH TÁI SỬ DỤNG (YAML EXTENSION FIELDS & ANCHORS)
+# ------------------------------------------------------------------------------
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 networks:
   tomatocinema:
@@ -20,7 +29,6 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      # args: Truyền biến APP_NAME vào Dockerfile đa năng để Turborepo cắt tỉa và chỉ build riêng service này
       args:
         APP_NAME: auth-service
     image: tomato-cinema/auth-service:latest
@@ -64,11 +72,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -78,7 +82,6 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: user-service
     image: tomato-cinema/user-service:latest
@@ -111,11 +114,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -125,7 +124,6 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: gateway-service
     image: tomato-cinema/gateway-service:latest
@@ -141,6 +139,7 @@ services:
       - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
       - ACCOUNT_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
       - USERS_GRPC_URL=user-service:${USER_GRPC_PORT}
+      - MEDIA_GRPC_URL=media-service:${MEDIA_GRPC_PORT:-50059}
       - PASSPORT_SECRET_KEY=${PASSPORT_SECRET_KEY}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     ports:
@@ -158,11 +157,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -172,7 +167,6 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: notification-service
     image: tomato-cinema/notification-service:latest
@@ -201,11 +195,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -215,7 +205,6 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile
-      # args: Chỉ định tên service mục tiêu cần build trong monorepo
       args:
         APP_NAME: bot-service
     image: tomato-cinema/bot-service:latest
@@ -223,24 +212,53 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV:-development}
-      # Ưu tiên phân giải IPv4 trước IPv6:
-      # api.telegram.org trả về cả IPv4 và IPv6. Mặc định Node.js 22 thử kết nối IPv6 trước,
-      # nhưng Docker bridge network không định tuyến IPv6 ra ngoài nên gây lỗi timeout (ETIMEDOUT).
       - NODE_OPTIONS=--dns-result-order=ipv4first
       - AUTH_GRPC_URL=auth-service:${AUTH_GRPC_PORT}
-      # Token bot Telegram hoàn chỉnh bắt buộc phải có dạng "<BOT_ID>:<SECRET_TOKEN>".
-      # Do trong .env tách thành TELEGRAM_BOT_ID và TELEGRAM_BOT_TOKEN nên cần ghép lại ở đây.
       - BOT_TOKEN=${TELEGRAM_BOT_ID}:${TELEGRAM_BOT_TOKEN}
     depends_on:
       auth-service:
         condition: service_healthy
     networks:
       - tomatocinema
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  media-service:
+    build:
+      context: ../..
+      dockerfile: docker/media.Dockerfile
+    image: tomato-cinema/media-service:latest
+    container_name: media_service_tomato_cinema
+    restart: unless-stopped
+    environment:
+      - APP_ENV=${MEDIA_APP_ENV:-production}
+      - HTTP_PORT=${MEDIA_HTTP_PORT:-4200}
+      - HTTP_HOST=${MEDIA_PUBLIC_URL:-http://localhost:8080/media}
+      - GRPC_PORT=${MEDIA_GRPC_PORT:-50059}
+      - GRPC_MAX_MSG_MB=${MEDIA_GRPC_MAX_MSG_MB:-16}
+      - S3_DRIVER=s3
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION:-auto}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_PUBLIC_URL=${S3_PUBLIC_URL:-}
+      - LOG_LEVEL=${MEDIA_LOG_LEVEL:-info}
+    expose:
+      - '4200'
+      - '50059'
+    networks:
+      - tomatocinema
+    healthcheck:
+      test: ["CMD", "/media-service", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -260,11 +278,7 @@ services:
         condition: service_healthy
     networks:
       - tomatocinema
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     deploy:
       resources:
         limits:
